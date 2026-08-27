@@ -1,0 +1,13 @@
+Bill Date,Invoice Number,Party Name,Stock Item,Category,Qty,Rate,Net Amount
+01-07-2026,INV-1001,ABC Electrical,LED 9W,Lighting,500,80,40000
+05-07-2026,INV-1002,ABC Electrical,MCB 32A,Protection,200,220,44000
+10-07-2026,INV-1003,XYZ Traders,LED 9W,Lighting,400,80,32000
+15-07-2026,INV-1004,XYZ Traders,MCB 32A,Protection,180,220,39600
+20-07-2026,INV-1005,PQR Distributors,Switch 6A,Switchgear,300,45,13500
+25-07-2026,INV-1006,LMN Electrical,LED 9W,Lighting,250,80,20000
+01-08-2026,INV-2001,ABC Electrical,LED 9W,Lighting,300,80,24000
+05-08-2026,INV-2002,ABC Electrical,MCB 32A,Protection,100,220,22000
+10-08-2026,INV-2003,XYZ Traders,LED 9W,Lighting,350,80,28000
+15-08-2026,INV-2004,XYZ Traders,MCB 32A,Protection,120,220,26400
+20-08-2026,INV-2005,PQR Distributors,Switch 6A,Switchgear,300,45,13500
+25-08-2026,INV-2006,LMN Electrical,LED 9W,Lighting,300,80,24000
