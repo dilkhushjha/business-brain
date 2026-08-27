@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from packages.data.business_brain.ingestion.duplicate import already_imported
 from packages.data.business_brain.ingestion.orchestrator import prepare_file
 from packages.data.business_brain.ingestion.persistence import persist_ingestion_run
+from packages.data.business_brain.ingestion.repository import persist_sales
 from packages.shared.database.session import get_db
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
@@ -50,6 +51,7 @@ def record_ingestion_run(
     with NamedTemporaryFile(suffix=suffix, delete=True) as temp:
         temp.write(file.file.read())
         temp.flush()
-        result, _ = prepare_file(temp.name)
+        result, prepared = prepare_file(temp.name)
         run = persist_ingestion_run(db, business_id, result)
-    return {"run_id": str(run.id), "status": run.status}
+        created_sales = persist_sales(db, business_id, [row.values for row in prepared])
+    return {"run_id": str(run.id), "status": run.status, "sales_created": created_sales}
