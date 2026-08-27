@@ -1,0 +1,6 @@
+Sale Date,Bill No,Customer,Item,Category,Size,Color,Qty,Selling Price,Discount,Net Sales
+01/08/2026,INV-001,Retail Customer A,Cotton Shirt,Shirts,M,Blue,2,1200,100,"₹ 2,300"
+02/08/2026,INV-002,Retail Customer B,Denim Jeans,Jeans,32,Black,1,2200,200,"₹ 2,000"
+03/08/2026,INV-003,Retail Customer C,Cotton Shirt,Shirts,L,White,3,1200,0,"₹ 3,600"
+04/08/2026,INV-004,Retail Customer A,Chinos,Trousers,32,Beige,1,1800,100,"₹ 1,700"
+05/08/2026,INV-005,Retail Customer D,Denim Jeans,Jeans,34,Blue,2,2200,200,"₹ 4,200"
