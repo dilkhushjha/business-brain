@@ -1,0 +1,6 @@
+industry: distribution
+enabled:
+  - customer_risk
+  - inventory_coverage
+  - procurement
+  - receivables

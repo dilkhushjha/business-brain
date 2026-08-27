@@ -1,0 +1,6 @@
+industry: retail
+enabled:
+  - sku_performance
+  - sell_through
+  - dead_stock
+  - seasonality
