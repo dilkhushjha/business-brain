@@ -10,3 +10,5 @@ up:
 	docker compose up -d
 down:
 	docker compose down
+seed-demo:
+	python scripts/seed_demo_business.py
