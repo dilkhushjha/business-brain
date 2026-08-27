@@ -1,0 +1,11 @@
+Bill Date,Party Name,Stock Item,Category,Qty,Rate,Net Amount
+01-07-2026,ABC Electrical,LED 9W,Lighting,100,80,"₹ 8,000"
+02-07-2026,XYZ Traders,MCB 32A,Protection,50,220,"₹ 11,000"
+03-07-2026,ABC Electrical,LED 9W,Lighting,200,80,"₹ 16,000"
+05-07-2026,PQR Hardware,Wire 1.5mm,Wire,1000,45,"₹ 45,000"
+10-07-2026,XYZ Traders,MCB 32A,Protection,100,220,"₹ 22,000"
+01-08-2026,ABC Electrical,LED 9W,Lighting,50,80,"₹ 4,000"
+02-08-2026,XYZ Traders,MCB 32A,Protection,50,220,"₹ 11,000"
+03-08-2026,PQR Hardware,Wire 1.5mm,Wire,900,45,"₹ 40,500"
+04-08-2026,LMN Electrical,Switch 6A,Switchgear,100,35,"₹ 3,500"
+05-08-2026,ABC Electrical,LED 9W,Lighting,25,80,"₹ 2,000"
