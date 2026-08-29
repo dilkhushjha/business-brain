@@ -24,21 +24,23 @@ def _validate_filename(filename: str | None) -> str:
     return suffix
 
 
+def _prepare_upload(file: UploadFile, business_id: UUID, db: Session):
+    suffix = _validate_filename(file.filename)
+    with NamedTemporaryFile(suffix=suffix, delete=True) as temp:
+        temp.write(file.file.read())
+        temp.flush()
+        if already_imported(db, business_id, temp.name):
+            raise HTTPException(status_code=409, detail="This source file was already imported")
+        return prepare_file(temp.name, source_name=file.filename)
+
+
 @router.post("/preview/{business_id}")
 def preview_ingestion(
     business_id: UUID,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
-    suffix = _validate_filename(file.filename)
-
-    with NamedTemporaryFile(suffix=suffix, delete=True) as temp:
-        temp.write(file.file.read())
-        temp.flush()
-        if already_imported(db, business_id, temp.name):
-            raise HTTPException(status_code=409, detail="This source file was already imported")
-        result, _ = prepare_file(temp.name, source_name=file.filename)
-
+    result, _ = _prepare_upload(file, business_id, db)
     return {
         "source": result.source.name,
         "checksum": result.source.checksum,
@@ -49,28 +51,22 @@ def preview_ingestion(
     }
 
 
+@router.post("/import/{business_id}")
 @router.post("/record-run/{business_id}")
 def record_ingestion_run(
     business_id: UUID,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
-    suffix = _validate_filename(file.filename)
-
-    with NamedTemporaryFile(suffix=suffix, delete=True) as temp:
-        temp.write(file.file.read())
-        temp.flush()
-        if already_imported(db, business_id, temp.name):
-            raise HTTPException(status_code=409, detail="This source file was already imported")
-
-        result, prepared = prepare_file(temp.name, source_name=file.filename)
-        run = persist_ingestion_run(db, business_id, result)
-        created_sales = persist_sales(db, business_id, [row.values for row in prepared])
+    result, prepared = _prepare_upload(file, business_id, db)
+    run = persist_ingestion_run(db, business_id, result)
+    created_sales = persist_sales(db, business_id, [row.values for row in prepared])
 
     return {
         "run_id": str(run.id),
         "status": run.status,
         "source": result.source.name,
+        "checksum": result.source.checksum,
         "rows_read": result.rows_read,
         "rows_accepted": result.rows_accepted,
         "rows_rejected": result.rows_rejected,
