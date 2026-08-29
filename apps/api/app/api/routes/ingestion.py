@@ -35,40 +35,21 @@ def _prepare_upload(file: UploadFile, business_id: UUID, db: Session):
 
 
 @router.post("/preview/{business_id}")
-def preview_ingestion(
-    business_id: UUID,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-):
+def preview_ingestion(business_id: UUID, file: UploadFile = File(...), db: Session = Depends(get_db)):
     result, _ = _prepare_upload(file, business_id, db)
-    return {
-        "source": result.source.name,
-        "checksum": result.source.checksum,
-        "rows_read": result.rows_read,
-        "rows_accepted": result.rows_accepted,
-        "rows_rejected": result.rows_rejected,
-        "issues": [issue.__dict__ for issue in result.issues[:100]],
-    }
+    return {"source": result.source.name, "checksum": result.source.checksum, "rows_read": result.rows_read, "rows_accepted": result.rows_accepted, "rows_rejected": result.rows_rejected, "issues": [issue.__dict__ for issue in result.issues[:100]]}
 
 
 @router.post("/import/{business_id}")
 @router.post("/record-run/{business_id}")
-def record_ingestion_run(
-    business_id: UUID,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-):
+def record_ingestion_run(business_id: UUID, file: UploadFile = File(...), db: Session = Depends(get_db)):
     result, prepared = _prepare_upload(file, business_id, db)
-    run = persist_ingestion_run(db, business_id, result)
-    created_sales = persist_sales(db, business_id, [row.values for row in prepared])
-
-    return {
-        "run_id": str(run.id),
-        "status": run.status,
-        "source": result.source.name,
-        "checksum": result.source.checksum,
-        "rows_read": result.rows_read,
-        "rows_accepted": result.rows_accepted,
-        "rows_rejected": result.rows_rejected,
-        "sales_created": created_sales,
-    }
+    try:
+        run = persist_ingestion_run(db, business_id, result)
+        created_sales = persist_sales(db, business_id, [row.values for row in prepared])
+        db.commit()
+        db.refresh(run)
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Import failed; no partial data was committed")
+    return {"run_id": str(run.id), "status": run.status, "source": result.source.name, "checksum": result.source.checksum, "rows_read": result.rows_read, "rows_accepted": result.rows_accepted, "rows_rejected": result.rows_rejected, "sales_created": created_sales}
