@@ -1,14 +1,37 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from packages.shared.database.models import ProductModel, SaleLineModel, SaleModel
+
+
+@dataclass(frozen=True)
+class KPI:
+    name: str
+    value: Decimal | None
+    unit: str
+    period: str
+    comparison_value: Decimal | None = None
+    change: Decimal | None = None
+
+
+def growth(current: Decimal, previous: Decimal) -> Optional[Decimal]:
+    if previous == 0:
+        return None
+    return (current - previous) / previous * Decimal("100")
+
+
+def average_invoice_value(revenue: Decimal, invoice_count: int) -> Optional[Decimal]:
+    if invoice_count == 0:
+        return None
+    return revenue / Decimal(invoice_count)
 
 
 def _money(value: Any) -> float:
@@ -29,7 +52,7 @@ def business_kpis(db: Session, business_id: UUID, as_of: date | None = None) -> 
 
     current = revenue(start, end)
     previous = revenue(previous_start, previous_end)
-    growth = ((current - previous) / previous * 100) if previous else None
+    revenue_growth = growth(current, previous)
     orders = db.scalar(select(func.count(SaleModel.id)).where(
         SaleModel.business_id == business_id,
         SaleModel.transaction_date.between(start, end),
@@ -54,7 +77,7 @@ def business_kpis(db: Session, business_id: UUID, as_of: date | None = None) -> 
         "period": {"start": start.isoformat(), "end": end.isoformat()},
         "revenue": _money(current),
         "previous_revenue": _money(previous),
-        "revenue_growth_pct": round(float(growth), 2) if growth is not None else None,
+        "revenue_growth_pct": round(float(revenue_growth), 2) if revenue_growth is not None else None,
         "orders": orders,
         "average_order_value": round(_money(current) / orders, 2) if orders else 0,
         "active_customers": customers,
