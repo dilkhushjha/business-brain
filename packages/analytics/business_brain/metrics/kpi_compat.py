@@ -15,13 +15,23 @@ class KPI:
     change: Decimal | None = None
 
 
-def growth(current: Decimal, previous: Decimal) -> Optional[Decimal]:
-    if previous == 0:
+def _decimal(value: int | float | Decimal | None) -> Decimal:
+    if value is None:
+        return Decimal("0")
+    if isinstance(value, Decimal):
+        return value
+    return Decimal(str(value))
+
+
+def growth(current: int | float | Decimal | None, previous: int | float | Decimal | None) -> Optional[Decimal]:
+    current_d = _decimal(current)
+    previous_d = _decimal(previous)
+    if previous_d == 0:
         return None
-    return (current - previous) / previous * Decimal("100")
+    return (current_d - previous_d) / previous_d * Decimal("100")
 
 
-def average_invoice_value(revenue: Decimal, invoice_count: int) -> Optional[Decimal]:
+def average_invoice_value(revenue: int | float | Decimal, invoice_count: int) -> Optional[Decimal]:
     if invoice_count == 0:
         return None
-    return revenue / Decimal(invoice_count)
+    return _decimal(revenue) / Decimal(invoice_count)
