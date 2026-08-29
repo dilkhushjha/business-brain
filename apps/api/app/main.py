@@ -10,23 +10,11 @@ from apps.api.app.api.routes.signals import router as signals_router
 from apps.api.app.api.routes.recommendations import router as recommendations_router
 from apps.api.app.api.routes.context import router as context_router
 from apps.api.app.api.routes.agent import router as agent_router
+from apps.api.app.api.routes.anomalies import router as anomalies_router
 
 app = FastAPI(title="Business Brain API", version="0.1.0")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-app.include_router(health_router, prefix="/api")
-app.include_router(ingestion_router, prefix="/api")
-app.include_router(kpis_router, prefix="/api")
-app.include_router(trends_router, prefix="/api")
-app.include_router(dimensions_router, prefix="/api")
-app.include_router(signals_router, prefix="/api")
-app.include_router(recommendations_router, prefix="/api")
-app.include_router(context_router, prefix="/api")
-app.include_router(agent_router, prefix="/api")
+for router in (health_router, ingestion_router, kpis_router, trends_router, dimensions_router, signals_router, recommendations_router, context_router, agent_router, anomalies_router):
+    app.include_router(router, prefix="/api")
