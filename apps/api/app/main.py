@@ -16,6 +16,7 @@ from apps.api.app.api.routes.product_risk import router as product_risk_router
 from apps.api.app.api.routes.margin import router as margin_router
 from apps.api.app.api.routes.receivables import router as receivables_router
 from apps.api.app.api.routes.inventory import router as inventory_router
+from apps.api.app.api.routes.import_history import router as import_history_router
 app=FastAPI(title="Business Brain API",version="0.1.0")
 app.add_middleware(CORSMiddleware,allow_origins=["http://localhost:3000","http://127.0.0.1:3000"],allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
-for router in (health_router,ingestion_router,kpis_router,trends_router,dimensions_router,signals_router,recommendations_router,context_router,agent_router,anomalies_router,customer_risk_router,customer_concentration_router,product_risk_router,margin_router,receivables_router,inventory_router): app.include_router(router,prefix="/api")
+for router in (health_router,ingestion_router,kpis_router,trends_router,dimensions_router,signals_router,recommendations_router,context_router,agent_router,anomalies_router,customer_risk_router,customer_concentration_router,product_risk_router,margin_router,receivables_router,inventory_router,import_history_router): app.include_router(router,prefix="/api")
