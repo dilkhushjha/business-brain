@@ -10,14 +10,21 @@ class MappingCandidate:
 
 
 ALIASES: dict[str, tuple[str, ...]] = {
-    "customer_name": ("customer", "customer name", "cust name", "party", "party name", "client"),
-    "product_name": ("product", "product name", "item", "item name", "stock item"),
-    "invoice_number": ("invoice", "invoice no", "invoice number", "bill no", "bill number"),
-    "transaction_date": ("date", "invoice date", "bill date", "transaction date"),
-    "quantity": ("qty", "quantity", "units", "nos"),
-    "unit_price": ("rate", "unit price", "selling price", "price"),
-    "total_amount": ("amount", "total", "invoice amount", "sales amount", "net amount"),
-    "cost_price": ("cost", "cost price", "purchase rate", "buying price"),
+    "customer_name": ("customer", "customer name", "cust name", "party", "party name", "party ledger name", "buyer", "client"),
+    "product_name": ("product", "product name", "item", "item name", "stock item", "stock item name", "item description"),
+    "invoice_number": ("invoice", "invoice no", "invoice number", "bill no", "bill number", "voucher no", "voucher number"),
+    "transaction_date": ("date", "invoice date", "bill date", "transaction date", "voucher date"),
+    "quantity": ("qty", "quantity", "units", "nos", "no", "qty in pcs"),
+    "unit_price": ("rate", "unit price", "selling price", "price", "sales rate"),
+    "total_amount": ("amount", "total", "invoice amount", "sales amount", "net amount", "value", "net value"),
+    "cost_price": ("cost", "cost price", "purchase rate", "buying price", "purchase value"),
+    "tax": ("tax", "gst", "tax amount", "gst amount", "total tax"),
+    "cgst": ("cgst", "cgst amount"),
+    "sgst": ("sgst", "sgst amount"),
+    "igst": ("igst", "igst amount"),
+    "taxable_value": ("taxable value", "taxable amount", "taxable"),
+    "voucher_type": ("voucher type", "transaction type", "type"),
+    "supplier_name": ("supplier", "supplier name", "vendor", "vendor name", "party supplier"),
 }
 
 
@@ -29,6 +36,7 @@ def suggest_mapping(columns: list[str], threshold: float = 0.80) -> list[Mapping
     from rapidfuzz.fuzz import ratio
 
     candidates: list[MappingCandidate] = []
+    used_fields: set[str] = set()
     for column in columns:
         cleaned = _clean(column)
         best_field, best_score = None, 0.0
@@ -37,5 +45,9 @@ def suggest_mapping(columns: list[str], threshold: float = 0.80) -> list[Mapping
             if score > best_score:
                 best_field, best_score = field, score
         if best_field and best_score >= threshold:
+            # Keep the strongest source column for each canonical field.
+            if best_field in used_fields:
+                continue
             candidates.append(MappingCandidate(column, best_field, round(best_score, 4)))
+            used_fields.add(best_field)
     return candidates
