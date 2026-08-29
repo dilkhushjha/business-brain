@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from packages.data.business_brain.ingestion.models import IngestionIssue, IngestionResult, SourceFile
 from packages.data.business_brain.ingestion.csv import CSVAdapter
 from packages.data.business_brain.ingestion.excel import ExcelAdapter
+from packages.data.business_brain.ingestion.tally import normalize_tally_rows
 from packages.data.business_brain.normalization.column_mapper import suggest_mapping
 from packages.data.business_brain.validation.schema import FieldRule, validate_row
 
@@ -33,19 +34,10 @@ def _adapter(path: Path):
     raise ValueError(f"Unsupported source format: {suffix}")
 
 
-def prepare_file(
-    path: str | Path,
-    *,
-    source_name: str | None = None,
-) -> tuple[IngestionResult, list[PreparedRow]]:
-    """Read, map and validate a business export without writing to the database.
-
-    ``source_name`` preserves the customer's original filename when the source is
-    processed through a temporary upload file.
-    """
+def prepare_file(path: str | Path, *, source_name: str | None = None) -> tuple[IngestionResult, list[PreparedRow]]:
+    """Read, Tally-clean, map and validate a business export without DB writes."""
     path = Path(path)
-    adapter = _adapter(path)
-    rows = adapter.ingest(path)
+    rows = normalize_tally_rows(_adapter(path).ingest(path))
     mappings = suggest_mapping(list(rows[0].keys()) if rows else [])
     mapping = {item.source_column: item.canonical_field for item in mappings}
 
@@ -63,10 +55,7 @@ def prepare_file(
         canonical = {mapping[key]: value for key, value in row.items() if key in mapping}
         row_issues = validate_row(canonical, rules, row_number)
         if row_issues:
-            issues.extend(
-                IngestionIssue(i.severity, i.code, i.message, i.row_number, i.field)
-                for i in row_issues
-            )
+            issues.extend(IngestionIssue(i.severity, i.code, i.message, i.row_number, i.field) for i in row_issues)
         else:
             prepared.append(PreparedRow(row_number, canonical))
 
@@ -75,13 +64,7 @@ def prepare_file(
         checksum=fingerprint(path),
         size_bytes=path.stat().st_size,
         imported_at=datetime.now(timezone.utc),
-        metadata={"format": path.suffix.lower(), "column_mappings": mapping},
+        metadata={"format": path.suffix.lower(), "tally_cleanup": True, "column_mappings": mapping},
     )
-    result = IngestionResult(
-        source=source,
-        rows_read=len(rows),
-        rows_accepted=len(prepared),
-        rows_rejected=len(rows) - len(prepared),
-        issues=issues,
-    )
+    result = IngestionResult(source=source, rows_read=len(rows), rows_accepted=len(prepared), rows_rejected=len(rows) - len(prepared), issues=issues)
     return result, prepared
