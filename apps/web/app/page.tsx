@@ -63,7 +63,7 @@ export default function Home() {
   }
 
   return <main className="shell">
-    <header className="header"><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div><span className={`status ${loading ? "loading" : live ? "" : "demo"}`}>● {loading ? "Connecting…" : live ? "Live data" : "Demo mode"}</span></header>
+    <header className="header"><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div><div><a className="status" href="/import">＋ Import data</a> <span className={`status ${loading ? "loading" : live ? "" : "demo"}`}>● {loading ? "Connecting…" : live ? "Live data" : "Demo mode"}</span></div></header>
     {!live && !loading && <div className="demoBanner"><strong>DEMO MODE</strong><span>Showing a safe synthetic electrical-wholesaler scenario. No real business data is being displayed.</span></div>}
     <section className="hero"><p className="muted">Electrical wholesaler · Evidence-backed intelligence</p><h2>Good morning 👋</h2><p className="muted">Here are the signals Business Brain found in the business data.</p></section>
     <section className="metrics"><Metric label="Revenue" value={revenue?.value ? `₹${Number(revenue.value).toLocaleString("en-IN")}` : "—"} change={change != null ? `${change > 0 ? "+" : ""}${(change * 100).toFixed(1)}%` : "—"}/><Metric label="Signals" value={String(signalCount)} change="needs attention"/><Metric label="Recommendations" value={String(recommendationCount)} change="evidence-backed"/></section>
