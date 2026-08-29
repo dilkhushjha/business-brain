@@ -29,49 +29,24 @@ def _get_or_create_product(db: Session, business_id: UUID, name: str) -> Product
 
 
 def persist_sales(db: Session, business_id: UUID, rows: list[dict]) -> int:
-    """Persist canonical sales with business-scoped customer/product deduplication."""
+    """Persist canonical sales without committing; caller owns the transaction."""
     created = 0
     for raw in rows:
         row = canonicalize_sale_row(raw)
         invoice = row["invoice_number"]
         if not invoice:
             continue
-
-        existing = db.execute(
-            select(SaleModel).where(
-                SaleModel.business_id == business_id,
-                SaleModel.invoice_number == invoice,
-            )
-        ).scalar_one_or_none()
+        existing = db.execute(select(SaleModel).where(SaleModel.business_id == business_id, SaleModel.invoice_number == invoice)).scalar_one_or_none()
         if existing:
             continue
-
         customer = _find_customer(db, business_id, row["customer_name"])
         if row["customer_name"] and customer is None:
             customer = CustomerModel(business_id=business_id, name=row["customer_name"])
             db.add(customer)
             db.flush()
-
         product = _get_or_create_product(db, business_id, row["product_name"])
-        sale = SaleModel(
-            business_id=business_id,
-            customer_id=customer.id if customer else None,
-            transaction_date=row["transaction_date"],
-            invoice_number=invoice,
-            total_amount=row["total_amount"],
-            tax_amount=Decimal("0"),
-            discount_amount=Decimal("0"),
-        )
-        db.add(sale)
-        db.flush()
-        db.add(SaleLineModel(
-            sale_id=sale.id,
-            product_id=product.id,
-            quantity=row["quantity"],
-            unit_price=row["unit_price"],
-            cost_price=row["cost_price"],
-        ))
+        sale = SaleModel(business_id=business_id, customer_id=customer.id if customer else None, transaction_date=row["transaction_date"], invoice_number=invoice, total_amount=row["total_amount"], tax_amount=Decimal("0"), discount_amount=Decimal("0"))
+        db.add(sale); db.flush()
+        db.add(SaleLineModel(sale_id=sale.id, product_id=product.id, quantity=row["quantity"], unit_price=row["unit_price"], cost_price=row["cost_price"]))
         created += 1
-
-    db.commit()
     return created
