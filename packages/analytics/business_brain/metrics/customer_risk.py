@@ -24,3 +24,12 @@ def declining_customers(db: Session, business_id: UUID, days: int = 30, threshol
         if prev and (prev-cur)/prev*100 >= threshold:
             result.append({"name":name,"current_revenue":cur,"previous_revenue":prev,"change_pct":round((cur-prev)/prev*100,2),"severity":"high" if (prev-cur)/prev*100>=50 else "medium"})
     return sorted(result,key=lambda x:x["change_pct"])[:limit]
+
+
+def customer_concentration(db: Session, business_id: UUID, top_n: int = 5) -> dict[str, Any]:
+    rows = db.execute(select(CustomerModel.name, func.sum(SaleModel.total_amount).label("revenue")).join(SaleModel, SaleModel.customer_id == CustomerModel.id).where(SaleModel.business_id == business_id).group_by(CustomerModel.id, CustomerModel.name).order_by(func.sum(SaleModel.total_amount).desc())).all()
+    total = sum(float(r.revenue or 0) for r in rows)
+    top = [{"name": r.name, "revenue": float(r.revenue or 0), "share_pct": round(float(r.revenue or 0)/total*100,2) if total else 0} for r in rows[:top_n]]
+    top_share = round(sum(x["share_pct"] for x in top),2)
+    level = "high" if top_share >= 60 or (top and top[0]["share_pct"] >= 35) else "medium" if top_share >= 40 or (top and top[0]["share_pct"] >= 20) else "low"
+    return {"total_revenue": total, "top_customers": top, "top_n": top_n, "top_share_pct": top_share, "risk": level}
