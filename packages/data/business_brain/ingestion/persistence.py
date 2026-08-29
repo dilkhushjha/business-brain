@@ -9,6 +9,11 @@ from packages.shared.database.models import IngestionRunModel, SourceFileModel
 
 
 def persist_ingestion_run(db: Session, business_id: UUID, result: IngestionResult) -> IngestionRunModel:
+    """Stage the source file and ingestion run in the current transaction.
+
+    The caller commits after all business rows have been persisted so a failed
+    import cannot leave an apparently completed run behind.
+    """
     source = SourceFileModel(
         business_id=business_id,
         name=result.source.name,
@@ -31,6 +36,5 @@ def persist_ingestion_run(db: Session, business_id: UUID, result: IngestionResul
         completed_at=result.source.imported_at.replace(tzinfo=None),
     )
     db.add(run)
-    db.commit()
-    db.refresh(run)
+    db.flush()
     return run
