@@ -33,7 +33,16 @@ def _adapter(path: Path):
     raise ValueError(f"Unsupported source format: {suffix}")
 
 
-def prepare_file(path: str | Path) -> tuple[IngestionResult, list[PreparedRow]]:
+def prepare_file(
+    path: str | Path,
+    *,
+    source_name: str | None = None,
+) -> tuple[IngestionResult, list[PreparedRow]]:
+    """Read, map and validate a business export without writing to the database.
+
+    ``source_name`` preserves the customer's original filename when the source is
+    processed through a temporary upload file.
+    """
     path = Path(path)
     adapter = _adapter(path)
     rows = adapter.ingest(path)
@@ -62,7 +71,7 @@ def prepare_file(path: str | Path) -> tuple[IngestionResult, list[PreparedRow]]:
             prepared.append(PreparedRow(row_number, canonical))
 
     source = SourceFile(
-        name=path.name,
+        name=source_name or path.name,
         checksum=fingerprint(path),
         size_bytes=path.stat().st_size,
         imported_at=datetime.now(timezone.utc),
