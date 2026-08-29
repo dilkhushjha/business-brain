@@ -22,7 +22,7 @@ def product_momentum(db: Session, business_id: UUID, days: int = 30, threshold: 
     result=[]
     for pid, name in rows:
         def revenue(a,b):
-            return float(db.scalar(select(func.coalesce(func.sum(SaleLineModel.quantity * SaleLineModel.unit_price),0)).join(SaleModel, SaleModel.id == SaleLineModel.sale_id).where(SaleModel.business_id==business_id, SaleLineModel.transaction_date.between(a,b), SaleLineModel.id==SaleLineModel.sale_id, SaleLineModel.id.in_(select(SaleLineModel.sale_id).where(SaleLineModel.product_id==pid)))) or 0)
+            return float(db.scalar(select(func.coalesce(func.sum(SaleLineModel.quantity * SaleLineModel.unit_price),0)).join(SaleModel, SaleModel.id == SaleLineModel.sale_id).where(SaleModel.business_id==business_id, SaleModel.transaction_date.between(a,b), SaleLineModel.product_id==pid)) or 0)
         cur=revenue(cur_start,end); prev=revenue(prev_start,prev_end)
         if prev and abs((cur-prev)/prev*100) >= threshold:
             change=(cur-prev)/prev*100
