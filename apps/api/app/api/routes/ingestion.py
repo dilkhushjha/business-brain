@@ -4,6 +4,7 @@ from tempfile import mkstemp
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from packages.data.business_brain.ingestion.column_mapping import suggest_mapping
@@ -37,8 +38,6 @@ def _prepare_upload(file: UploadFile, business_id: UUID, db: Session):
         finally:
             close(fd)
 
-        # The file is fully closed before fingerprinting. This avoids Windows
-        # file-lock/permission failures when processing uploaded Excel files.
         if already_imported(db, business_id, path):
             raise HTTPException(409, "This source file was already imported")
 
@@ -88,9 +87,7 @@ def record_ingestion_run(
             )
 
         run = persist_ingestion_run(db, business_id, result)
-        created_sales = persist_sales(
-            db, business_id, [row.values for row in prepared]
-        )
+        created_sales = persist_sales(db, business_id, [row.values for row in prepared])
         db.commit()
         db.refresh(run)
         return {
@@ -106,8 +103,17 @@ def record_ingestion_run(
     except HTTPException:
         db.rollback()
         raise
-    except Exception:
+    except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(500, "Import failed; no partial data was committed")
+        raise HTTPException(
+            409,
+            detail="Import could not be saved because the source or one of its business records already exists. No partial data was committed.",
+        ) from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            500,
+            detail=f"Import failed; no partial data was committed. {type(exc).__name__}: {exc}",
+        ) from exc
     finally:
         Path(temp_path).unlink(missing_ok=True)
