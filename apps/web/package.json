@@ -1,1 +1,1 @@
-{"name":"business-brain-web","private":true,"scripts":{"dev":"next dev","build":"next build","start":"next start"},"dependencies":{"next":"latest","react":"latest","react-dom":"latest","typescript":"latest"}}
+{"name":"business-brain-web","private":true,"scripts":{"dev":"next dev","build":"next build","start":"next start"},"dependencies":{"next":"latest","react":"latest","react-dom":"latest","typescript":"latest"},"devDependencies":{"@types/node":"26.4.0","@types/react":"19.2.18"}}
