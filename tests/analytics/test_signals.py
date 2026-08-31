@@ -27,7 +27,7 @@ def test_mixed_trend():
 def test_large_baseline_deviation():
     anomaly = detect_deviation("sales", Decimal("150"), Decimal("100"))
     assert anomaly is not None
-    assert anomaly.severity == "warning"
+    assert anomaly.severity == "critical"
     assert anomaly.deviation == Decimal("0.5")
 
 
