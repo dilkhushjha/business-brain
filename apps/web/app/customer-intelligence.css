@@ -1,0 +1,120 @@
+/* Customer intelligence presentation layer.
+   Keeps dense customer/risk information separated into readable mini-cards. */
+[class*="customer"] [class*="row"],
+[class*="customer"] [class*="item"],
+[class*="customer"] [class*="entry"],
+[class*="concentration"] [class*="row"],
+[class*="concentration"] [class*="item"],
+[class*="momentum"] [class*="row"],
+[class*="momentum"] [class*="item"],
+[class*="follow"] [class*="row"],
+[class*="follow"] [class*="item"] {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px 18px;
+  align-items:center;
+  padding:15px 16px;
+  margin:9px 0;
+  background:#f8fafc;
+  border:1px solid #e2e8f0;
+  border-radius:10px;
+  line-height:1.45;
+  box-shadow:0 1px 2px rgba(31,50,73,.025);
+}
+
+[class*="customer"] h3,
+[class*="concentration"] h3,
+[class*="momentum"] h3,
+[class*="follow"] h3 {
+  margin:0 0 14px;
+  line-height:1.3;
+}
+
+[class*="customer"] p,
+[class*="concentration"] p,
+[class*="momentum"] p,
+[class*="follow"] p {
+  color:#64748b;
+  line-height:1.65;
+}
+
+[class*="customer"] [class*="row"] p,
+[class*="customer"] [class*="item"] p,
+[class*="customer"] [class*="entry"] p,
+[class*="concentration"] [class*="row"] p,
+[class*="concentration"] [class*="item"] p,
+[class*="momentum"] [class*="row"] p,
+[class*="momentum"] [class*="item"] p,
+[class*="follow"] [class*="row"] p,
+[class*="follow"] [class*="item"] p {
+  grid-column:1/-1;
+  margin:2px 0 0;
+  font-size:12px;
+  max-width:none;
+}
+
+[class*="customer"] [class*="row"] b,
+[class*="customer"] [class*="item"] b,
+[class*="customer"] [class*="entry"] b,
+[class*="concentration"] [class*="row"] b,
+[class*="concentration"] [class*="item"] b,
+[class*="momentum"] [class*="row"] b,
+[class*="momentum"] [class*="item"] b,
+[class*="follow"] [class*="row"] b,
+[class*="follow"] [class*="item"] b {
+  font-size:14px;
+  line-height:1.4;
+}
+
+[class*="customer"] [class*="row"] strong,
+[class*="customer"] [class*="item"] strong,
+[class*="customer"] [class*="entry"] strong,
+[class*="concentration"] [class*="row"] strong,
+[class*="concentration"] [class*="item"] strong,
+[class*="momentum"] [class*="row"] strong,
+[class*="momentum"] [class*="item"] strong,
+[class*="follow"] [class*="row"] strong,
+[class*="follow"] [class*="item"] strong {
+  font-size:13px;
+  white-space:nowrap;
+}
+
+[class*="customer"] [class*="row"] .tag,
+[class*="customer"] [class*="item"] .tag,
+[class*="customer"] [class*="entry"] .tag,
+[class*="concentration"] [class*="row"] .tag,
+[class*="concentration"] [class*="item"] .tag,
+[class*="momentum"] [class*="row"] .tag,
+[class*="momentum"] [class*="item"] .tag,
+[class*="follow"] [class*="row"] .tag,
+[class*="follow"] [class*="item"] .tag {
+  justify-self:end;
+  padding:4px 7px;
+  border-radius:999px;
+  background:#eef2f7;
+  line-height:1;
+}
+
+@media(max-width:600px){
+  [class*="customer"] [class*="row"],
+  [class*="customer"] [class*="item"],
+  [class*="customer"] [class*="entry"],
+  [class*="concentration"] [class*="row"],
+  [class*="concentration"] [class*="item"],
+  [class*="momentum"] [class*="row"],
+  [class*="momentum"] [class*="item"],
+  [class*="follow"] [class*="row"],
+  [class*="follow"] [class*="item"] {
+    grid-template-columns:1fr;
+    gap:6px;
+  }
+  [class*="customer"] [class*="row"] .tag,
+  [class*="customer"] [class*="item"] .tag,
+  [class*="customer"] [class*="entry"] .tag,
+  [class*="concentration"] [class*="row"] .tag,
+  [class*="concentration"] [class*="item"] .tag,
+  [class*="momentum"] [class*="row"] .tag,
+  [class*="momentum"] [class*="item"] .tag,
+  [class*="follow"] [class*="row"] .tag,
+  [class*="follow"] [class*="item"] .tag {justify-self:start;}
+}
