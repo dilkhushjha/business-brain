@@ -1,7 +1,7 @@
 Sales Register,,,,,,
 Date,Voucher No.,Party Name,Stock Item,Quantity,Rate,Amount
-01-04-2026,INV-001,ABC Electricals,Copper Cable,10,500,5,000
-02-04-2026,INV-002,XYZ Traders,Control Wire,20,120,2,400
-03-04-2026,INV-003,ABC Electricals,Connector,50,25,1,250
+01-04-2026,INV-001,ABC Electricals,Copper Cable,10,500,"5,000"
+02-04-2026,INV-002,XYZ Traders,Control Wire,20,120,"2,400"
+03-04-2026,INV-003,ABC Electricals,Connector,50,25,"1,250"
 ,,,,,,
-Total,,,,,,8,650
+Total,,,,,,"8,650"
