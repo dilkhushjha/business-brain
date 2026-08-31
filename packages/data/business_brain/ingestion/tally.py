@@ -38,6 +38,10 @@ def is_report_row(row: dict[str, Any]) -> bool:
     non_empty = [v.lower() for v in values if isinstance(v, str) and v]
     if not non_empty:
         return True
+    # Tally exports commonly contain a one-cell report title/preamble before
+    # the actual tabular data. Such a row cannot represent a valid transaction.
+    if len(non_empty) == 1:
+        return True
     joined = " ".join(non_empty)
     return any(joined == marker or joined.startswith(marker + " ") for marker in TOTAL_MARKERS)
 
