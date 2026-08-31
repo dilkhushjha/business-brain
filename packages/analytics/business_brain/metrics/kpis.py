@@ -34,6 +34,13 @@ def average_invoice_value(revenue: Decimal, invoice_count: int) -> Optional[Deci
     return revenue / Decimal(invoice_count)
 
 
+def customer_concentration(customer_revenue: Decimal, total_revenue: Decimal) -> Optional[Decimal]:
+    """Return a customer's share of total revenue as a percentage ratio."""
+    if total_revenue == 0:
+        return None
+    return customer_revenue / total_revenue
+
+
 def _money(value: Any) -> float:
     return float(value or 0)
 
