@@ -14,7 +14,7 @@ from packages.analytics.business_brain.metrics.time_windows import (
 
 
 def test_growth():
-    assert growth(Decimal("120"), Decimal("100")) == Decimal("0.2")
+    assert growth(Decimal("120"), Decimal("100")) == Decimal("20")
     assert growth(Decimal("100"), Decimal("0")) is None
 
 
