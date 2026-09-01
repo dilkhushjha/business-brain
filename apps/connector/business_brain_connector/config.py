@@ -17,6 +17,9 @@ class ConnectorConfig:
     source_dir: str
     api_base_url: str = "http://localhost:8000/api"
     poll_seconds: int = 30
+    api_token: str | None = None
+    max_upload_retries: int = 5
+    retry_backoff_seconds: float = 5.0
 
     @classmethod
     def load(cls, path: str | Path) -> "ConnectorConfig":
