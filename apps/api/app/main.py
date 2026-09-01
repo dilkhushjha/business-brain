@@ -4,6 +4,7 @@ from sqlalchemy import text
 
 from apps.api.app.api.routes.health import router as health_router
 from apps.api.app.api.routes.ingestion import router as ingestion_router
+from apps.api.app.api.routes.connectors import router as connectors_router
 from apps.api.app.api.routes.kpis import router as kpis_router
 from apps.api.app.api.routes.trends import router as trends_router
 from apps.api.app.api.routes.dimensions import router as dimensions_router
@@ -33,6 +34,27 @@ def ensure_schema_compatibility() -> None:
             connection.execute(text(statement))
 
 
+def ensure_connector_schema() -> None:
+    """Create the connector registry used by V2 authentication/status APIs."""
+    with engine.begin() as connection:
+        connection.execute(text("""
+            CREATE TABLE IF NOT EXISTS business_brain_connectors (
+                id UUID PRIMARY KEY,
+                business_id UUID NOT NULL,
+                name VARCHAR(255) NOT NULL DEFAULT 'Business Brain Connector',
+                token_hash VARCHAR(64) NOT NULL UNIQUE,
+                token_prefix VARCHAR(16) NOT NULL,
+                status VARCHAR(32) NOT NULL DEFAULT 'active',
+                version VARCHAR(32),
+                last_seen_at TIMESTAMPTZ,
+                last_sync_at TIMESTAMPTZ,
+                last_success_at TIMESTAMPTZ,
+                last_error TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+
+
 app = FastAPI(title="Business Brain API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
@@ -42,13 +64,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Keep local/dev databases created by previous V1 iterations compatible with
-# the current ORM model. These are additive, idempotent changes only.
 ensure_schema_compatibility()
+ensure_connector_schema()
 
 for router in (
     health_router,
     ingestion_router,
+    connectors_router,
     kpis_router,
     trends_router,
     dimensions_router,
