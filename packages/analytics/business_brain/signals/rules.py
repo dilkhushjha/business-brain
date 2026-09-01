@@ -74,3 +74,52 @@ def detect_customer_decline_signals(declining_customers: list[dict]) -> list[Sig
             )
         )
     return signals
+
+
+def detect_margin_signals(low_margin_products: list[dict]) -> list[Signal]:
+    """Convert low-margin-product rows (see metrics.margin.low_margin_products)
+    into evidence-backed signals so margin erosion surfaces in the agent and
+    recommendations, not just the dedicated margin endpoint."""
+    signals: list[Signal] = []
+    for row in low_margin_products:
+        signals.append(
+            Signal(
+                code="PRODUCT_MARGIN_DETERIORATION",
+                title=f"{row['name']} has a thin margin",
+                severity="critical" if row.get("severity") == "high" else "warning",
+                confidence=Decimal("0.85"),
+                metric="gross_margin_pct",
+                current_value=Decimal(str(row["margin_pct"])),
+                baseline_value=None,
+                change=None,
+                evidence={"product": row["name"], "revenue": row["revenue"], "rule": "margin_pct <= threshold"},
+                recommended_next_step=f"Review pricing or procurement cost for {row['name']}.",
+            )
+        )
+    return signals
+
+
+def detect_receivables_signals(overdue_customers: list[dict]) -> list[Signal]:
+    """Convert overdue-customer rows (see metrics.receivables.overdue_customers)
+    into evidence-backed signals so receivable risk surfaces in the agent and
+    recommendations, not just the dedicated receivables endpoint."""
+    signals: list[Signal] = []
+    for row in overdue_customers:
+        days_overdue = row["days_overdue"]
+        severity = "critical" if days_overdue > 60 else "warning"
+        confidence = Decimal("0.95") if days_overdue > 60 else Decimal("0.85")
+        signals.append(
+            Signal(
+                code="RECEIVABLE_OVERDUE",
+                title=f"{row['name']} has an overdue payment",
+                severity=severity,
+                confidence=confidence,
+                metric="overdue_amount",
+                current_value=Decimal(str(row["overdue_amount"])),
+                baseline_value=None,
+                change=None,
+                evidence={"customer": row["name"], "days_overdue": days_overdue, "rule": "due_date < today"},
+                recommended_next_step=f"Follow up with {row['name']} on the overdue payment ({days_overdue} days overdue).",
+            )
+        )
+    return signals

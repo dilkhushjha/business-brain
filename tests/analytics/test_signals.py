@@ -5,6 +5,8 @@ from packages.analytics.business_brain.signals.anomalies import detect_deviation
 from packages.analytics.business_brain.signals.rules import (
     detect_customer_decline_signals,
     detect_kpi_signals,
+    detect_margin_signals,
+    detect_receivables_signals,
 )
 from packages.analytics.business_brain.signals.trends import TrendPoint, analyze_trend
 
@@ -72,4 +74,30 @@ def test_detect_customer_decline_signals():
     assert signals[0].code == "CUSTOMER_REVENUE_DECLINE"
     assert signals[0].severity == "critical"
     assert signals[0].evidence["customer"] == "Acme Traders"
+    assert signals[1].severity == "warning"
+
+
+def test_detect_margin_signals():
+    rows = [
+        {"name": "LED Bulb 9W", "revenue": 12000.0, "gross_profit": -500.0, "margin_pct": -4.2, "severity": "high"},
+        {"name": "MCB 32A", "revenue": 8000.0, "gross_profit": 400.0, "margin_pct": 5.0, "severity": "medium"},
+    ]
+    signals = detect_margin_signals(rows)
+    assert len(signals) == 2
+    assert signals[0].code == "PRODUCT_MARGIN_DETERIORATION"
+    assert signals[0].severity == "critical"
+    assert signals[0].evidence["product"] == "LED Bulb 9W"
+    assert signals[1].severity == "warning"
+
+
+def test_detect_receivables_signals():
+    rows = [
+        {"name": "ABC Electrical", "overdue_amount": 45000.0, "days_overdue": 75},
+        {"name": "XYZ Traders", "overdue_amount": 6000.0, "days_overdue": 15},
+    ]
+    signals = detect_receivables_signals(rows)
+    assert len(signals) == 2
+    assert signals[0].code == "RECEIVABLE_OVERDUE"
+    assert signals[0].severity == "critical"
+    assert signals[0].evidence["days_overdue"] == 75
     assert signals[1].severity == "warning"
