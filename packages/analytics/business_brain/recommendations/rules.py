@@ -38,4 +38,21 @@ def generate_recommendations(context: RecommendationContext) -> list[Recommendat
                     ],
                 )
             )
+        elif signal.code == "CUSTOMER_REVENUE_DECLINE":
+            customer = signal.evidence.get("customer", "This customer")
+            recommendations.append(
+                Recommendation(
+                    code="RETAIN_DECLINING_CUSTOMER",
+                    title=f"Re-engage {customer}",
+                    priority="high" if signal.severity == "critical" else "medium",
+                    confidence=signal.confidence,
+                    rationale=f"{customer}'s order value has dropped materially against their prior baseline.",
+                    evidence={"signal": signal.code, "customer": customer, "change": str(signal.change)},
+                    actions=[
+                        f"Contact {customer} to understand the reason for reduced orders.",
+                        "Check for service issues, pricing complaints or a competitor switch.",
+                        "Consider a retention offer if the account is high-value.",
+                    ],
+                )
+            )
     return recommendations
