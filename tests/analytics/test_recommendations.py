@@ -35,6 +35,36 @@ def _customer_decline_signal(severity: str) -> Signal:
     )
 
 
+def _margin_signal(severity: str) -> Signal:
+    return Signal(
+        code="PRODUCT_MARGIN_DETERIORATION",
+        title="LED Bulb 9W has a thin margin",
+        severity=severity,
+        confidence=Decimal("0.85"),
+        metric="gross_margin_pct",
+        current_value=Decimal("-4.2"),
+        baseline_value=None,
+        change=None,
+        evidence={"product": "LED Bulb 9W", "revenue": 12000.0, "rule": "margin_pct <= threshold"},
+        recommended_next_step="Review pricing or procurement cost for LED Bulb 9W.",
+    )
+
+
+def _receivable_signal(severity: str, days_overdue: int) -> Signal:
+    return Signal(
+        code="RECEIVABLE_OVERDUE",
+        title="ABC Electrical has an overdue payment",
+        severity=severity,
+        confidence=Decimal("0.95"),
+        metric="overdue_amount",
+        current_value=Decimal("45000"),
+        baseline_value=None,
+        change=None,
+        evidence={"customer": "ABC Electrical", "days_overdue": days_overdue, "rule": "due_date < today"},
+        recommended_next_step="Follow up with ABC Electrical on the overdue payment.",
+    )
+
+
 def test_revenue_decline_produces_high_priority_recommendation():
     recs = generate_recommendations(RecommendationContext(signals=[_revenue_decline_signal("critical")], drivers=[]))
     assert len(recs) == 1
@@ -53,6 +83,27 @@ def test_customer_decline_produces_retention_recommendation():
 
 def test_mixed_severity_customer_decline_is_medium_priority():
     recs = generate_recommendations(RecommendationContext(signals=[_customer_decline_signal("warning")], drivers=[]))
+    assert recs[0].priority == "medium"
+
+
+def test_margin_deterioration_produces_review_recommendation():
+    recs = generate_recommendations(RecommendationContext(signals=[_margin_signal("critical")], drivers=[]))
+    assert len(recs) == 1
+    assert recs[0].code == "REVIEW_PRODUCT_MARGIN"
+    assert recs[0].priority == "high"
+    assert "LED Bulb 9W" in recs[0].title
+
+
+def test_receivable_overdue_produces_collection_recommendation():
+    recs = generate_recommendations(RecommendationContext(signals=[_receivable_signal("critical", 75)], drivers=[]))
+    assert len(recs) == 1
+    assert recs[0].code == "COLLECT_OVERDUE_RECEIVABLE"
+    assert recs[0].priority == "high"
+    assert recs[0].evidence["days_overdue"] == 75
+
+
+def test_mild_receivable_overdue_is_medium_priority():
+    recs = generate_recommendations(RecommendationContext(signals=[_receivable_signal("warning", 15)], drivers=[]))
     assert recs[0].priority == "medium"
 
 

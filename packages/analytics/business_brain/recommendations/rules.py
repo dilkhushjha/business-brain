@@ -55,4 +55,39 @@ def generate_recommendations(context: RecommendationContext) -> list[Recommendat
                     ],
                 )
             )
+        elif signal.code == "PRODUCT_MARGIN_DETERIORATION":
+            product = signal.evidence.get("product", "This product")
+            recommendations.append(
+                Recommendation(
+                    code="REVIEW_PRODUCT_MARGIN",
+                    title=f"Review margin on {product}",
+                    priority="high" if signal.severity == "critical" else "medium",
+                    confidence=signal.confidence,
+                    rationale=f"{product} is selling at or below the acceptable margin threshold.",
+                    evidence={"signal": signal.code, "product": product, "margin_pct": str(signal.current_value)},
+                    actions=[
+                        f"Check whether {product}'s selling price needs adjusting.",
+                        f"Check whether {product}'s procurement/cost price has increased.",
+                        "Confirm the cost data behind this margin is current and accurate.",
+                    ],
+                )
+            )
+        elif signal.code == "RECEIVABLE_OVERDUE":
+            customer = signal.evidence.get("customer", "This customer")
+            days_overdue = signal.evidence.get("days_overdue")
+            recommendations.append(
+                Recommendation(
+                    code="COLLECT_OVERDUE_RECEIVABLE",
+                    title=f"Follow up on {customer}'s overdue payment",
+                    priority="high" if signal.severity == "critical" else "medium",
+                    confidence=signal.confidence,
+                    rationale=f"{customer} has an outstanding payment overdue by {days_overdue} days.",
+                    evidence={"signal": signal.code, "customer": customer, "days_overdue": days_overdue},
+                    actions=[
+                        f"Send a payment reminder to {customer}.",
+                        "Confirm there is no invoicing or delivery dispute blocking payment.",
+                        "Consider tightening credit terms for this account going forward.",
+                    ],
+                )
+            )
     return recommendations
