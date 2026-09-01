@@ -12,11 +12,12 @@ from packages.agent.business_brain.agent.responder import render_grounded_respon
 def answer(db: Session, business_id: UUID, question: str, as_of: date) -> AgentResponse:
     intent = classify_intent(question)
     context = retrieve_context(db, business_id, as_of)
+    answer, confidence = render_grounded_response(question, intent, context)
     return AgentResponse(
-        answer=render_grounded_response(question, intent, context),
+        answer=answer,
         intent=intent,
         evidence=context.get("evidence", []),
         signals=context.get("signals", []),
         recommendations=context.get("recommendations", []),
-        confidence="grounded",
+        confidence=confidence,
     )
