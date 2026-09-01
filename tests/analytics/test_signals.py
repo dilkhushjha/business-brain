@@ -1,6 +1,11 @@
 from decimal import Decimal
 
+from packages.analytics.business_brain.metrics.kpis import KPI
 from packages.analytics.business_brain.signals.anomalies import detect_deviation
+from packages.analytics.business_brain.signals.rules import (
+    detect_customer_decline_signals,
+    detect_kpi_signals,
+)
 from packages.analytics.business_brain.signals.trends import TrendPoint, analyze_trend
 
 
@@ -33,3 +38,38 @@ def test_large_baseline_deviation():
 
 def test_small_deviation_is_ignored():
     assert detect_deviation("sales", Decimal("110"), Decimal("100")) is None
+
+
+def test_small_kpi_decline_is_not_flagged():
+    # Regression test: kpi.change is a percentage (e.g. -5 for -5%), not a
+    # 0-1 ratio. A modest 5% dip must not trigger a decline signal.
+    kpi = KPI("revenue", Decimal("950"), "INR", "current_month", Decimal("1000"), Decimal("-5"))
+    assert detect_kpi_signals([kpi]) == []
+
+
+def test_material_kpi_decline_is_flagged_with_correct_severity():
+    kpi = KPI("revenue", Decimal("700"), "INR", "current_month", Decimal("1000"), Decimal("-30"))
+    signals = detect_kpi_signals([kpi])
+    assert len(signals) == 1
+    assert signals[0].code == "REVENUE_DECLINE"
+    assert signals[0].severity == "critical"
+
+
+def test_kpi_spike_requires_material_change():
+    kpi = KPI("revenue", Decimal("1100"), "INR", "current_month", Decimal("1000"), Decimal("10"))
+    assert detect_kpi_signals([kpi]) == []
+
+
+def test_detect_customer_decline_signals():
+    rows = [
+        {"name": "Acme Traders", "current_revenue": 5000, "previous_revenue": 20000,
+         "change_pct": -75.0, "severity": "high"},
+        {"name": "Beta Textiles", "current_revenue": 8000, "previous_revenue": 10000,
+         "change_pct": -20.0, "severity": "medium"},
+    ]
+    signals = detect_customer_decline_signals(rows)
+    assert len(signals) == 2
+    assert signals[0].code == "CUSTOMER_REVENUE_DECLINE"
+    assert signals[0].severity == "critical"
+    assert signals[0].evidence["customer"] == "Acme Traders"
+    assert signals[1].severity == "warning"
