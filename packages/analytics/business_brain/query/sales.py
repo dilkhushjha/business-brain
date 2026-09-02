@@ -17,14 +17,27 @@ class SalesSummary:
 
 
 def sales_summary(db: Session, business_id: UUID, start: date, end: date) -> SalesSummary:
-    stmt = select(
-        func.coalesce(func.sum(SaleModel.total_amount), 0),
-        func.count(SaleModel.id),
-        func.coalesce(func.sum(SaleLineModel.quantity), 0),
-    ).join(SaleLineModel, SaleLineModel.sale_id == SaleModel.id).where(
+    """Revenue and invoice_count are computed directly from SaleModel, not
+    through the sale_lines join -- joining sale_lines duplicates each sale
+    row once per line, which silently doubled (or worse) both total_amount
+    and invoice_count for any multi-line invoice. units_sold genuinely needs
+    the join (we want the total quantity across all lines), so it's kept as
+    a separate query rather than trying to force everything into one
+    statement."""
+    sale_filter = (
         SaleModel.business_id == business_id,
         SaleModel.transaction_date >= start,
         SaleModel.transaction_date <= end,
     )
-    revenue, invoices, units = db.execute(stmt).one()
+    revenue, invoices = db.execute(
+        select(
+            func.coalesce(func.sum(SaleModel.total_amount), 0),
+            func.count(SaleModel.id),
+        ).where(*sale_filter)
+    ).one()
+    units = db.execute(
+        select(func.coalesce(func.sum(SaleLineModel.quantity), 0))
+        .join(SaleModel, SaleModel.id == SaleLineModel.sale_id)
+        .where(*sale_filter)
+    ).scalar()
     return SalesSummary(Decimal(revenue), int(invoices), Decimal(units))

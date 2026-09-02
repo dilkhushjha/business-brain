@@ -1,6 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
+from packages.analytics.business_brain.query.sales import sales_summary
 from packages.analytics.business_brain.service import monthly_sales_kpis
 
 
@@ -57,28 +58,62 @@ def test_monthly_sales_kpis_with_no_data_returns_none_change(db_session, seeder)
     assert revenue.change is None  # growth() returns None when previous == 0
 
 
-def test_invoice_count_is_not_inflated_by_multi_line_invoices(db_session, seeder):
-    """Regression check: sales_summary() joins sale_lines to sum units, and
-    counts SaleModel.id over that same joined result. A single multi-line
-    invoice must not be counted as multiple invoices."""
+def test_invoice_count_and_revenue_are_not_inflated_by_multi_line_invoices(db_session, seeder):
+    """Regression test for a real bug: sales_summary() used to join
+    sale_lines and aggregate over that joined result, which duplicates each
+    sale row once per line -- so a single 2-line invoice inflated BOTH
+    invoice_count (counted as 2 invoices) AND revenue (total_amount summed
+    twice). Fixed by computing revenue/invoice_count directly from
+    SaleModel and units_sold via a separate join."""
     business = seeder.business()
     product_a = seeder.product(business.id, "Product A")
     product_b = seeder.product(business.id, "Product B")
 
-    sale = seeder.sale(business.id, days_ago=1, total_amount=Decimal("300"))
+    # total_amount is deliberately different from the sum of the lines
+    # (100 + 200 = 300) to make any row-fan-out doubling obvious.
+    sale = seeder.sale(business.id, days_ago=1, total_amount=Decimal("999"))
     seeder.sale_line(sale.id, product_a.id, quantity=1, unit_price=100)
     seeder.sale_line(sale.id, product_b.id, quantity=2, unit_price=100)
 
     kpis = monthly_sales_kpis(db_session, business.id, date.today())
+    revenue = _kpi(kpis, "revenue")
     invoice_count = _kpi(kpis, "invoice_count")
     units = _kpi(kpis, "units_sold")
 
+    assert revenue.value == Decimal("999")
+    assert invoice_count.value == 1
     assert units.value == Decimal("3")  # 1 + 2 units across the two lines
-    assert invoice_count.value == 2, (
-        "sales_summary() counts SaleModel.id rows in the sale<->sale_line join, "
-        "so a single 2-line invoice is currently counted as 2 invoices. "
-        "This assertion documents the current (buggy) behavior; if it ever "
-        "starts failing because someone fixed the query to use "
-        "count(distinct SaleModel.id), that's a genuine improvement -- update "
-        "this test to assert invoice_count.value == 1 instead of guarding against it."
-    )
+
+
+def test_sale_with_no_line_items_still_counts_toward_revenue(db_session, seeder):
+    """A sale with zero sale_lines used to be silently excluded from
+    revenue/invoice_count entirely, because the old query INNER JOINed
+    sale_lines. It's a real sale and should still count."""
+    business = seeder.business()
+    seeder.sale(business.id, days_ago=1, total_amount=Decimal("500"))
+
+    kpis = monthly_sales_kpis(db_session, business.id, date.today())
+    assert _kpi(kpis, "revenue").value == Decimal("500")
+    assert _kpi(kpis, "invoice_count").value == 1
+    assert _kpi(kpis, "units_sold").value == Decimal("0")
+
+
+def test_sales_summary_directly_with_multiple_multi_line_invoices(db_session, seeder):
+    """Direct test of sales_summary() (not routed through monthly_sales_kpis)
+    with several multi-line invoices, to pin down the fix at the source."""
+    business = seeder.business()
+    product = seeder.product(business.id, "Widget")
+
+    sale1 = seeder.sale(business.id, days_ago=0, total_amount=Decimal("300"))
+    seeder.sale_line(sale1.id, product.id, quantity=1, unit_price=100)
+    seeder.sale_line(sale1.id, product.id, quantity=2, unit_price=100)
+
+    sale2 = seeder.sale(business.id, days_ago=0, total_amount=Decimal("700"))
+    seeder.sale_line(sale2.id, product.id, quantity=1, unit_price=200)
+    seeder.sale_line(sale2.id, product.id, quantity=1, unit_price=500)
+    seeder.sale_line(sale2.id, product.id, quantity=3, unit_price=0)  # free-goods line
+
+    result = sales_summary(db_session, business.id, date.today(), date.today())
+    assert result.revenue == Decimal("1000")  # 300 + 700, not double-counted
+    assert result.invoice_count == 2
+    assert result.units == Decimal("8")  # (1+2) + (1+1+3)
