@@ -74,20 +74,23 @@ def test_successful_upload_returns_result(source_file):
     assert result.status_code == 200
     assert result.already_imported is False
     assert result.response_body["run_id"] == "abc123"
-    assert server.requests[0]["path"] == "/ingestion/import/biz-1"
+    # Uploads go through the authenticated connector endpoint, not the
+    # unauthenticated dashboard-upload /ingestion/import path.
+    assert server.requests[0]["path"] == "/connectors/import/biz-1"
     assert server.requests[0]["headers"]["Authorization"] == "Bearer secret-token"
     assert "multipart/form-data" in server.requests[0]["headers"]["Content-Type"]
 
 
-def test_upload_without_token_omits_auth_header(source_file):
-    with _ScriptedServer([(200, {"run_id": "abc123"})]) as server:
-        upload_file(source_file, "biz-1", server.base_url)
-    assert "Authorization" not in server.requests[0]["headers"]
+def test_upload_without_token_raises_before_any_network_call(source_file):
+    # The connector endpoint requires a Bearer token (require_connector on
+    # the API side); failing fast locally avoids a guaranteed 401 round-trip.
+    with pytest.raises(UploadError, match="token is required"):
+        upload_file(source_file, "biz-1", "http://127.0.0.1:1")
 
 
 def test_conflict_is_treated_as_already_imported(source_file):
     with _ScriptedServer([(409, {"detail": "This source file was already imported"})]) as server:
-        result = upload_file(source_file, "biz-1", server.base_url)
+        result = upload_file(source_file, "biz-1", server.base_url, api_token="secret-token")
 
     assert result.status_code == 409
     assert result.already_imported is True
@@ -96,9 +99,9 @@ def test_conflict_is_treated_as_already_imported(source_file):
 def test_server_error_raises_upload_error(source_file):
     with _ScriptedServer([(500, {"detail": "boom"})]) as server:
         with pytest.raises(UploadError, match="HTTP 500"):
-            upload_file(source_file, "biz-1", server.base_url)
+            upload_file(source_file, "biz-1", server.base_url, api_token="secret-token")
 
 
 def test_connection_failure_raises_upload_error(source_file):
     with pytest.raises(UploadError, match="Connection error"):
-        upload_file(source_file, "biz-1", "http://127.0.0.1:1", timeout=1.0)
+        upload_file(source_file, "biz-1", "http://127.0.0.1:1", api_token="secret-token", timeout=1.0)

@@ -75,6 +75,7 @@ def _config(base_url: str, source_dir: Path, **overrides) -> ConnectorConfig:
         business_id="biz-1",
         source_dir=str(source_dir),
         api_base_url=base_url,
+        api_token="test-connector-token",
         max_upload_retries=3,
         retry_backoff_seconds=0.01,
     )
@@ -119,3 +120,12 @@ def test_gives_up_after_max_retries(source_file, state):
         # Third call should not even attempt the network -- budget exhausted.
         assert sync_file(source_file, config, state) is False
         assert server.request_count == 2
+
+
+def test_missing_api_token_fails_without_a_network_call(source_file, state):
+    with _FlakyServer(fail_times=0) as server:
+        config = _config(server.base_url, source_file.parent, api_token=None)
+        assert sync_file(source_file, config, state) is False
+        assert server.request_count == 0
+    checksum = fingerprint(source_file)
+    assert "token is required" in state.values[checksum]["last_error"]
