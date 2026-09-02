@@ -32,7 +32,7 @@ def test_v1_happy_path_from_messy_record_to_recommendation():
     assert normalized[0]["amount"] == Decimal("96000")
     assert normalized[0]["quantity"] == Decimal("1200")
 
-    kpis = [KPI("revenue", Decimal("850000"), "INR", "current_month", Decimal("1000000"), Decimal("-0.15"))]
+    kpis = [KPI("revenue", Decimal("850000"), "INR", "current_month", Decimal("1000000"), Decimal("-15"))]
     signals = detect_kpi_signals(kpis)
     assert len(signals) == 1
     assert signals[0].code == "REVENUE_DECLINE"
@@ -57,7 +57,7 @@ def test_v1_driver_analysis_identifies_largest_contributor():
 
 
 def test_v1_does_not_create_decline_signal_for_growth():
-    kpis = [KPI("revenue", Decimal("1100000"), "INR", "current_month", Decimal("1000000"), Decimal("0.10"))]
+    kpis = [KPI("revenue", Decimal("1100000"), "INR", "current_month", Decimal("1000000"), Decimal("10"))]
     assert detect_kpi_signals(kpis) == []
 
 
@@ -72,7 +72,7 @@ def test_v1_no_customer_evidence_means_no_claim():
         metric="revenue",
         current_value=Decimal("850000"),
         baseline_value=Decimal("1000000"),
-        change=Decimal("-0.15"),
+        change=Decimal("-15"),
         evidence={"rule": "change <= -10%"},
         recommended_next_step="Investigate the drivers of the revenue decline.",
     )
