@@ -51,3 +51,29 @@ def test_persist_sales_defaults_discount_and_tax_to_zero_when_absent(db_session,
     sale = db_session.execute(select(SaleModel).where(SaleModel.business_id == business.id)).scalar_one()
     assert sale.discount_amount == Decimal("0")
     assert sale.tax_amount == Decimal("0")
+
+
+def test_persist_sales_stores_due_date_and_paid_amount(db_session, seeder):
+    """Regression test: due_date/paid_amount used to be hard-coded to
+    None/0 regardless of what persist_sales() received, which silently
+    disabled the entire receivables/overdue-customer feature against real
+    ingested data."""
+    business = seeder.business()
+    rows = [{
+        "customer_name": "ABC Electrical",
+        "product_name": "MCB 32A",
+        "invoice_number": "INV-3",
+        "transaction_date": "01-07-2026",
+        "quantity": "1",
+        "unit_price": "45000",
+        "total_amount": "45000",
+        "due_date": "31-07-2026",
+        "paid_amount": "0",
+    }]
+
+    persist_sales(db_session, business.id, rows)
+    db_session.commit()
+
+    sale = db_session.execute(select(SaleModel).where(SaleModel.business_id == business.id)).scalar_one()
+    assert str(sale.due_date) == "2026-07-31"
+    assert sale.paid_amount == Decimal("0")

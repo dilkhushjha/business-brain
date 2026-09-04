@@ -47,6 +47,22 @@ def test_tax_amount_defaults_to_zero_when_absent():
     assert result["tax_amount"] == Decimal("0")
 
 
+def test_due_date_and_paid_amount_are_parsed_when_present():
+    """Regression test: due_date and paid_amount used to be dropped here
+    entirely (not even in the returned dict), and hard-coded to None/0 in
+    repository.py -- which meant overdue_customers()'s `WHERE due_date <
+    today` could never match anything on real ingested data, ever."""
+    result = canonicalize_sale_row(_base_row(due_date="15-09-2026", paid_amount="600"))
+    assert str(result["due_date"]) == "2026-09-15"
+    assert result["paid_amount"] == Decimal("600")
+
+
+def test_due_date_and_paid_amount_default_sensibly_when_absent():
+    result = canonicalize_sale_row(_base_row())
+    assert result["due_date"] is None
+    assert result["paid_amount"] == Decimal("0")
+
+
 def test_missing_total_amount_raises():
     row = _base_row()
     del row["total_amount"]

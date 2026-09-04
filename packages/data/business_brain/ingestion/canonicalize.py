@@ -37,6 +37,13 @@ def canonicalize_sale_row(row: dict[str, Any]) -> dict[str, Any]:
         # or split across cgst/sgst/igst -- sum whichever are present rather
         # than assuming one particular layout.
         "tax_amount": _sum_present(row.get("tax"), row.get("cgst"), row.get("sgst"), row.get("igst")),
+        # due_date/paid_amount are usually absent from a plain sales
+        # register export (they typically live in a separate outstanding-
+        # receivables report Tally can produce) -- captured here for the
+        # cases where a combined export does carry them, rather than being
+        # silently dropped the way discount/tax used to be.
+        "due_date": parse_date(row.get("due_date")),
+        "paid_amount": parse_decimal(row.get("paid_amount")) or Decimal("0"),
     }
 
 

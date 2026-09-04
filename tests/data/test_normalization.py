@@ -19,6 +19,15 @@ def test_discount_column_is_recognized():
     assert mapped["Discount Amount"] == "discount_amount"
 
 
+def test_due_date_and_paid_amount_columns_are_recognized():
+    result = suggest_mapping(["Due Date", "Amount Received"])
+    mapped = {item.source_column: item.canonical_field for item in result}
+    assert mapped["Due Date"] == "due_date"
+    assert mapped["Amount Received"] == "paid_amount"
+    # Confirm "Due Date" doesn't get misassigned to transaction_date's "date" alias.
+    assert mapped["Due Date"] != "transaction_date"
+
+
 def test_parse_indian_number_format():
     assert parse_decimal("₹1,25,000.50") == Decimal("125000.50")
 
