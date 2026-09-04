@@ -90,4 +90,38 @@ def generate_recommendations(context: RecommendationContext) -> list[Recommendat
                     ],
                 )
             )
+        elif signal.code == "CUSTOMER_INACTIVE":
+            customer = signal.evidence.get("customer", "This customer")
+            recommendations.append(
+                Recommendation(
+                    code="REACTIVATE_INACTIVE_CUSTOMER",
+                    title=f"Reach out to {customer}",
+                    priority="high" if signal.severity == "critical" else "medium",
+                    confidence=signal.confidence,
+                    rationale=f"{customer} has placed no orders in {signal.current_value} days.",
+                    evidence={"signal": signal.code, "customer": customer, "days_inactive": str(signal.current_value)},
+                    actions=[
+                        f"Check in with {customer} to see if anything has changed on their end.",
+                        "Confirm they weren't lost to a competitor or a service issue.",
+                        "Consider a win-back offer if their lifetime value was significant.",
+                    ],
+                )
+            )
+        elif signal.code == "PRODUCT_SLOW_MOVING":
+            product = signal.evidence.get("product", "This product")
+            recommendations.append(
+                Recommendation(
+                    code="REVIEW_SLOW_MOVING_PRODUCT",
+                    title=f"Review slow-moving stock: {product}",
+                    priority="high" if signal.severity == "critical" else "medium",
+                    confidence=signal.confidence,
+                    rationale=f"{product}'s sales velocity has dropped materially against its prior baseline.",
+                    evidence={"signal": signal.code, "product": product, "change": str(signal.change)},
+                    actions=[
+                        f"Consider a promotion or discount to move existing {product} stock.",
+                        f"Reduce or pause reorder quantity for {product} until demand recovers.",
+                        "Check whether a newer product or substitute is cannibalizing demand.",
+                    ],
+                )
+            )
     return recommendations

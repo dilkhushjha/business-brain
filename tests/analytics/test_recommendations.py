@@ -65,6 +65,37 @@ def _receivable_signal(severity: str, days_overdue: int) -> Signal:
     )
 
 
+def _inactive_customer_signal(severity: str) -> Signal:
+    return Signal(
+        code="CUSTOMER_INACTIVE",
+        title="Gone Quiet Ltd has gone quiet",
+        severity=severity,
+        confidence=Decimal("0.90"),
+        metric="days_since_last_order",
+        current_value=Decimal("120"),
+        baseline_value=None,
+        change=None,
+        evidence={"customer": "Gone Quiet Ltd", "last_order": "2026-03-01", "lifetime_revenue": 50000.0,
+                  "rule": "no order in inactive_days window"},
+        recommended_next_step="Check in with Gone Quiet Ltd -- no orders in 120 days.",
+    )
+
+
+def _slow_moving_signal(severity: str) -> Signal:
+    return Signal(
+        code="PRODUCT_SLOW_MOVING",
+        title="Winter Jacket is selling much slower",
+        severity=severity,
+        confidence=Decimal("0.85"),
+        metric="units_sold",
+        current_value=Decimal("2"),
+        baseline_value=Decimal("20"),
+        change=Decimal("-90"),
+        evidence={"product": "Winter Jacket", "rule": "sales velocity drop >= threshold vs prior period"},
+        recommended_next_step="Review pricing, promotion or reorder quantity for Winter Jacket.",
+    )
+
+
 def test_revenue_decline_produces_high_priority_recommendation():
     recs = generate_recommendations(RecommendationContext(signals=[_revenue_decline_signal("critical")], drivers=[]))
     assert len(recs) == 1
@@ -112,3 +143,29 @@ def test_unknown_signal_code_produces_no_recommendation():
     unknown = Signal(**{**unknown.__dict__, "code": "SOME_UNHANDLED_SIGNAL"})
     recs = generate_recommendations(RecommendationContext(signals=[unknown], drivers=[]))
     assert recs == []
+
+
+def test_customer_inactive_produces_reactivation_recommendation():
+    recs = generate_recommendations(RecommendationContext(signals=[_inactive_customer_signal("critical")], drivers=[]))
+    assert len(recs) == 1
+    assert recs[0].code == "REACTIVATE_INACTIVE_CUSTOMER"
+    assert recs[0].priority == "high"
+    assert "Gone Quiet Ltd" in recs[0].title
+
+
+def test_mild_customer_inactivity_is_medium_priority():
+    recs = generate_recommendations(RecommendationContext(signals=[_inactive_customer_signal("warning")], drivers=[]))
+    assert recs[0].priority == "medium"
+
+
+def test_slow_moving_product_produces_review_recommendation():
+    recs = generate_recommendations(RecommendationContext(signals=[_slow_moving_signal("critical")], drivers=[]))
+    assert len(recs) == 1
+    assert recs[0].code == "REVIEW_SLOW_MOVING_PRODUCT"
+    assert recs[0].priority == "high"
+    assert "Winter Jacket" in recs[0].title
+
+
+def test_mild_slow_moving_product_is_medium_priority():
+    recs = generate_recommendations(RecommendationContext(signals=[_slow_moving_signal("warning")], drivers=[]))
+    assert recs[0].priority == "medium"
