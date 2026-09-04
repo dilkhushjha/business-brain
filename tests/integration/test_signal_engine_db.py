@@ -46,6 +46,31 @@ def test_detect_signals_surfaces_overdue_receivable_from_real_data(db_session, s
     assert receivable_signals[0].evidence["days_overdue"] == 75
 
 
+def test_detect_signals_surfaces_inactive_customer_from_real_data(db_session, seeder):
+    business = seeder.business()
+    product = seeder.product(business.id, "Widget")
+    customer = seeder.customer(business.id, "Gone Quiet Ltd")
+    seeder.sale_with_line(business.id, product.id, customer_id=customer.id,
+                           days_ago=90, quantity=1, unit_price=1000)
+
+    signals = detect_signals(db_session, business.id, date.today())
+    inactive_signals = [s for s in signals if s.code == "CUSTOMER_INACTIVE"]
+    assert len(inactive_signals) == 1
+    assert inactive_signals[0].evidence["customer"] == "Gone Quiet Ltd"
+
+
+def test_detect_signals_surfaces_slow_moving_product_from_real_data(db_session, seeder):
+    business = seeder.business()
+    product = seeder.product(business.id, "Winter Jacket")
+    seeder.sale_with_line(business.id, product.id, days_ago=45, quantity=20, unit_price=100)
+    seeder.sale_with_line(business.id, product.id, days_ago=5, quantity=2, unit_price=100)
+
+    signals = detect_signals(db_session, business.id, date.today())
+    slow_signals = [s for s in signals if s.code == "PRODUCT_SLOW_MOVING"]
+    assert len(slow_signals) == 1
+    assert slow_signals[0].evidence["product"] == "Winter Jacket"
+
+
 def test_detect_signals_returns_empty_for_healthy_business(db_session, seeder):
     business = seeder.business()
     product = seeder.product(business.id, "Steady Widget")

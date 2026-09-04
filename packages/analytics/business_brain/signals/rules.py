@@ -123,3 +123,60 @@ def detect_receivables_signals(overdue_customers: list[dict]) -> list[Signal]:
             )
         )
     return signals
+
+
+def detect_customer_inactivity_signals(inactive_customers: list[dict]) -> list[Signal]:
+    """Convert inactive-customer rows (see metrics.customer_risk.inactive_customers)
+    into evidence-backed signals. Distinct from CUSTOMER_REVENUE_DECLINE: this
+    fires for customers who have gone quiet entirely (no orders at all in the
+    window), not ones who are still buying but less."""
+    signals: list[Signal] = []
+    for row in inactive_customers:
+        inactive_days = row["inactive_days"]
+        severity = "critical" if inactive_days and inactive_days > 90 else "warning"
+        confidence = Decimal("0.90") if inactive_days and inactive_days > 90 else Decimal("0.75")
+        signals.append(
+            Signal(
+                code="CUSTOMER_INACTIVE",
+                title=f"{row['name']} has gone quiet",
+                severity=severity,
+                confidence=confidence,
+                metric="days_since_last_order",
+                current_value=Decimal(str(inactive_days)) if inactive_days is not None else None,
+                baseline_value=None,
+                change=None,
+                evidence={
+                    "customer": row["name"], "last_order": row.get("last_order"),
+                    "lifetime_revenue": row.get("lifetime_revenue"),
+                    "rule": "no order in inactive_days window",
+                },
+                recommended_next_step=f"Check in with {row['name']} -- no orders in {inactive_days} days.",
+            )
+        )
+    return signals
+
+
+def detect_slow_moving_product_signals(slow_moving_products: list[dict]) -> list[Signal]:
+    """Convert slow-moving-product rows (see metrics.inventory.slow_moving_products)
+    into evidence-backed signals. Approximates 'slow-moving inventory' from a
+    material drop in sales velocity, since there's no stock-on-hand data in
+    this schema to compute true days-of-inventory-remaining."""
+    signals: list[Signal] = []
+    for row in slow_moving_products:
+        change_pct = Decimal(str(row["change_pct"]))
+        confidence = Decimal("0.85") if row.get("severity") == "high" else Decimal("0.70")
+        signals.append(
+            Signal(
+                code="PRODUCT_SLOW_MOVING",
+                title=f"{row['name']} is selling much slower",
+                severity="critical" if row.get("severity") == "high" else "warning",
+                confidence=confidence,
+                metric="units_sold",
+                current_value=Decimal(str(row["current_units"])),
+                baseline_value=Decimal(str(row["previous_units"])),
+                change=change_pct,
+                evidence={"product": row["name"], "rule": "sales velocity drop >= threshold vs prior period"},
+                recommended_next_step=f"Review pricing, promotion or reorder quantity for {row['name']}.",
+            )
+        )
+    return signals

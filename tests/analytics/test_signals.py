@@ -4,9 +4,11 @@ from packages.analytics.business_brain.metrics.kpis import KPI
 from packages.analytics.business_brain.signals.anomalies import detect_deviation
 from packages.analytics.business_brain.signals.rules import (
     detect_customer_decline_signals,
+    detect_customer_inactivity_signals,
     detect_kpi_signals,
     detect_margin_signals,
     detect_receivables_signals,
+    detect_slow_moving_product_signals,
 )
 from packages.analytics.business_brain.signals.trends import TrendPoint, analyze_trend
 
@@ -100,4 +102,30 @@ def test_detect_receivables_signals():
     assert signals[0].code == "RECEIVABLE_OVERDUE"
     assert signals[0].severity == "critical"
     assert signals[0].evidence["days_overdue"] == 75
+    assert signals[1].severity == "warning"
+
+
+def test_detect_customer_inactivity_signals():
+    rows = [
+        {"name": "Gone Quiet Ltd", "last_order": "2026-03-01", "inactive_days": 120, "lifetime_revenue": 50000.0},
+        {"name": "Slowing Down Co", "last_order": "2026-06-01", "inactive_days": 60, "lifetime_revenue": 8000.0},
+    ]
+    signals = detect_customer_inactivity_signals(rows)
+    assert len(signals) == 2
+    assert signals[0].code == "CUSTOMER_INACTIVE"
+    assert signals[0].severity == "critical"
+    assert signals[0].evidence["customer"] == "Gone Quiet Ltd"
+    assert signals[1].severity == "warning"
+
+
+def test_detect_slow_moving_product_signals():
+    rows = [
+        {"name": "Winter Jacket", "current_units": 2.0, "previous_units": 20.0, "change_pct": -90.0, "severity": "high"},
+        {"name": "Umbrella", "current_units": 6.0, "previous_units": 10.0, "change_pct": -40.0, "severity": "medium"},
+    ]
+    signals = detect_slow_moving_product_signals(rows)
+    assert len(signals) == 2
+    assert signals[0].code == "PRODUCT_SLOW_MOVING"
+    assert signals[0].severity == "critical"
+    assert signals[0].evidence["product"] == "Winter Jacket"
     assert signals[1].severity == "warning"
