@@ -33,3 +33,17 @@ def test_time_windows():
     assert previous_month(as_of).start == date(2026, 7, 1)
     assert previous_month(as_of).end == date(2026, 7, 31)
     assert trailing_days(as_of, 30).start == date(2026, 7, 29)
+
+
+def test_kpi_compat_reexports_the_same_class_not_a_duplicate():
+    """Regression test: kpi_compat.py used to independently redefine KPI/
+    growth/average_invoice_value rather than re-exporting metrics.kpis's
+    versions -- two structurally identical classes with the same name,
+    silently duck-typed together everywhere nothing did an isinstance()
+    check. Confirms the fix: both import paths now resolve to the exact
+    same objects."""
+    from packages.analytics.business_brain.metrics import kpi_compat, kpis
+
+    assert kpi_compat.KPI is kpis.KPI
+    assert kpi_compat.growth is kpis.growth
+    assert kpi_compat.average_invoice_value is kpis.average_invoice_value

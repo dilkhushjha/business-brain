@@ -1,37 +1,21 @@
-from __future__ import annotations
+"""Backwards-compatible import path.
 
-from dataclasses import dataclass
-from decimal import Decimal
-from typing import Optional
+This module used to define its own KPI/growth/average_invoice_value,
+independently of metrics.kpis -- two structurally identical classes with
+the same name, in different modules. That "worked" only because nothing
+here does an isinstance() check: monthly_sales_kpis() (via service.py)
+returned instances of THIS module's KPI, while signals/rules.py and several
+tests imported and type-hinted against metrics.kpis.KPI instead. Same shape,
+different class objects -- a landmine waiting for anyone who adds a real
+type check.
 
-
-@dataclass(frozen=True)
-class KPI:
-    name: str
-    value: Decimal | None
-    unit: str
-    period: str
-    comparison_value: Decimal | None = None
-    change: Decimal | None = None
-
-
-def _decimal(value: int | float | Decimal | None) -> Decimal:
-    if value is None:
-        return Decimal("0")
-    if isinstance(value, Decimal):
-        return value
-    return Decimal(str(value))
-
-
-def growth(current: int | float | Decimal | None, previous: int | float | Decimal | None) -> Optional[Decimal]:
-    current_d = _decimal(current)
-    previous_d = _decimal(previous)
-    if previous_d == 0:
-        return None
-    return (current_d - previous_d) / previous_d * Decimal("100")
-
-
-def average_invoice_value(revenue: int | float | Decimal, invoice_count: int) -> Optional[Decimal]:
-    if invoice_count == 0:
-        return None
-    return _decimal(revenue) / Decimal(invoice_count)
+Re-exporting from metrics.kpis instead makes both import paths resolve to
+the exact same objects, so existing `from .kpi_compat import KPI` call
+sites (service.py) keep working unchanged, with no duplicate logic to
+drift out of sync.
+"""
+from packages.analytics.business_brain.metrics.kpis import (  # noqa: F401
+    KPI,
+    average_invoice_value,
+    growth,
+)
