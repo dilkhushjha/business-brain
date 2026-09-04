@@ -18,6 +18,7 @@ ALIASES: dict[str, tuple[str, ...]] = {
     "unit_price": ("rate", "unit price", "selling price", "price", "sales rate"),
     "total_amount": ("amount", "total", "invoice amount", "sales amount", "net amount", "value", "net value"),
     "cost_price": ("cost", "cost price", "purchase rate", "buying price", "purchase value"),
+    "discount_amount": ("discount", "discount amount", "disc", "disc amount", "less discount"),
     "tax": ("tax", "gst", "tax amount", "gst amount", "total tax"),
     "cgst": ("cgst", "cgst amount"),
     "sgst": ("sgst", "sgst amount"),

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import select
@@ -45,7 +44,7 @@ def persist_sales(db: Session, business_id: UUID, rows: list[dict]) -> int:
             db.add(customer)
             db.flush()
         product = _get_or_create_product(db, business_id, row["product_name"])
-        sale = SaleModel(business_id=business_id, customer_id=customer.id if customer else None, transaction_date=row["transaction_date"], invoice_number=invoice, total_amount=row["total_amount"], tax_amount=Decimal("0"), discount_amount=Decimal("0"))
+        sale = SaleModel(business_id=business_id, customer_id=customer.id if customer else None, transaction_date=row["transaction_date"], invoice_number=invoice, total_amount=row["total_amount"], tax_amount=row["tax_amount"], discount_amount=row["discount_amount"])
         db.add(sale); db.flush()
         db.add(SaleLineModel(sale_id=sale.id, product_id=product.id, quantity=row["quantity"], unit_price=row["unit_price"], cost_price=row["cost_price"]))
         created += 1

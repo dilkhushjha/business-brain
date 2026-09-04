@@ -13,6 +13,12 @@ def test_column_alias_mapping():
     assert mapped["Invoice No"] == "invoice_number"
 
 
+def test_discount_column_is_recognized():
+    result = suggest_mapping(["Discount Amount"])
+    mapped = {item.source_column: item.canonical_field for item in result}
+    assert mapped["Discount Amount"] == "discount_amount"
+
+
 def test_parse_indian_number_format():
     assert parse_decimal("₹1,25,000.50") == Decimal("125000.50")
 

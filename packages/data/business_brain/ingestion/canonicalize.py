@@ -32,7 +32,21 @@ def canonicalize_sale_row(row: dict[str, Any]) -> dict[str, Any]:
         "unit_price": unit_price or total_amount,
         "total_amount": total_amount,
         "cost_price": parse_decimal(row.get("cost_price")),
+        "discount_amount": parse_decimal(row.get("discount_amount")) or Decimal("0"),
+        # A Tally export represents tax either as one combined column ("tax")
+        # or split across cgst/sgst/igst -- sum whichever are present rather
+        # than assuming one particular layout.
+        "tax_amount": _sum_present(row.get("tax"), row.get("cgst"), row.get("sgst"), row.get("igst")),
     }
+
+
+def _sum_present(*values: Any) -> Decimal:
+    total = Decimal("0")
+    for value in values:
+        parsed = parse_decimal(value)
+        if parsed is not None:
+            total += parsed
+    return total
 
 
 def _text(value: Any) -> str | None:
