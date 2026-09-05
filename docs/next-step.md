@@ -1,0 +1,1 @@
+Next implementation step: wire canonical supplier, purchase, payment, expense, and inventory records into the production ingestion persistence path while preserving tenant isolation, provenance, idempotency, and transactional rollback.
