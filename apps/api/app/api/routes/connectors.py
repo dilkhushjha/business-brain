@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from apps.api.app.api.connector_auth import create_connector, mark_connector_sync, require_connector
+from apps.api.app.api.connector_auth import create_connector, mark_connector_sync, require_business_access, require_connector
 from apps.api.app.api.routes.ingestion import _prepare_upload
 from packages.data.business_brain.ingestion.persistence import persist_ingestion_run
 from packages.data.business_brain.ingestion.repository import persist_sales
@@ -96,14 +96,14 @@ def connector_import(
 
 
 @router.get("/status/{business_id}")
-def connector_status(business_id: UUID, db: Session = Depends(get_db)):
+def connector_status(business_id: UUID, db: Session = Depends(get_db), _auth: dict = Depends(require_business_access)):
     row = db.execute(
         text("""
             SELECT id, name, status, version, last_seen_at, last_sync_at,
                    last_success_at, last_error, created_at
             FROM business_brain_connectors
             WHERE business_id=:business_id ORDER BY created_at DESC LIMIT 1
-        """), {"business_id": business_id}
+        """), {"business_id": str(business_id)}
     ).mappings().first()
     if not row:
         return {"status": "not_configured", "business_id": str(business_id)}

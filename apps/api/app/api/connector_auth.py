@@ -48,8 +48,8 @@ def create_connector(db: Session, business_id: UUID, name: str = "Business Brain
             VALUES (:id, :business_id, :name, :token_hash, :token_prefix, 'active')
         """),
         {
-            "id": connector_id,
-            "business_id": business_id,
+            "id": str(connector_id),
+            "business_id": str(business_id),
             "name": name,
             "token_hash": hash_token(token),
             "token_prefix": token[:12],
@@ -75,7 +75,12 @@ def authenticate_connector(
     ).mappings().first()
     if not row or row["status"] != "active":
         raise HTTPException(401, "Invalid or inactive connector credential")
-    if business_id is not None and row["business_id"] != business_id:
+    # Bind and compare as strings rather than relying on the driver to hand
+    # back a UUID object -- SQLite (used in tests) returns whatever was
+    # stored (a plain string, since it has no native UUID type), while
+    # Postgres's driver typically returns a real UUID object. Comparing
+    # str(...) to str(...) is correct and portable either way.
+    if business_id is not None and str(row["business_id"]) != str(business_id):
         raise HTTPException(403, "Connector is not authorized for this business")
 
     db.execute(
@@ -102,6 +107,34 @@ def require_connector(
     return authenticate_connector(db, token)
 
 
+def require_business_access(
+    business_id: UUID,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
+    """General-purpose auth for any {business_id}-scoped route (dashboard,
+    chat agent, analytics endpoints -- not just the file-sync connector).
+
+    V1 has no separate user/login system, so for now the one credential a
+    business has -- the token issued by POST /connectors/register/{business_id}
+    -- doubles as its general API access token too. A connector's automated
+    file uploads and a human's dashboard/chat session are authenticated the
+    exact same way: present that Bearer token, scoped to that business_id.
+    Splitting these into distinct credential types (e.g. once there's a real
+    login system) is future work, not a V1 requirement.
+
+    FastAPI resolves `business_id` here from the same path parameter as the
+    route function it's guarding, so this can be added as a dependency
+    without changing what the route itself receives.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "An API bearer token is required")
+    token = authorization.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(401, "An API bearer token is required")
+    return authenticate_connector(db, token, business_id=business_id)
+
+
 def mark_connector_sync(db: Session, connector_id: UUID, success: bool, error: str | None = None) -> None:
     column = "last_success_at" if success else "last_error"
     if success:
@@ -111,7 +144,7 @@ def mark_connector_sync(db: Session, connector_id: UUID, success: bool, error: s
                 SET last_sync_at=:now, last_success_at=:now, status='active', last_error=NULL
                 WHERE id=:id
             """),
-            {"now": datetime.now(timezone.utc), "id": connector_id},
+            {"now": datetime.now(timezone.utc), "id": str(connector_id)},
         )
     else:
         db.execute(
@@ -120,6 +153,6 @@ def mark_connector_sync(db: Session, connector_id: UUID, success: bool, error: s
                 SET last_sync_at=:now, last_error=:error
                 WHERE id=:id
             """),
-            {"now": datetime.now(timezone.utc), "id": connector_id, "error": error},
+            {"now": datetime.now(timezone.utc), "id": str(connector_id), "error": error},
         )
     db.commit()
