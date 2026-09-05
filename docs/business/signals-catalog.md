@@ -13,18 +13,19 @@ Wired into `detect_signals()` (signal code in parens): revenue decline/spike
 customer inactivity (CUSTOMER_INACTIVE), margin deterioration
 (PRODUCT_MARGIN_DETERIORATION), receivable deterioration
 (RECEIVABLE_OVERDUE), inventory slow-moving (PRODUCT_SLOW_MOVING, approximated
-from a material drop in sales velocity -- there's no stock-on-hand tracking
-in the schema to compute true days-of-inventory-remaining).
+from a material drop in sales velocity).
 
-Not implemented, and blocked on schema/ingestion rather than just wiring:
-- **Supplier price increase / concentration** -- there is no `Supplier` or
-  `Purchase` table at all. Needs a schema migration and a new ingestion
-  source type before any detection logic is possible.
-- **Expense spike** -- same: no `Expense` table exists.
-- **Discount anomaly** -- `SaleModel.discount_amount` exists in the schema,
-  but ingestion (`packages/data/business_brain/ingestion/repository.py`)
-  currently hard-codes it to 0 rather than parsing it from source files, so
-  there's no real discount data to detect anomalies in yet. Fix ingestion
-  first, then this becomes a wiring task like the others above.
-- **Inventory excess / stockout risk** -- both need stock-on-hand data,
-  which isn't tracked anywhere in the current schema.
+The core domain now contains Supplier, Purchase/PurchaseLine, Payment,
+Expense, InventorySnapshot and InventoryMovement persistence models. These
+models provide the data foundation for the remaining supplier, procurement,
+expense and true inventory signals, but the corresponding ingestion and
+detection logic is intentionally not claimed as implemented yet.
+
+Not yet implemented:
+- **Supplier price increase / concentration** -- requires supplier and
+  purchase ingestion plus comparative procurement analytics.
+- **Expense spike** -- requires expense ingestion plus historical baselines.
+- **Discount anomaly** -- discount data is now preserved during production
+  ingestion; detection still needs to be wired to the signal engine.
+- **Inventory excess / stockout risk / demand spike** -- true detection needs
+  inventory snapshots/movements plus sales velocity and coverage calculations.
