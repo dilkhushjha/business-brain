@@ -14,6 +14,7 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from packages.shared.database.models import (
     BusinessModel,
@@ -28,8 +29,21 @@ from packages.shared.database.session import Base
 @pytest.fixture()
 def db_session():
     """A fresh in-memory SQLite database, schema created from the real
-    SQLAlchemy models, torn down at the end of the test."""
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    SQLAlchemy models, torn down at the end of the test.
+
+    poolclass=StaticPool is required, not optional, once any test exercises
+    code through FastAPI's TestClient: FastAPI runs endpoint functions in a
+    worker thread via run_in_threadpool, and SQLAlchemy's default pooling
+    for sqlite:///:memory: hands out a distinct (and therefore blank)
+    in-memory database per thread. StaticPool forces every checkout,
+    regardless of thread, to reuse the exact same connection, so a table
+    created by test setup code is actually visible to the request handler.
+    """
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(engine)
     session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
     session = session_factory()
