@@ -27,7 +27,10 @@ class BusinessModel(Base):
 
 class CustomerModel(Base):
     __tablename__ = "customers"
-    __table_args__ = (UniqueConstraint("business_id", "external_id"),)
+    __table_args__ = (
+        UniqueConstraint("business_id", "external_id"),
+        CheckConstraint("credit_limit IS NULL OR credit_limit >= 0", name="ck_customers_credit_limit"),
+    )
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     business_id: Mapped[UUID] = mapped_column(ForeignKey("businesses.id"), nullable=False, index=True)
     external_id: Mapped[str | None] = mapped_column(String(255))
@@ -50,7 +53,13 @@ class ProductModel(Base):
 
 class SupplierModel(Base):
     __tablename__ = "suppliers"
-    __table_args__ = (UniqueConstraint("business_id", "external_id"),)
+    __table_args__ = (
+        UniqueConstraint("business_id", "external_id"),
+        CheckConstraint(
+            "credit_period_days IS NULL OR credit_period_days >= 0",
+            name="ck_suppliers_credit_period",
+        ),
+    )
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     business_id: Mapped[UUID] = mapped_column(ForeignKey("businesses.id"), nullable=False, index=True)
     external_id: Mapped[str | None] = mapped_column(String(255))
@@ -113,6 +122,13 @@ class PurchaseModel(Base):
 
 class PurchaseLineModel(Base):
     __tablename__ = "purchase_lines"
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_purchase_lines_quantity_positive"),
+        CheckConstraint("unit_cost >= 0", name="ck_purchase_lines_unit_cost_nonnegative"),
+        CheckConstraint("tax_amount >= 0", name="ck_purchase_lines_tax_nonnegative"),
+        CheckConstraint("discount_amount >= 0", name="ck_purchase_lines_discount_nonnegative"),
+        CheckConstraint("net_amount >= 0", name="ck_purchase_lines_net_nonnegative"),
+    )
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     purchase_id: Mapped[UUID] = mapped_column(ForeignKey("purchases.id", ondelete="CASCADE"), nullable=False, index=True)
     product_id: Mapped[UUID] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
@@ -128,6 +144,11 @@ class PaymentModel(Base):
     __table_args__ = (
         CheckConstraint("direction IN ('in', 'out')", name="ck_payments_direction"),
         CheckConstraint("amount > 0", name="ck_payments_amount_positive"),
+        CheckConstraint(
+            "(customer_id IS NOT NULL AND supplier_id IS NULL) OR "
+            "(customer_id IS NULL AND supplier_id IS NOT NULL)",
+            name="ck_payments_exactly_one_counterparty",
+        ),
     )
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     business_id: Mapped[UUID] = mapped_column(ForeignKey("businesses.id"), nullable=False, index=True)
@@ -155,7 +176,11 @@ class ExpenseModel(Base):
 
 class InventorySnapshotModel(Base):
     __tablename__ = "inventory_snapshots"
-    __table_args__ = (UniqueConstraint("business_id", "product_id", "snapshot_date"),)
+    __table_args__ = (
+        UniqueConstraint("business_id", "product_id", "snapshot_date"),
+        CheckConstraint("quantity >= 0", name="ck_inventory_snapshots_quantity_nonnegative"),
+        CheckConstraint("value >= 0", name="ck_inventory_snapshots_value_nonnegative"),
+    )
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     business_id: Mapped[UUID] = mapped_column(ForeignKey("businesses.id"), nullable=False, index=True)
     product_id: Mapped[UUID] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
@@ -167,8 +192,12 @@ class InventorySnapshotModel(Base):
 class InventoryMovementModel(Base):
     __tablename__ = "inventory_movements"
     __table_args__ = (
-        CheckConstraint("movement_type IN ('purchase', 'sale', 'return_in', 'return_out', 'adjustment')", name="ck_inventory_movement_type"),
+        CheckConstraint(
+            "movement_type IN ('purchase', 'sale', 'return_in', 'return_out', 'adjustment')",
+            name="ck_inventory_movement_type",
+        ),
         CheckConstraint("quantity > 0", name="ck_inventory_movement_quantity_positive"),
+        CheckConstraint("unit_cost IS NULL OR unit_cost >= 0", name="ck_inventory_movement_unit_cost"),
     )
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     business_id: Mapped[UUID] = mapped_column(ForeignKey("businesses.id"), nullable=False, index=True)
