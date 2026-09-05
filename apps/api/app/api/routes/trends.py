@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from packages.shared.database.models import SaleModel
+from apps.api.app.api.connector_auth import require_business_access
 from packages.shared.database.session import get_db
 
 router = APIRouter(prefix="/trends", tags=["analytics"])
@@ -17,6 +18,7 @@ def revenue_trend(
     days: int = 30,
     as_of: date | None = None,
     db: Session = Depends(get_db),
+    _auth: dict = Depends(require_business_access),
 ):
     days = max(7, min(days, 365))
     end = as_of or date.today()

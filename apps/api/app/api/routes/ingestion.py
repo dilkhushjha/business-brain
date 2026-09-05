@@ -13,6 +13,7 @@ from packages.data.business_brain.ingestion.duplicate import already_imported
 from packages.data.business_brain.ingestion.orchestrator import prepare_file
 from packages.data.business_brain.ingestion.persistence import persist_ingestion_run
 from packages.data.business_brain.ingestion.repository import persist_sales
+from apps.api.app.api.connector_auth import require_business_access
 from packages.shared.database.session import get_db
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
@@ -55,6 +56,7 @@ def preview_ingestion(
     business_id: UUID,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    _auth: dict = Depends(require_business_access),
 ):
     result, prepared, temp_path = _prepare_upload(file, business_id, db)
     try:
@@ -79,6 +81,7 @@ def record_ingestion_run(
     business_id: UUID,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    _auth: dict = Depends(require_business_access),
 ):
     request_id = str(uuid4())
     result, prepared, temp_path = _prepare_upload(file, business_id, db)
