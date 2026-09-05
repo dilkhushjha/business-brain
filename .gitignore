@@ -18,3 +18,4 @@ data/processed/
 *.sqlite
 *.db
 secrets/
+apps/web/tsconfig.tsbuildinfo
