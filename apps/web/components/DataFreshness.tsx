@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiFetch, getBusinessId } from "../lib/api";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-const ID = process.env.NEXT_PUBLIC_BUSINESS_ID || "11111111-1111-1111-1111-111111111111";
+
 
 type SyncStatus = {
   status?: string;
@@ -32,8 +32,8 @@ export default function DataFreshness() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch(`${API}/connectors/status/${ID}`).then((r) => r.ok ? r.json() : null).catch(() => null),
-      fetch(`${API}/imports/${ID}/history?limit=1`).then((r) => r.ok ? r.json() : []).catch(() => []),
+      apiFetch(`/connectors/status/${getBusinessId()}`).then((r) => r.ok ? r.json() : null).catch(() => null),
+      apiFetch(`/imports/${getBusinessId()}/history?limit=1`).then((r) => r.ok ? r.json() : []).catch(() => []),
     ]).then(([status, history]) => {
       if (cancelled) return;
       setSync(status);

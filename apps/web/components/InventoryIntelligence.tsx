@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import Icon from "./Icons";
+import { apiFetch, getBusinessId } from "../lib/api";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-const BUSINESS_ID = process.env.NEXT_PUBLIC_BUSINESS_ID || "11111111-1111-1111-1111-111111111111";
+
 const money = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 type Row = { name: string; units_sold: number; revenue: number; avg_daily_units: number; signal: string; recommended_review?: string | null };
@@ -12,7 +12,7 @@ export default function InventoryIntelligence() {
     const [r, setR] = useState<Row[]>([]);
 
     useEffect(() => {
-        fetch(`${API}/inventory/${BUSINESS_ID}/signals?days=30&limit=5`).then((x) => (x.ok ? x.json() : [])).then(setR).catch(() => { });
+        apiFetch(`/inventory/${getBusinessId()}/signals?days=30&limit=5`).then((x) => (x.ok ? x.json() : [])).then(setR).catch(() => { });
     }, []);
 
     if (!r.length) return null;

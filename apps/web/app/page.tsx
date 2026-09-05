@@ -7,6 +7,8 @@ import MarginIntelligence from "../components/MarginIntelligence";
 import ReceivablesIntelligence from "../components/ReceivablesIntelligence";
 import InventoryIntelligence from "../components/InventoryIntelligence";
 import DataFreshness from "../components/DataFreshness";
+import ConnectGate from "../components/ConnectGate";
+import { ApiAuthError, apiFetch, clearToken, getBusinessId, hasToken } from "../lib/api";
 
 type Evidence = { metric?: string; value?: string; metadata?: { change?: number } };
 type Context = {
@@ -16,9 +18,6 @@ type Context = {
 };
 type KPI = { name: string; value: string | null; change?: string | null; period?: string };
 type Anomaly = { name: string; change_pct: number; severity: string };
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-const BUSINESS_ID = process.env.NEXT_PUBLIC_BUSINESS_ID || "11111111-1111-1111-1111-111111111111";
 
 const DEMO_CONTEXT: Context = {
   evidence: [{ metric: "revenue", value: "850000", metadata: { change: -0.15 } }],
@@ -116,17 +115,40 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [asking, setAsking] = useState(false);
   const [error, setError] = useState("");
+  const [connected, setConnected] = useState(false);
+  const [checkedAuth, setCheckedAuth] = useState(false);
 
   useEffect(() => {
+    setConnected(hasToken());
+    setCheckedAuth(true);
+  }, []);
+
+  useEffect(() => {
+    if (!checkedAuth || !connected) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     Promise.all([
-      fetch(`${API}/context/${BUSINESS_ID}`).then((r) => { if (!r.ok) throw Error(); return r.json(); }),
-      fetch(`${API}/kpis/sales/${BUSINESS_ID}`).then((r) => { if (!r.ok) throw Error(); return r.json(); }),
-      fetch(`${API}/anomalies/${BUSINESS_ID}?days=30&limit=5`).then((r) => (r.ok ? r.json() : [])),
+      apiFetch(`/context/${getBusinessId()}`).then((r) => { if (!r.ok) throw Error(); return r.json(); }),
+      apiFetch(`/kpis/sales/${getBusinessId()}`).then((r) => { if (!r.ok) throw Error(); return r.json(); }),
+      apiFetch(`/anomalies/${getBusinessId()}?days=30&limit=5`).then((r) => (r.ok ? r.json() : [])),
     ])
       .then(([a, b, c]) => { setContext(a); setKpis(b); setAnomalies(c); setLive(true); })
-      .catch(() => { setContext(DEMO_CONTEXT); setLive(false); })
+      .catch((err) => {
+        if (err instanceof ApiAuthError) {
+          // The stored token was rejected (expired/revoked/wrong business) --
+          // clear it and show the connect gate again rather than silently
+          // rendering fake demo data as if everything were fine.
+          clearToken();
+          setConnected(false);
+          return;
+        }
+        setContext(DEMO_CONTEXT);
+        setLive(false);
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [checkedAuth, connected]);
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -155,10 +177,15 @@ export default function Home() {
     setAsking(true); setAnswer(""); setError("");
     if (!live) { setTimeout(() => { setAnswer(demoAnswer(q)); setAsking(false); }, 300); return; }
     try {
-      const r = await fetch(`${API}/agent/${BUSINESS_ID}/ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q }) });
+      const r = await apiFetch(`/agent/${getBusinessId()}/ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q }) });
       if (!r.ok) throw Error(`Agent returned ${r.status}`);
       setAnswer((await r.json()).answer);
     } catch (x) {
+      if (x instanceof ApiAuthError) {
+        clearToken();
+        setConnected(false);
+        return;
+      }
       setError(x instanceof Error ? x.message : "Unable to reach Business Brain");
     } finally {
       setAsking(false);
@@ -166,6 +193,23 @@ export default function Home() {
   }
   function ask(e: FormEvent) { e.preventDefault(); runQuestion(question); }
   function askSuggested(q: string) { setQuestion(q); runQuestion(q); }
+
+  if (checkedAuth && !connected) {
+    return (
+      <main className="shell">
+        <header className="header">
+          <div className="brand">
+            <span className="brandMark"><Icon name="sparkle" className="icon" /></span>
+            <div>
+              <span className="eyebrow">BUSINESS BRAIN</span>
+              <h1>Your business, understood.</h1>
+            </div>
+          </div>
+        </header>
+        <ConnectGate onConnected={() => setConnected(true)} />
+      </main>
+    );
+  }
 
   return (
     <main className="shell">

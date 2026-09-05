@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiFetch, getBusinessId } from "../lib/api";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-const BUSINESS_ID = process.env.NEXT_PUBLIC_BUSINESS_ID || "demo";
+
 
 type Point = { date: string; revenue: number };
 
@@ -18,7 +18,7 @@ export default function RevenueTrend() {
   const [points, setPoints] = useState<Point[]>([]);
 
   useEffect(() => {
-    fetch(`${API}/trends/revenue/${BUSINESS_ID}?days=30`)
+    apiFetch(`/trends/revenue/${getBusinessId()}?days=30`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => setPoints(data.points ?? data ?? []))
       .catch(() => setPoints([]));

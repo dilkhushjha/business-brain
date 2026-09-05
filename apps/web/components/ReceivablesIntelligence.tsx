@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import Icon from "./Icons";
+import { apiFetch, getBusinessId } from "../lib/api";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-const BUSINESS_ID = process.env.NEXT_PUBLIC_BUSINESS_ID || "11111111-1111-1111-1111-111111111111";
+
 const money = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 type S = { outstanding: number; overdue: number; overdue_pct: number; buckets: Record<string, number> };
@@ -15,8 +15,8 @@ export default function ReceivablesIntelligence() {
 
     useEffect(() => {
         Promise.all([
-            fetch(`${API}/receivables/${BUSINESS_ID}/summary`).then((r) => (r.ok ? r.json() : null)),
-            fetch(`${API}/receivables/${BUSINESS_ID}/overdue?limit=5`).then((r) => (r.ok ? r.json() : [])),
+            apiFetch(`/receivables/${getBusinessId()}/summary`).then((r) => (r.ok ? r.json() : null)),
+            apiFetch(`/receivables/${getBusinessId()}/overdue?limit=5`).then((r) => (r.ok ? r.json() : [])),
         ]).then(([a, b]) => { setS(a); setC(b); }).catch(() => { });
     }, []);
 

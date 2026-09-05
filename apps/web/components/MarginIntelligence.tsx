@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import Icon from "./Icons";
+import { apiFetch, getBusinessId } from "../lib/api";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-const BUSINESS_ID = process.env.NEXT_PUBLIC_BUSINESS_ID || "11111111-1111-1111-1111-111111111111";
+
 
 type Summary = { revenue: number; cost: number; gross_profit: number; gross_margin_pct: number | null; cost_coverage_pct: number };
 type Product = { name: string; revenue: number; gross_profit: number; margin_pct: number; severity: string };
@@ -16,8 +16,8 @@ export default function MarginIntelligence() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API}/margin/${BUSINESS_ID}/summary?days=30`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${API}/margin/${BUSINESS_ID}/low-margin?days=30&threshold=10&limit=5`).then((r) => (r.ok ? r.json() : [])),
+      apiFetch(`/margin/${getBusinessId()}/summary?days=30`).then((r) => (r.ok ? r.json() : null)),
+      apiFetch(`/margin/${getBusinessId()}/low-margin?days=30&threshold=10&limit=5`).then((r) => (r.ok ? r.json() : [])),
     ]).then(([a, b]) => { setS(a); setP(b); }).catch(() => {});
   }, []);
 
