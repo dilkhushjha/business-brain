@@ -169,3 +169,61 @@ def test_slow_moving_product_produces_review_recommendation():
 def test_mild_slow_moving_product_is_medium_priority():
     recs = generate_recommendations(RecommendationContext(signals=[_slow_moving_signal("warning")], drivers=[]))
     assert recs[0].priority == "medium"
+
+
+def _payable_signal(severity: str, days_overdue: int) -> Signal:
+    return Signal(
+        code="PAYABLE_OVERDUE",
+        title="You have an overdue payment to ABC Distributors",
+        severity=severity,
+        confidence=Decimal("0.95"),
+        metric="overdue_amount",
+        current_value=Decimal("45000"),
+        baseline_value=None,
+        change=None,
+        evidence={"supplier": "ABC Distributors", "days_overdue": days_overdue, "rule": "due_date < today"},
+        recommended_next_step="Pay or follow up with ABC Distributors on the overdue bill.",
+    )
+
+
+def _supplier_price_signal(severity: str) -> Signal:
+    return Signal(
+        code="SUPPLIER_PRICE_INCREASE",
+        title="ABC Distributors raised prices on LED Bulb 9W",
+        severity=severity,
+        confidence=Decimal("0.85"),
+        metric="unit_cost",
+        current_value=Decimal("70"),
+        baseline_value=Decimal("50"),
+        change=Decimal("40"),
+        evidence={"supplier": "ABC Distributors", "product": "LED Bulb 9W",
+                  "rule": "purchase cost increase >= threshold vs prior period"},
+        recommended_next_step="Confirm the price increase with ABC Distributors and check for alternative suppliers.",
+    )
+
+
+def test_payable_overdue_produces_payment_recommendation():
+    recs = generate_recommendations(RecommendationContext(signals=[_payable_signal("critical", 75)], drivers=[]))
+    assert len(recs) == 1
+    assert recs[0].code == "PAY_OVERDUE_PAYABLE"
+    assert recs[0].priority == "high"
+    assert recs[0].evidence["days_overdue"] == 75
+
+
+def test_mild_payable_overdue_is_medium_priority():
+    recs = generate_recommendations(RecommendationContext(signals=[_payable_signal("warning", 15)], drivers=[]))
+    assert recs[0].priority == "medium"
+
+
+def test_supplier_price_increase_produces_review_recommendation():
+    recs = generate_recommendations(RecommendationContext(signals=[_supplier_price_signal("critical")], drivers=[]))
+    assert len(recs) == 1
+    assert recs[0].code == "REVIEW_SUPPLIER_PRICE_INCREASE"
+    assert recs[0].priority == "high"
+    assert "ABC Distributors" in recs[0].title
+    assert "LED Bulb 9W" in recs[0].title
+
+
+def test_mild_supplier_price_increase_is_medium_priority():
+    recs = generate_recommendations(RecommendationContext(signals=[_supplier_price_signal("warning")], drivers=[]))
+    assert recs[0].priority == "medium"

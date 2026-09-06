@@ -71,6 +71,35 @@ def test_detect_signals_surfaces_slow_moving_product_from_real_data(db_session, 
     assert slow_signals[0].evidence["product"] == "Winter Jacket"
 
 
+def test_detect_signals_surfaces_overdue_payable_from_real_data(db_session, seeder):
+    business = seeder.business()
+    supplier = seeder.supplier(business.id, "ABC Distributors")
+    seeder.purchase(business.id, supplier_id=supplier.id, total_amount=Decimal("45000"),
+                     paid_amount=Decimal("0"), due_days_ago=75)
+
+    signals = detect_signals(db_session, business.id, date.today())
+    payable_signals = [s for s in signals if s.code == "PAYABLE_OVERDUE"]
+    assert len(payable_signals) == 1
+    assert payable_signals[0].evidence["supplier"] == "ABC Distributors"
+    assert payable_signals[0].evidence["days_overdue"] == 75
+
+
+def test_detect_signals_surfaces_supplier_price_increase_from_real_data(db_session, seeder):
+    business = seeder.business()
+    product = seeder.product(business.id, "LED Bulb 9W")
+    supplier = seeder.supplier(business.id, "ABC Distributors")
+    seeder.purchase_with_line(business.id, product.id, supplier_id=supplier.id,
+                               days_ago=45, quantity=100, unit_cost=50)
+    seeder.purchase_with_line(business.id, product.id, supplier_id=supplier.id,
+                               days_ago=5, quantity=100, unit_cost=70)
+
+    signals = detect_signals(db_session, business.id, date.today())
+    price_signals = [s for s in signals if s.code == "SUPPLIER_PRICE_INCREASE"]
+    assert len(price_signals) == 1
+    assert price_signals[0].evidence["supplier"] == "ABC Distributors"
+    assert price_signals[0].evidence["product"] == "LED Bulb 9W"
+
+
 def test_detect_signals_returns_empty_for_healthy_business(db_session, seeder):
     business = seeder.business()
     product = seeder.product(business.id, "Steady Widget")

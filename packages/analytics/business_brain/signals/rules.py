@@ -180,3 +180,54 @@ def detect_slow_moving_product_signals(slow_moving_products: list[dict]) -> list
             )
         )
     return signals
+
+
+def detect_payables_signals(overdue_suppliers: list[dict]) -> list[Signal]:
+    """Convert overdue-supplier rows (see metrics.payables.overdue_suppliers)
+    into evidence-backed signals -- the payables-side mirror of
+    detect_receivables_signals()."""
+    signals: list[Signal] = []
+    for row in overdue_suppliers:
+        days_overdue = row["days_overdue"]
+        severity = "critical" if days_overdue > 60 else "warning"
+        confidence = Decimal("0.95") if days_overdue > 60 else Decimal("0.85")
+        signals.append(
+            Signal(
+                code="PAYABLE_OVERDUE",
+                title=f"You have an overdue payment to {row['name']}",
+                severity=severity,
+                confidence=confidence,
+                metric="overdue_amount",
+                current_value=Decimal(str(row["overdue_amount"])),
+                baseline_value=None,
+                change=None,
+                evidence={"supplier": row["name"], "days_overdue": days_overdue, "rule": "due_date < today"},
+                recommended_next_step=f"Pay or follow up with {row['name']} on the overdue bill ({days_overdue} days overdue).",
+            )
+        )
+    return signals
+
+
+def detect_supplier_price_signals(supplier_price_increases: list[dict]) -> list[Signal]:
+    """Convert supplier-price-increase rows (see
+    metrics.supplier_risk.supplier_price_increases) into evidence-backed
+    signals -- the purchase-side mirror of detect_slow_moving_product_signals()."""
+    signals: list[Signal] = []
+    for row in supplier_price_increases:
+        change_pct = Decimal(str(row["change_pct"]))
+        confidence = Decimal("0.85") if row.get("severity") == "high" else Decimal("0.70")
+        signals.append(
+            Signal(
+                code="SUPPLIER_PRICE_INCREASE",
+                title=f"{row['supplier']} raised prices on {row['product']}",
+                severity="critical" if row.get("severity") == "high" else "warning",
+                confidence=confidence,
+                metric="unit_cost",
+                current_value=Decimal(str(row["current_cost"])),
+                baseline_value=Decimal(str(row["previous_cost"])),
+                change=change_pct,
+                evidence={"supplier": row["supplier"], "product": row["product"], "rule": "purchase cost increase >= threshold vs prior period"},
+                recommended_next_step=f"Confirm the price increase with {row['supplier']} and check for alternative suppliers for {row['product']}.",
+            )
+        )
+    return signals

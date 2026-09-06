@@ -124,4 +124,40 @@ def generate_recommendations(context: RecommendationContext) -> list[Recommendat
                     ],
                 )
             )
+        elif signal.code == "PAYABLE_OVERDUE":
+            supplier = signal.evidence.get("supplier", "This supplier")
+            days_overdue = signal.evidence.get("days_overdue")
+            recommendations.append(
+                Recommendation(
+                    code="PAY_OVERDUE_PAYABLE",
+                    title=f"Pay {supplier}'s overdue bill",
+                    priority="high" if signal.severity == "critical" else "medium",
+                    confidence=signal.confidence,
+                    rationale=f"You have an outstanding bill to {supplier} overdue by {days_overdue} days.",
+                    evidence={"signal": signal.code, "supplier": supplier, "days_overdue": days_overdue},
+                    actions=[
+                        f"Schedule payment to {supplier} to avoid a late fee or supply disruption.",
+                        "Confirm there is no invoicing or delivery dispute blocking payment.",
+                        "Check whether cash flow supports paying this now vs. negotiating terms.",
+                    ],
+                )
+            )
+        elif signal.code == "SUPPLIER_PRICE_INCREASE":
+            supplier = signal.evidence.get("supplier", "This supplier")
+            product = signal.evidence.get("product", "this product")
+            recommendations.append(
+                Recommendation(
+                    code="REVIEW_SUPPLIER_PRICE_INCREASE",
+                    title=f"Review {supplier}'s price increase on {product}",
+                    priority="high" if signal.severity == "critical" else "medium",
+                    confidence=signal.confidence,
+                    rationale=f"{supplier}'s purchase cost for {product} has risen materially against its prior baseline.",
+                    evidence={"signal": signal.code, "supplier": supplier, "product": product, "change": str(signal.change)},
+                    actions=[
+                        f"Confirm the increase with {supplier} and ask for the reason.",
+                        f"Check whether {product}'s selling price needs adjusting to protect margin.",
+                        f"Get a quote from an alternative supplier for {product}.",
+                    ],
+                )
+            )
     return recommendations

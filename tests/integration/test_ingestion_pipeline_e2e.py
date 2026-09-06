@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from packages.data.business_brain.ingestion.orchestrator import prepare_file
 from packages.data.business_brain.ingestion.repository import persist_sales
+from packages.data.business_brain.ingestion.purchase_repository import persist_purchases
 from packages.shared.database.models import SaleLineModel, SaleModel
 
 
@@ -77,3 +78,48 @@ def test_csv_with_overdue_invoice_produces_a_real_overdue_signal(db_session, see
     from datetime import date
     signals = detect_signals(db_session, business.id, date.today())
     assert any(s.code == "RECEIVABLE_OVERDUE" for s in signals)
+
+
+def test_purchase_csv_produces_a_real_supplier_price_signal(db_session, seeder, tmp_path: Path):
+    """Same shape of proof, on the purchase side: a real purchase-register
+    CSV, through prepare_file() + persist_purchases() (the actual
+    /ingestion/import-purchases route's logic), into a firing
+    SUPPLIER_PRICE_INCREASE signal -- not a hand-built fixture."""
+    from packages.analytics.business_brain.signals.engine import detect_signals
+    from packages.shared.database.models import PurchaseModel, SupplierModel
+    from sqlalchemy import select
+
+    business = seeder.business()
+
+    # Seed the "previous period" purchase directly (outside this CSV import,
+    # same as how a real business would have an earlier month's data
+    # already in the system) so there's a baseline to compare the new
+    # import against.
+    product = seeder.product(business.id, "LED Bulb 9W")
+    supplier = seeder.supplier(business.id, "ABC Distributors")
+    seeder.purchase_with_line(business.id, product.id, supplier_id=supplier.id,
+                               days_ago=45, quantity=100, unit_cost=50)
+
+    csv_path = tmp_path / "purchase_export.csv"
+    # prepare_file needs a real parseable date -- use today's so the "recent"
+    # purchase actually lands in the current 30-day comparison window.
+    from datetime import date
+    csv_path.write_text(
+        "Bill Date,Supplier Name,Item Name,Qty,Rate,Net Amount,Invoice No\n"
+        f"{date.today().strftime('%d-%m-%Y')},ABC Distributors,LED Bulb 9W,100,70,7000,PUR-RECENT-1\n",
+        encoding="utf-8",
+    )
+
+    _, prepared_rows = prepare_file(csv_path)
+    persist_purchases(db_session, business.id, [row.values for row in prepared_rows])
+    db_session.commit()
+
+    # Confirm the purchase actually landed (not just that the signal fired,
+    # in case the signal is somehow satisfied by the seeded baseline alone).
+    purchase = db_session.execute(select(PurchaseModel).where(PurchaseModel.invoice_number == "PUR-RECENT-1")).scalar_one()
+    assert purchase.total_amount == Decimal("7000")
+
+    signals = detect_signals(db_session, business.id, date.today())
+    price_signals = [s for s in signals if s.code == "SUPPLIER_PRICE_INCREASE"]
+    assert len(price_signals) == 1
+    assert price_signals[0].evidence["supplier"] == "ABC Distributors"

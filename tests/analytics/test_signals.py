@@ -7,8 +7,10 @@ from packages.analytics.business_brain.signals.rules import (
     detect_customer_inactivity_signals,
     detect_kpi_signals,
     detect_margin_signals,
+    detect_payables_signals,
     detect_receivables_signals,
     detect_slow_moving_product_signals,
+    detect_supplier_price_signals,
 )
 from packages.analytics.business_brain.signals.trends import TrendPoint, analyze_trend
 
@@ -128,4 +130,33 @@ def test_detect_slow_moving_product_signals():
     assert signals[0].code == "PRODUCT_SLOW_MOVING"
     assert signals[0].severity == "critical"
     assert signals[0].evidence["product"] == "Winter Jacket"
+    assert signals[1].severity == "warning"
+
+
+def test_detect_payables_signals():
+    rows = [
+        {"name": "ABC Distributors", "overdue_amount": 45000.0, "days_overdue": 75},
+        {"name": "XYZ Traders", "overdue_amount": 6000.0, "days_overdue": 15},
+    ]
+    signals = detect_payables_signals(rows)
+    assert len(signals) == 2
+    assert signals[0].code == "PAYABLE_OVERDUE"
+    assert signals[0].severity == "critical"
+    assert signals[0].evidence["days_overdue"] == 75
+    assert signals[1].severity == "warning"
+
+
+def test_detect_supplier_price_signals():
+    rows = [
+        {"supplier": "ABC Distributors", "product": "LED Bulb 9W", "current_cost": 70.0,
+         "previous_cost": 50.0, "change_pct": 40.0, "severity": "high"},
+        {"supplier": "XYZ Traders", "product": "MCB 32A", "current_cost": 220.0,
+         "previous_cost": 200.0, "change_pct": 10.0, "severity": "medium"},
+    ]
+    signals = detect_supplier_price_signals(rows)
+    assert len(signals) == 2
+    assert signals[0].code == "SUPPLIER_PRICE_INCREASE"
+    assert signals[0].severity == "critical"
+    assert signals[0].evidence["supplier"] == "ABC Distributors"
+    assert signals[0].evidence["product"] == "LED Bulb 9W"
     assert signals[1].severity == "warning"
