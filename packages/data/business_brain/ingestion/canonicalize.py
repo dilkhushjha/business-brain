@@ -47,6 +47,44 @@ def canonicalize_sale_row(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def canonicalize_purchase_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Convert a prepared source row (a Tally purchase-register export) into
+    database-ready purchase fields. Mirrors canonicalize_sale_row -- reuses
+    the same generic column-mapper canonical fields (unit_price,
+    total_amount, ...) rather than introducing a parallel alias system, and
+    relabels them to their purchase-side equivalents (unit_cost, net_amount)
+    since PurchaseLineModel's columns are named differently from
+    SaleLineModel's."""
+    parsed_date = parse_date(row.get("transaction_date"))
+    if parsed_date is None:
+        raise ValueError("transaction_date could not be parsed")
+
+    quantity = parse_decimal(row.get("quantity"))
+    unit_cost = parse_decimal(row.get("unit_price")) or parse_decimal(row.get("cost_price"))
+    total_amount = parse_decimal(row.get("total_amount"))
+
+    if total_amount is None and quantity is not None and unit_cost is not None:
+        total_amount = quantity * unit_cost
+
+    if total_amount is None:
+        raise ValueError("total_amount could not be determined")
+
+    return {
+        "supplier_name": _text(row.get("supplier_name")),
+        "product_name": _text(row.get("product_name")) or "Unknown product",
+        "invoice_number": _text(row.get("invoice_number")),
+        "transaction_date": parsed_date,
+        "quantity": quantity or Decimal("1"),
+        "unit_cost": unit_cost or total_amount,
+        "total_amount": total_amount,
+        "net_amount": total_amount,
+        "discount_amount": parse_decimal(row.get("discount_amount")) or Decimal("0"),
+        "tax_amount": _sum_present(row.get("tax"), row.get("cgst"), row.get("sgst"), row.get("igst")),
+        "due_date": parse_date(row.get("due_date")),
+        "paid_amount": parse_decimal(row.get("paid_amount")) or Decimal("0"),
+    }
+
+
 def _sum_present(*values: Any) -> Decimal:
     total = Decimal("0")
     for value in values:

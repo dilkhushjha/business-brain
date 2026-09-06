@@ -20,8 +20,11 @@ from packages.shared.database.models import (
     BusinessModel,
     CustomerModel,
     ProductModel,
+    PurchaseLineModel,
+    PurchaseModel,
     SaleLineModel,
     SaleModel,
+    SupplierModel,
 )
 from packages.shared.database.session import Base
 
@@ -159,6 +162,85 @@ class Seeder:
         )
         self.sale_line(sale.id, product_id, quantity=quantity, unit_price=unit_price, cost_price=cost_price)
         return sale
+
+    def supplier(self, business_id: UUID, name: str) -> SupplierModel:
+        supplier = SupplierModel(id=uuid4(), business_id=business_id, external_id=name, name=name)
+        self.db.add(supplier)
+        self.db.commit()
+        return supplier
+
+    def purchase(
+        self,
+        business_id: UUID,
+        *,
+        supplier_id: UUID | None = None,
+        days_ago: int = 0,
+        total_amount: Decimal | float = 0,
+        paid_amount: Decimal | float = 0,
+        due_days_ago: int | None = None,
+        invoice_number: str | None = None,
+    ) -> PurchaseModel:
+        txn_date = date.today() - timedelta(days=days_ago)
+        due_date = date.today() - timedelta(days=due_days_ago) if due_days_ago is not None else None
+        purchase = PurchaseModel(
+            id=uuid4(),
+            business_id=business_id,
+            supplier_id=supplier_id,
+            transaction_date=txn_date,
+            invoice_number=invoice_number or f"PUR-{uuid4().hex[:8]}",
+            total_amount=Decimal(str(total_amount)),
+            paid_amount=Decimal(str(paid_amount)),
+            due_date=due_date,
+        )
+        self.db.add(purchase)
+        self.db.commit()
+        return purchase
+
+    def purchase_line(
+        self,
+        purchase_id: UUID,
+        product_id: UUID,
+        *,
+        quantity: Decimal | float = 1,
+        unit_cost: Decimal | float = 0,
+    ) -> PurchaseLineModel:
+        line = PurchaseLineModel(
+            id=uuid4(),
+            purchase_id=purchase_id,
+            product_id=product_id,
+            quantity=Decimal(str(quantity)),
+            unit_cost=Decimal(str(unit_cost)),
+            net_amount=Decimal(str(quantity)) * Decimal(str(unit_cost)),
+        )
+        self.db.add(line)
+        self.db.commit()
+        return line
+
+    def purchase_with_line(
+        self,
+        business_id: UUID,
+        product_id: UUID,
+        *,
+        supplier_id: UUID | None = None,
+        days_ago: int = 0,
+        quantity: Decimal | float = 1,
+        unit_cost: Decimal | float = 100,
+        due_days_ago: int | None = None,
+        paid_amount: Decimal | float = 0,
+    ) -> PurchaseModel:
+        """Convenience: one purchase with a single matching purchase line --
+        mirrors sale_with_line()."""
+        total = Decimal(str(quantity)) * Decimal(str(unit_cost))
+        purchase = self.purchase(
+            business_id,
+            supplier_id=supplier_id,
+            days_ago=days_ago,
+            total_amount=total,
+            paid_amount=paid_amount,
+            due_days_ago=due_days_ago,
+        )
+        self.purchase_line(purchase.id, product_id, quantity=quantity, unit_cost=unit_cost)
+        return purchase
 
 
 @pytest.fixture()
