@@ -18,6 +18,8 @@ from apps.api.app.api.routes.customer_concentration import router as customer_co
 from apps.api.app.api.routes.product_risk import router as product_risk_router
 from apps.api.app.api.routes.margin import router as margin_router
 from apps.api.app.api.routes.receivables import router as receivables_router
+from apps.api.app.api.routes.payables import router as payables_router
+from apps.api.app.api.routes.supplier_risk import router as supplier_risk_router
 from apps.api.app.api.routes.inventory import router as inventory_router
 from apps.api.app.api.routes.import_history import router as import_history_router
 from packages.shared.database.session import engine
@@ -84,6 +86,8 @@ for router in (
     product_risk_router,
     margin_router,
     receivables_router,
+    payables_router,
+    supplier_risk_router,
     inventory_router,
     import_history_router,
 ):
