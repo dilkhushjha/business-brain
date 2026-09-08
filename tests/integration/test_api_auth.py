@@ -23,6 +23,7 @@ from fastapi.testclient import TestClient
 from apps.api.app.api.routes.agent import router as agent_router
 from apps.api.app.api.routes.connectors import router as connectors_router
 from apps.api.app.api.routes.kpis import router as kpis_router
+from apps.api.app.api.routes.discounts import router as discounts_router
 from apps.api.app.api.routes.payables import router as payables_router
 from apps.api.app.api.routes.signals import router as signals_router
 from apps.api.app.api.routes.supplier_risk import router as supplier_risk_router
@@ -37,6 +38,7 @@ def client(db_session):
     app.include_router(signals_router, prefix="/api")
     app.include_router(agent_router, prefix="/api")
     app.include_router(payables_router, prefix="/api")
+    app.include_router(discounts_router, prefix="/api")
     app.include_router(supplier_risk_router, prefix="/api")
     app.dependency_overrides[get_db] = lambda: db_session
     return TestClient(app)
@@ -129,4 +131,12 @@ def test_supplier_risk_route_is_also_protected(client, seeder):
     assert client.get(f"/api/supplier-risk/{business.id}/concentration").status_code == 401
     token = _register(client, business.id)
     response = client.get(f"/api/supplier-risk/{business.id}/concentration", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+
+
+def test_discounts_route_is_also_protected(client, seeder):
+    business = seeder.business()
+    assert client.get(f"/api/discounts/{business.id}/anomalies").status_code == 401
+    token = _register(client, business.id)
+    response = client.get(f"/api/discounts/{business.id}/anomalies", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200

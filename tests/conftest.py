@@ -95,6 +95,7 @@ class Seeder:
         days_ago: int = 0,
         total_amount: Decimal | float = 0,
         paid_amount: Decimal | float = 0,
+        discount_amount: Decimal | float = 0,
         due_days_ago: int | None = None,
         invoice_number: str | None = None,
     ) -> SaleModel:
@@ -108,6 +109,7 @@ class Seeder:
             invoice_number=invoice_number or f"INV-{uuid4().hex[:8]}",
             total_amount=Decimal(str(total_amount)),
             paid_amount=Decimal(str(paid_amount)),
+            discount_amount=Decimal(str(discount_amount)),
             due_date=due_date,
         )
         self.db.add(sale)
