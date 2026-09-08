@@ -160,4 +160,22 @@ def generate_recommendations(context: RecommendationContext) -> list[Recommendat
                     ],
                 )
             )
+        elif signal.code == "DISCOUNT_ANOMALY":
+            customer = signal.evidence.get("customer", "a customer")
+            invoice = signal.evidence.get("invoice_number", "the invoice")
+            recommendations.append(
+                Recommendation(
+                    code="VERIFY_DISCOUNT_ANOMALY",
+                    title=f"Verify the discount given to {customer}",
+                    priority="high" if signal.severity == "critical" else "medium",
+                    confidence=signal.confidence,
+                    rationale=f"{customer}'s discount rate on invoice {invoice} is well above this business's recent average.",
+                    evidence={"signal": signal.code, "customer": customer, "invoice_number": invoice},
+                    actions=[
+                        f"Confirm invoice {invoice} was approved at that discount level.",
+                        "Check whether this reflects a policy exception, a data entry error, or unauthorized discounting.",
+                        "Consider whether a standing discount policy needs to be written down for this customer or product.",
+                    ],
+                )
+            )
     return recommendations

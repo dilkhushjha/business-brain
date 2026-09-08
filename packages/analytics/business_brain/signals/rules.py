@@ -231,3 +231,33 @@ def detect_supplier_price_signals(supplier_price_increases: list[dict]) -> list[
             )
         )
     return signals
+
+
+def detect_discount_anomaly_signals(discount_anomalies: list[dict]) -> list[Signal]:
+    """Convert discount-anomaly rows (see metrics.discounts.discount_anomalies)
+    into evidence-backed signals -- flags an invoice whose discount rate is
+    a material outlier vs. this business's own recent average, not a fixed
+    external threshold, since normal discounting varies a lot by trade."""
+    signals: list[Signal] = []
+    for row in discount_anomalies:
+        confidence = Decimal("0.80") if row.get("severity") == "high" else Decimal("0.65")
+        customer = row.get("customer") or "an unnamed customer"
+        signals.append(
+            Signal(
+                code="DISCOUNT_ANOMALY",
+                title=f"Unusually large discount given to {customer}",
+                severity="critical" if row.get("severity") == "high" else "warning",
+                confidence=confidence,
+                metric="discount_pct",
+                current_value=Decimal(str(row["discount_pct"])),
+                baseline_value=Decimal(str(row["baseline_discount_pct"])),
+                change=None,
+                evidence={
+                    "customer": customer, "invoice_number": row.get("invoice_number"),
+                    "discount_amount": row.get("discount_amount"),
+                    "rule": "discount rate >= threshold multiple of recent average",
+                },
+                recommended_next_step=f"Confirm the discount on invoice {row.get('invoice_number', 'in question')} to {customer} was intentional.",
+            )
+        )
+    return signals

@@ -227,3 +227,32 @@ def test_supplier_price_increase_produces_review_recommendation():
 def test_mild_supplier_price_increase_is_medium_priority():
     recs = generate_recommendations(RecommendationContext(signals=[_supplier_price_signal("warning")], drivers=[]))
     assert recs[0].priority == "medium"
+
+
+def _discount_anomaly_signal(severity: str) -> Signal:
+    return Signal(
+        code="DISCOUNT_ANOMALY",
+        title="Unusually large discount given to Big Discount Customer",
+        severity=severity,
+        confidence=Decimal("0.80"),
+        metric="discount_pct",
+        current_value=Decimal("40"),
+        baseline_value=Decimal("5"),
+        change=None,
+        evidence={"customer": "Big Discount Customer", "invoice_number": "INV-1", "discount_amount": 400.0},
+        recommended_next_step="Confirm the discount on invoice INV-1 to Big Discount Customer was intentional.",
+    )
+
+
+def test_discount_anomaly_produces_verification_recommendation():
+    recs = generate_recommendations(RecommendationContext(signals=[_discount_anomaly_signal("critical")], drivers=[]))
+    assert len(recs) == 1
+    assert recs[0].code == "VERIFY_DISCOUNT_ANOMALY"
+    assert recs[0].priority == "high"
+    assert "Big Discount Customer" in recs[0].title
+    assert recs[0].evidence["invoice_number"] == "INV-1"
+
+
+def test_mild_discount_anomaly_is_medium_priority():
+    recs = generate_recommendations(RecommendationContext(signals=[_discount_anomaly_signal("warning")], drivers=[]))
+    assert recs[0].priority == "medium"

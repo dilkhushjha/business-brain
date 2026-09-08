@@ -47,6 +47,16 @@ def test_margin_analysis_cites_worst_product_signal():
     assert "Clearance Item" in answer
 
 
+def test_margin_analysis_mentions_discount_anomaly():
+    context = {
+        "evidence": [{"metric": "gross_margin_pct", "value": "12.5", "metadata": {"revenue": 100000, "cost": 87500}}],
+        "signals": [{"code": "DISCOUNT_ANOMALY", "evidence": {"customer": "Big Discount Customer"}}],
+    }
+    answer, confidence = render_grounded_response("Why is my margin low?", "margin_analysis", context)
+    assert confidence == "grounded"
+    assert "Big Discount Customer" in answer
+
+
 def test_margin_analysis_without_evidence_is_not_grounded():
     answer, confidence = render_grounded_response("Why is my margin low?", "margin_analysis", {})
     assert confidence == "insufficient_evidence"

@@ -14,9 +14,12 @@ customer inactivity (CUSTOMER_INACTIVE), margin deterioration
 (PRODUCT_MARGIN_DETERIORATION), receivable deterioration
 (RECEIVABLE_OVERDUE), inventory slow-moving (PRODUCT_SLOW_MOVING, approximated
 from a material drop in sales velocity), payable/payment deterioration
-(PAYABLE_OVERDUE, the payables-side mirror of receivable deterioration), and
+(PAYABLE_OVERDUE, the payables-side mirror of receivable deterioration),
 supplier price increase (SUPPLIER_PRICE_INCREASE, quantity-weighted average
-purchase cost per product/supplier vs. the prior period).
+purchase cost per product/supplier vs. the prior period), and discount
+anomaly (DISCOUNT_ANOMALY, an invoice's discount rate vs. this business's
+own recent average -- not a fixed external threshold, since normal
+discounting varies a lot by trade).
 
 Purchase-register ingestion now exists end to end
 (`/ingestion/import-purchases/{business_id}` ->
@@ -36,13 +39,15 @@ Not yet implemented:
 - **Expense spike** -- ExpenseModel exists in the schema but has no
   ingestion source type (no "expense register" file format is parsed
   anywhere) and no query/signal logic.
-- **Discount anomaly** -- discount data is preserved during ingestion on
-  both the sales and purchase sides now, but detection logic (what counts
-  as an anomalous discount, compared against what baseline) has not been
-  written.
 - **Inventory excess / stockout risk / demand spike** -- InventorySnapshot
   and InventoryMovement models exist, but nothing populates them yet (no
   ingestion path writes to either table) and no query/signal logic reads
   them. PRODUCT_SLOW_MOVING is a sales-velocity proxy for "slow-moving",
   not a real stock-on-hand calculation -- true inventory signals need
   actual snapshot/movement data flowing in first.
+
+9 of 14 catalogued signal types are now wired (up from 5). The two
+remaining gaps (expense spike, true inventory signals) are both blocked on
+a missing ingestion source type, not on detection logic -- the same shape
+of gap discount anomaly was in before this pass, and purchase/supplier
+signals were in the pass before that.

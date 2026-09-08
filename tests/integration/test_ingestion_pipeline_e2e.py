@@ -123,3 +123,38 @@ def test_purchase_csv_produces_a_real_supplier_price_signal(db_session, seeder, 
     price_signals = [s for s in signals if s.code == "SUPPLIER_PRICE_INCREASE"]
     assert len(price_signals) == 1
     assert price_signals[0].evidence["supplier"] == "ABC Distributors"
+
+
+def test_csv_with_outlier_discount_produces_a_real_discount_anomaly_signal(db_session, seeder, tmp_path: Path):
+    """A real CSV file with a large discount column, through the real
+    ingestion path, into a firing DISCOUNT_ANOMALY signal -- same proof
+    pattern as the receivables/supplier-price end-to-end tests: not just
+    that discount_amount lands in the database, but that the whole chain
+    from file to signal actually works."""
+    from datetime import date
+
+    from packages.analytics.business_brain.signals.engine import detect_signals
+
+    business = seeder.business()
+    customer = seeder.customer(business.id, "Regular Buyer")
+    outlier = seeder.customer(business.id, "Big Discount Customer")
+
+    # Baseline: a consistent ~5% discount rate across several invoices.
+    for _ in range(4):
+        seeder.sale(business.id, customer_id=customer.id, days_ago=10,
+                    total_amount=Decimal("950"), discount_amount=Decimal("50"))
+
+    csv_path = tmp_path / "outlier_sale.csv"
+    csv_path.write_text(
+        "Bill Date,Party Name,Item Name,Qty,Rate,Net Amount,Discount Amount,Invoice No\n"
+        f"{date.today().strftime('%d-%m-%Y')},Big Discount Customer,Widget,1,600,600,400,INV-OUTLIER-1\n",
+        encoding="utf-8",
+    )
+    _, prepared_rows = prepare_file(csv_path)
+    persist_sales(db_session, business.id, [row.values for row in prepared_rows])
+    db_session.commit()
+
+    signals = detect_signals(db_session, business.id, date.today())
+    discount_signals = [s for s in signals if s.code == "DISCOUNT_ANOMALY"]
+    assert len(discount_signals) == 1
+    assert discount_signals[0].evidence["customer"] == "Big Discount Customer"

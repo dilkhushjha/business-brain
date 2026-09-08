@@ -67,6 +67,10 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
             if worst:
                 product = worst[0].get("evidence", {}).get("product", "one product")
                 answer += f" {product} in particular is selling at or below an acceptable margin."
+            discount_issues = _signals_with_codes(signals, {"DISCOUNT_ANOMALY"})
+            if discount_issues:
+                customer = discount_issues[0].get("evidence", {}).get("customer", "one customer")
+                answer += f" Also worth checking: an unusually large discount was given to {customer}."
         else:
             answer = "I don't have enough cost data to assess margin yet."
 

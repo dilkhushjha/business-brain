@@ -100,6 +100,23 @@ def test_detect_signals_surfaces_supplier_price_increase_from_real_data(db_sessi
     assert price_signals[0].evidence["product"] == "LED Bulb 9W"
 
 
+def test_detect_signals_surfaces_discount_anomaly_from_real_data(db_session, seeder):
+    business = seeder.business()
+    customer = seeder.customer(business.id, "Regular Buyer")
+    outlier = seeder.customer(business.id, "Big Discount Customer")
+
+    for _ in range(4):
+        seeder.sale(business.id, customer_id=customer.id, days_ago=10,
+                    total_amount=Decimal("950"), discount_amount=Decimal("50"))
+    seeder.sale(business.id, customer_id=outlier.id, days_ago=10,
+                total_amount=Decimal("600"), discount_amount=Decimal("400"))
+
+    signals = detect_signals(db_session, business.id, date.today())
+    discount_signals = [s for s in signals if s.code == "DISCOUNT_ANOMALY"]
+    assert len(discount_signals) == 1
+    assert discount_signals[0].evidence["customer"] == "Big Discount Customer"
+
+
 def test_detect_signals_returns_empty_for_healthy_business(db_session, seeder):
     business = seeder.business()
     product = seeder.product(business.id, "Steady Widget")

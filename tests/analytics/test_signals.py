@@ -5,6 +5,7 @@ from packages.analytics.business_brain.signals.anomalies import detect_deviation
 from packages.analytics.business_brain.signals.rules import (
     detect_customer_decline_signals,
     detect_customer_inactivity_signals,
+    detect_discount_anomaly_signals,
     detect_kpi_signals,
     detect_margin_signals,
     detect_payables_signals,
@@ -159,4 +160,19 @@ def test_detect_supplier_price_signals():
     assert signals[0].severity == "critical"
     assert signals[0].evidence["supplier"] == "ABC Distributors"
     assert signals[0].evidence["product"] == "LED Bulb 9W"
+    assert signals[1].severity == "warning"
+
+
+def test_detect_discount_anomaly_signals():
+    rows = [
+        {"invoice_number": "INV-1", "customer": "Big Discount Customer", "discount_pct": 40.0,
+         "baseline_discount_pct": 5.0, "discount_amount": 400.0, "severity": "high"},
+        {"invoice_number": "INV-2", "customer": "Mild Outlier Co", "discount_pct": 15.0,
+         "baseline_discount_pct": 5.0, "discount_amount": 90.0, "severity": "medium"},
+    ]
+    signals = detect_discount_anomaly_signals(rows)
+    assert len(signals) == 2
+    assert signals[0].code == "DISCOUNT_ANOMALY"
+    assert signals[0].severity == "critical"
+    assert signals[0].evidence["customer"] == "Big Discount Customer"
     assert signals[1].severity == "warning"
