@@ -6,167 +6,81 @@ import styles from "./DashboardReasoningOverlay.module.css";
 type Reasoning = {
   title: string;
   value: string;
-  summary: string;
-  details: string[];
+  change?: string;
+  context: string;
+  why: string;
+  implication: string;
 };
 
-function buildReasoning(target: HTMLElement): Reasoning {
-  const label = target.querySelector(".metricLabel")?.textContent?.trim() ||
-    target.querySelector("h3")?.textContent?.trim() ||
-    target.querySelector(".signalTop b")?.textContent?.trim() ||
-    target.querySelector("b")?.textContent?.trim() || "Business insight";
-  const value = target.querySelector("strong")?.textContent?.trim() || "";
-  const note = target.querySelector(".metricNote")?.textContent?.trim() || "";
-  const change = target.querySelector(".delta")?.textContent?.trim() || "";
-  const paragraph = target.querySelector("p")?.textContent?.trim() || "";
+function readMetric(element: HTMLElement): Reasoning {
+  const label = element.querySelector(".metricLabel")?.textContent?.trim() || "Business metric";
+  const value = element.querySelector("strong")?.textContent?.trim() || "—";
+  const change = element.querySelector(".delta")?.textContent?.trim() || undefined;
+  const note = element.querySelector(".metricNote")?.textContent?.trim() || "current reporting data";
+  const key = label.toLowerCase();
 
-  if (target.classList.contains("healthPanel")) {
-    return {
-      title: "Business health",
-      value: target.querySelector("h3")?.textContent?.trim() || "Current status",
-      summary: target.querySelector("p")?.textContent?.trim() || "Health is based on the signals currently detected in the business data.",
-      details: [
-        "Priority concerns are counted from high-severity business signals.",
-        "Positive signals are considered alongside warning signals to avoid a one-sided health score.",
-        "This is a decision-support indicator, not a financial or accounting statement.",
-      ],
-    };
-  }
+  if (key === "total revenue") return { title: label, value, context: "All imported sales data", why: "This is the cumulative revenue represented by the sales records currently stored for this business.", implication: "Use it as a scale indicator. For performance movement, use Current Month Revenue rather than this all-time figure." };
+  if (key === "total invoices") return { title: label, value, context: "All imported sales data", why: "Invoices are represented at invoice level, so repeated exports do not simply create another copy of the same invoice.", implication: "This helps you understand transaction volume and gives context to average invoice value." };
+  if (key === "current month revenue") return { title: label, value, change, context: "Compared with the previous month", why: change ? `Revenue is ${change} versus the previous month. The movement is a signal to investigate, not an explanation by itself.` : "The current reporting period is being compared with the previous comparable period.", implication: "If revenue is falling, drill into the customers and products contributing most to the change before deciding what to do." };
+  if (key === "average invoice value") return { title: label, value, change, context: "Current month", why: change ? `Average invoice value is ${change} versus the comparable period.` : "This represents the typical value of an invoice in the current month.", implication: "A change can come from order size, pricing, product mix, or customer mix. It is most useful when read alongside revenue and invoice count." };
 
-  if (label.toLowerCase().includes("current month revenue")) {
-    return {
-      title: label,
-      value,
-      summary: change ? `The current-month revenue movement is ${change} ${note ? `(${note})` : ""}.` : "This card shows revenue for the current reporting period.",
-      details: [
-        "The value comes from the canonical sales data used by Business Brain.",
-        "The change compares the current period with the previous comparable period.",
-        "Use the Sales Performance section below to investigate which customers or products contributed to the movement.",
-      ],
-    };
-  }
+  return { title: label, value, change, context: note, why: "This metric is derived from the business data available to Business Brain.", implication: "Open the relevant intelligence section to investigate the records behind this number." };
+}
 
-  if (label.toLowerCase().includes("average invoice")) {
-    return {
-      title: label,
-      value,
-      summary: change ? `Average invoice value moved ${change} ${note ? `in the ${note}` : "versus the comparable period"}.` : "This is the average value of invoices in the selected period.",
-      details: [
-        "Calculated from invoice-level sales totals rather than an LLM estimate.",
-        "A falling average invoice value can indicate smaller baskets, lower pricing, or a change in customer mix.",
-        "A rising value can indicate larger baskets, pricing changes, or a shift toward higher-value customers.",
-      ],
-    };
-  }
-
-  if (label.toLowerCase().includes("total revenue")) {
-    return {
-      title: label,
-      value,
-      summary: "This is the cumulative revenue represented by the imported business data.",
-      details: [
-        "The card uses the canonical sales records stored for this business.",
-        "It is intentionally labelled as all imported data, so it should not be read as a monthly KPI.",
-        "Use Current Month Revenue for period-over-period movement.",
-      ],
-    };
-  }
-
-  if (label.toLowerCase().includes("total invoices")) {
-    return {
-      title: label,
-      value,
-      summary: "This is the number of invoice-level sales represented by the imported data.",
-      details: [
-        "Repeated exports are reconciled at invoice level to avoid counting the same invoice twice.",
-        "The value reflects imported canonical sales records for the business.",
-      ],
-    };
-  }
-
-  return {
-    title: label,
-    value,
-    summary: paragraph || "This card summarizes a business signal or metric derived from the data available to Business Brain.",
-    details: [
-      note ? `Reporting context: ${note}.` : "The value is derived from canonical business data.",
-      change ? `Observed movement: ${change}.` : "No period-over-period movement is shown on this card.",
-      "Open the relevant section below to investigate the underlying customers, products, transactions, or signals.",
-    ],
-  };
+function readHealth(element: HTMLElement): Reasoning {
+  const status = element.querySelector("h3")?.textContent?.trim() || "Business health";
+  const description = element.querySelector("p")?.textContent?.trim() || "";
+  return { title: "Business health", value: status, context: "Current detected signals", why: description || "The health verdict summarizes the warning and positive signals currently visible in the business data.", implication: "Treat this as a prioritization aid. The signals below are the evidence you should investigate before taking action." };
 }
 
 export default function DashboardReasoningOverlay() {
   const [reasoning, setReasoning] = useState<Reasoning | null>(null);
 
   useEffect(() => {
-    const selectors = [
-      ".metric",
-      ".healthPanel",
-      ".signalCard .signal",
-      ".actionCard .signal",
-      ".anomalyCard .anomaly",
-    ];
-
-    const elements = Array.from(document.querySelectorAll<HTMLElement>(selectors.join(",")));
-    const cleanups = elements.map((element) => {
+    const open = (event: MouseEvent) => {
+      const target = (event.target as HTMLElement).closest<HTMLElement>(".metric, .healthPanel");
+      if (!target) return;
+      setReasoning(target.classList.contains("metric") ? readMetric(target) : readHealth(target));
+    };
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setReasoning(null);
+      if ((event.key === "Enter" || event.key === " ") && document.activeElement instanceof HTMLElement) {
+        const target = document.activeElement.closest<HTMLElement>(".metric, .healthPanel");
+        if (!target) return;
+        event.preventDefault();
+        setReasoning(target.classList.contains("metric") ? readMetric(target) : readHealth(target));
+      }
+    };
+    const markInteractive = () => document.querySelectorAll<HTMLElement>(".metric, .healthPanel").forEach((element) => {
       element.setAttribute("role", "button");
       element.setAttribute("tabindex", "0");
-      element.setAttribute("aria-label", `View reasoning for ${element.querySelector(".metricLabel")?.textContent?.trim() || element.querySelector("h3")?.textContent?.trim() || "this business insight"}`);
-      element.style.cursor = "pointer";
-      element.style.transition = "box-shadow .15s ease, transform .15s ease";
-
-      const open = () => setReasoning(buildReasoning(element));
-      const keydown = (event: KeyboardEvent) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          open();
-        }
-      };
-      const enter = () => {
-        element.style.transform = "translateY(-1px)";
-        element.style.boxShadow = "0 8px 24px rgba(16,24,40,.09)";
-      };
-      const leave = () => {
-        element.style.transform = "";
-        element.style.boxShadow = "";
-      };
-      element.addEventListener("click", open);
-      element.addEventListener("keydown", keydown);
-      element.addEventListener("mouseenter", enter);
-      element.addEventListener("mouseleave", leave);
-      return () => {
-        element.removeEventListener("click", open);
-        element.removeEventListener("keydown", keydown);
-        element.removeEventListener("mouseenter", enter);
-        element.removeEventListener("mouseleave", leave);
-        element.style.cursor = "";
-        element.style.transition = "";
-        element.style.transform = "";
-        element.style.boxShadow = "";
-      };
+      element.setAttribute("aria-label", `View reasoning for ${element.querySelector(".metricLabel")?.textContent?.trim() || element.querySelector("h3")?.textContent?.trim() || "this metric"}`);
     });
 
-    return () => cleanups.forEach((cleanup) => cleanup());
-  });
+    document.addEventListener("click", open);
+    document.addEventListener("keydown", keydown);
+    markInteractive();
+    const observer = new MutationObserver(markInteractive);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => { document.removeEventListener("click", open); document.removeEventListener("keydown", keydown); observer.disconnect(); };
+  }, []);
 
   if (!reasoning) return null;
 
   return (
-    <div className={styles.backdrop} role="presentation" onMouseDown={() => setReasoning(null)}>
+    <div className={styles.backdrop} onMouseDown={() => setReasoning(null)}>
       <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="reasoning-title" onMouseDown={(event) => event.stopPropagation()}>
-        <button className={styles.close} type="button" onClick={() => setReasoning(null)} aria-label="Close reasoning">×</button>
-        <span className={styles.eyebrow}>BUSINESS BRAIN · REASONING</span>
-        <h2 id="reasoning-title">{reasoning.title}</h2>
-        {reasoning.value && <div className={styles.value}>{reasoning.value}</div>}
-        <p className={styles.summary}>{reasoning.summary}</p>
-        <div className={styles.section}>
-          <span className={styles.sectionLabel}>HOW TO READ THIS</span>
-          <ul>
-            {reasoning.details.map((detail) => <li key={detail}>{detail}</li>)}
-          </ul>
+        <button className={styles.close} type="button" onClick={() => setReasoning(null)} aria-label="Close">×</button>
+        <div className={styles.header}>
+          <span className={styles.eyebrow}>WHY THIS NUMBER?</span>
+          <h2 id="reasoning-title">{reasoning.title}</h2>
+          <div className={styles.value}>{reasoning.value}</div>
+          {reasoning.change && <span className={styles.change}>{reasoning.change}</span>}
         </div>
-        <div className={styles.footer}>Numbers come from the business data layer; reasoning is presented as decision support, not as a replacement for accounting records.</div>
+        <div className={styles.context}>{reasoning.context}</div>
+        <div className={styles.reasonBlock}><span>WHAT IT TELLS YOU</span><p>{reasoning.why}</p></div>
+        <div className={styles.reasonBlock}><span>WHY IT MATTERS</span><p>{reasoning.implication}</p></div>
+        <div className={styles.footer}>Business Brain uses the underlying business data as the source of truth. This explanation helps interpret the metric; it does not invent a cause that the data has not established.</div>
       </section>
     </div>
   );
