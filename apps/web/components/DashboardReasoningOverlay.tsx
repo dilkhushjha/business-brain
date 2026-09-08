@@ -54,6 +54,7 @@ export default function DashboardReasoningOverlay() {
     const markInteractive = () => document.querySelectorAll<HTMLElement>(".metric, .healthPanel").forEach((element) => {
       element.setAttribute("role", "button");
       element.setAttribute("tabindex", "0");
+      element.style.cursor = "pointer";
       element.setAttribute("aria-label", `View reasoning for ${element.querySelector(".metricLabel")?.textContent?.trim() || element.querySelector("h3")?.textContent?.trim() || "this metric"}`);
     });
 
