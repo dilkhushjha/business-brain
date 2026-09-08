@@ -113,6 +113,8 @@ export default function DashboardReasoningOverlay() {
       element.setAttribute("role", "button");
       element.setAttribute("tabindex", "0");
       element.setAttribute("aria-label", `View reasoning for ${element.querySelector(".metricLabel")?.textContent?.trim() || element.querySelector("h3")?.textContent?.trim() || "this business insight"}`);
+      element.style.cursor = "pointer";
+      element.style.transition = "box-shadow .15s ease, transform .15s ease";
 
       const open = () => setReasoning(buildReasoning(element));
       const keydown = (event: KeyboardEvent) => {
@@ -121,11 +123,27 @@ export default function DashboardReasoningOverlay() {
           open();
         }
       };
+      const enter = () => {
+        element.style.transform = "translateY(-1px)";
+        element.style.boxShadow = "0 8px 24px rgba(16,24,40,.09)";
+      };
+      const leave = () => {
+        element.style.transform = "";
+        element.style.boxShadow = "";
+      };
       element.addEventListener("click", open);
       element.addEventListener("keydown", keydown);
+      element.addEventListener("mouseenter", enter);
+      element.addEventListener("mouseleave", leave);
       return () => {
         element.removeEventListener("click", open);
         element.removeEventListener("keydown", keydown);
+        element.removeEventListener("mouseenter", enter);
+        element.removeEventListener("mouseleave", leave);
+        element.style.cursor = "";
+        element.style.transition = "";
+        element.style.transform = "";
+        element.style.boxShadow = "";
       };
     });
 
