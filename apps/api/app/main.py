@@ -21,6 +21,7 @@ from apps.api.app.api.routes.receivables import router as receivables_router
 from apps.api.app.api.routes.payables import router as payables_router
 from apps.api.app.api.routes.supplier_risk import router as supplier_risk_router
 from apps.api.app.api.routes.discounts import router as discounts_router
+from apps.api.app.api.routes.expenses import router as expenses_router
 from apps.api.app.api.routes.inventory import router as inventory_router
 from apps.api.app.api.routes.import_history import router as import_history_router
 from packages.shared.database.session import engine
@@ -90,6 +91,7 @@ for router in (
     payables_router,
     supplier_risk_router,
     discounts_router,
+    expenses_router,
     inventory_router,
     import_history_router,
 ):

@@ -36,13 +36,6 @@ def _adapter(path: Path):
 
 def prepare_file(path: str | Path, *, source_name: str | None = None) -> tuple[IngestionResult, list[PreparedRow]]:
     """Read, Tally-clean, map and validate a business export without DB writes."""
-    path = Path(path)
-    rows = normalize_tally_rows(_adapter(path).ingest(path))
-    mappings = suggest_mapping(list(rows[0].keys()) if rows else [])
-    mapping = {item.source_column: item.canonical_field for item in mappings}
-
-    prepared: list[PreparedRow] = []
-    issues: list[IngestionIssue] = []
     rules = [
         FieldRule("invoice_number", required=True),
         FieldRule("transaction_date", required=True),
@@ -50,6 +43,33 @@ def prepare_file(path: str | Path, *, source_name: str | None = None) -> tuple[I
         FieldRule("unit_price", kind="number"),
         FieldRule("total_amount", kind="number"),
     ]
+    return _prepare(path, rules, source_name=source_name)
+
+
+def prepare_expense_file(path: str | Path, *, source_name: str | None = None) -> tuple[IngestionResult, list[PreparedRow]]:
+    """Same read/clean/map/validate pipeline as prepare_file(), with a
+    different required-field set: an expense/payment voucher register is
+    structurally simpler than a sales or purchase register (one row per
+    voucher, no line items, no customer/product concept), and commonly has
+    no distinct voucher-number column at all -- so unlike prepare_file(),
+    invoice_number is NOT required here. category is generic text (no
+    "kind" check needed); total_amount is required and must be numeric,
+    since an expense with no amount isn't a usable row."""
+    rules = [
+        FieldRule("transaction_date", required=True),
+        FieldRule("total_amount", required=True, kind="number"),
+    ]
+    return _prepare(path, rules, source_name=source_name)
+
+
+def _prepare(path: str | Path, rules: list[FieldRule], *, source_name: str | None = None) -> tuple[IngestionResult, list[PreparedRow]]:
+    path = Path(path)
+    rows = normalize_tally_rows(_adapter(path).ingest(path))
+    mappings = suggest_mapping(list(rows[0].keys()) if rows else [])
+    mapping = {item.source_column: item.canonical_field for item in mappings}
+
+    prepared: list[PreparedRow] = []
+    issues: list[IngestionIssue] = []
 
     for row_number, row in enumerate(rows, start=2):
         canonical = {mapping[key]: value for key, value in row.items() if key in mapping}

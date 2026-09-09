@@ -10,10 +10,11 @@ from sqlalchemy.orm import Session
 
 from packages.data.business_brain.ingestion.column_mapping import suggest_mapping
 from packages.data.business_brain.ingestion.duplicate import already_imported
-from packages.data.business_brain.ingestion.orchestrator import prepare_file
+from packages.data.business_brain.ingestion.orchestrator import prepare_expense_file, prepare_file
 from packages.data.business_brain.ingestion.persistence import persist_ingestion_run
 from packages.data.business_brain.ingestion.repository import persist_sales
 from packages.data.business_brain.ingestion.purchase_repository import persist_purchases
+from packages.data.business_brain.ingestion.expense_repository import persist_expenses
 from apps.api.app.api.connector_auth import require_business_access
 from packages.shared.database.session import get_db
 
@@ -31,7 +32,7 @@ def _validate_filename(filename: str | None) -> str:
     return suffix
 
 
-def _prepare_upload(file: UploadFile, business_id: UUID, db: Session):
+def _prepare_upload(file: UploadFile, business_id: UUID, db: Session, prepare_fn=prepare_file):
     suffix = _validate_filename(file.filename)
     fd, temp_name = mkstemp(suffix=suffix)
     path = Path(temp_name)
@@ -45,7 +46,7 @@ def _prepare_upload(file: UploadFile, business_id: UUID, db: Session):
         if already_imported(db, business_id, path):
             raise HTTPException(409, "This source file was already imported")
 
-        result, prepared = prepare_file(path, source_name=file.filename)
+        result, prepared = prepare_fn(path, source_name=file.filename)
         return result, prepared, temp_name
     except Exception:
         path.unlink(missing_ok=True)
@@ -186,6 +187,67 @@ def record_purchase_ingestion_run(
     except Exception as exc:
         db.rollback()
         logger.exception("Purchase ingestion failure request=%s business=%s", request_id, business_id)
+        detail = str(exc).strip() or "The database operation returned no diagnostic message. Check the backend traceback."
+        raise HTTPException(
+            500,
+            detail=f"Import failed; no partial data was committed. {type(exc).__name__}: {detail} Request: {request_id}",
+        ) from exc
+    finally:
+        Path(temp_path).unlink(missing_ok=True)
+
+
+@router.post("/import-expenses/{business_id}")
+def record_expense_ingestion_run(
+    business_id: UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _auth: dict = Depends(require_business_access),
+):
+    """Mirrors record_ingestion_run()/record_purchase_ingestion_run(), but
+    for an expense/payment voucher register: uses prepare_expense_file()
+    (looser validation -- no invoice_number requirement, see orchestrator.py)
+    and persist_expenses() on the write side."""
+    request_id = str(uuid4())
+    result, prepared, temp_path = _prepare_upload(file, business_id, db, prepare_fn=prepare_expense_file)
+    try:
+        if result.rows_rejected:
+            raise HTTPException(
+                422,
+                detail=f"Import blocked: {result.rows_rejected} row(s) failed validation",
+            )
+
+        logger.info(
+            "Starting expense ingestion request=%s business=%s source=%s rows=%s",
+            request_id, business_id, result.source.name, result.rows_accepted,
+        )
+        run = persist_ingestion_run(db, business_id, result)
+        created_expenses = persist_expenses(db, business_id, [row.values for row in prepared])
+        db.commit()
+        db.refresh(run)
+        return {
+            "run_id": str(run.id),
+            "status": run.status,
+            "source": result.source.name,
+            "checksum": result.source.checksum,
+            "rows_read": result.rows_read,
+            "rows_accepted": result.rows_accepted,
+            "rows_rejected": result.rows_rejected,
+            "expenses_created": created_expenses,
+            "request_id": request_id,
+        }
+    except HTTPException:
+        db.rollback()
+        raise
+    except IntegrityError as exc:
+        db.rollback()
+        logger.exception("Expense ingestion integrity failure request=%s business=%s", request_id, business_id)
+        raise HTTPException(
+            409,
+            detail=f"Import could not be saved because the source or one of its business records already exists. No partial data was committed. Request: {request_id}",
+        ) from exc
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Expense ingestion failure request=%s business=%s", request_id, business_id)
         detail = str(exc).strip() or "The database operation returned no diagnostic message. Check the backend traceback."
         raise HTTPException(
             500,

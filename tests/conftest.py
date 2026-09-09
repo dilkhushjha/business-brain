@@ -19,6 +19,7 @@ from sqlalchemy.pool import StaticPool
 from packages.shared.database.models import (
     BusinessModel,
     CustomerModel,
+    ExpenseModel,
     ProductModel,
     PurchaseLineModel,
     PurchaseModel,
@@ -243,6 +244,29 @@ class Seeder:
         )
         self.purchase_line(purchase.id, product_id, quantity=quantity, unit_cost=unit_cost)
         return purchase
+
+    def expense(
+        self,
+        business_id: UUID,
+        *,
+        days_ago: int = 0,
+        category: str = "General",
+        amount: Decimal | float = 0,
+        description: str | None = None,
+        external_id: str | None = None,
+    ) -> ExpenseModel:
+        expense = ExpenseModel(
+            id=uuid4(),
+            business_id=business_id,
+            external_id=external_id,
+            expense_date=date.today() - timedelta(days=days_ago),
+            category=category,
+            amount=Decimal(str(amount)),
+            description=description,
+        )
+        self.db.add(expense)
+        self.db.commit()
+        return expense
 
 
 @pytest.fixture()

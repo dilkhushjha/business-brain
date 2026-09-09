@@ -28,6 +28,8 @@ ALIASES: dict[str, tuple[str, ...]] = {
     "taxable_value": ("taxable value", "taxable amount", "taxable"),
     "voucher_type": ("voucher type", "transaction type", "type"),
     "supplier_name": ("supplier", "supplier name", "vendor", "vendor name", "party supplier"),
+    "category": ("category", "expense head", "expense category", "ledger", "ledger name", "account", "particulars"),
+    "description": ("description", "narration", "remarks", "notes"),
 }
 
 

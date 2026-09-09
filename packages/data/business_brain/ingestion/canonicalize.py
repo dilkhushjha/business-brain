@@ -85,6 +85,32 @@ def canonicalize_purchase_row(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def canonicalize_expense_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Convert a prepared source row (a Tally expense/payment voucher
+    register export) into database-ready expense fields. Unlike sales and
+    purchases, an expense register is typically one row per voucher, no
+    line items -- so this is simpler than canonicalize_sale_row/
+    canonicalize_purchase_row, not a variant of them. Reuses the same
+    generic column-mapper canonical fields (total_amount, transaction_date,
+    invoice_number) relabeled to their expense-side meaning, rather than a
+    parallel alias system."""
+    parsed_date = parse_date(row.get("transaction_date"))
+    if parsed_date is None:
+        raise ValueError("expense_date could not be parsed")
+
+    amount = parse_decimal(row.get("total_amount"))
+    if amount is None or amount <= 0:
+        raise ValueError("amount could not be determined or is not positive")
+
+    return {
+        "expense_date": parsed_date,
+        "category": _text(row.get("category")) or "Uncategorized",
+        "amount": amount,
+        "description": _text(row.get("description")),
+        "external_id": _text(row.get("invoice_number")),
+    }
+
+
 def _sum_present(*values: Any) -> Decimal:
     total = Decimal("0")
     for value in values:
