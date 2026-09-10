@@ -24,16 +24,15 @@ export default function MarginIntelligence({ onExplain }: { onExplain?: (reasoni
     value: s.gross_margin_pct == null ? "—" : `${s.gross_margin_pct}%`,
     change: "Last 30 days",
     context: "Gross margin is calculated from recorded revenue and cost for the current 30-day window.",
-    whatItTellsYou: "This shows how much of recent revenue remains after recorded product cost. Low-margin products can make revenue growth less valuable.",
+    why: "This shows how much of recent revenue remains after recorded product cost. Low-margin products can make revenue growth less valuable.",
+    implication: p.length ? `${p.length} products are below the 10% margin review threshold and may be diluting profitability.` : "Healthy margin visibility helps distinguish revenue growth from profitable growth.",
     evidence: [
       { label: "Revenue", value: money(s.revenue) },
       { label: "Recorded cost", value: money(s.cost) },
       { label: "Gross profit", value: money(s.gross_profit) },
       ...(p.length ? [{ label: "Low-margin products", value: `${p.length}`, detail: "Below the 10% review threshold" }] : []),
     ],
-    whyItMatters: p.length ? `${p.length} products are below the 10% margin review threshold and may be diluting profitability.` : "Healthy margin visibility helps distinguish revenue growth from profitable growth.",
   };
-
   const explain = () => onExplain?.(reasoning);
   return (
     <section className={`card ${onExplain ? "reasoningClickable" : ""}`} onClick={onExplain ? explain : undefined} onKeyDown={onExplain ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); explain(); } } : undefined} role={onExplain ? "button" : undefined} tabIndex={onExplain ? 0 : undefined}>
