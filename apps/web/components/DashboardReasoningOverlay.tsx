@@ -2,9 +2,7 @@
 
 import { useEffect } from "react";
 import styles from "./DashboardReasoningOverlay.module.css";
-
-export type ReasoningEvidence = { label: string; value: string; detail?: string };
-export type ReasoningPayload = { title: string; value: string; change?: string; context: string; why: string; implication: string; evidence?: ReasoningEvidence[] };
+import type { ReasoningPayload } from "../lib/reasoning";
 
 export default function DashboardReasoningOverlay({ reasoning, onClose }: { reasoning: ReasoningPayload | null; onClose: () => void }) {
   useEffect(() => {
