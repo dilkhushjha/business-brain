@@ -18,9 +18,9 @@ export default function InventoryIntelligence({ onExplain }: { onExplain?: (reas
     value: `${fast.length} fast mover${fast.length === 1 ? "" : "s"}`,
     change: "Last 30 days",
     context: "This view currently uses recent sales velocity, not a real-time stock-on-hand balance.",
-    whatItTellsYou: "Products with sustained sales velocity may need closer stock review. This is a demand signal rather than proof that inventory is low.",
+    why: "Products with sustained sales velocity may need closer stock review. This is a demand signal rather than proof that inventory is low.",
+    implication: fast.length ? `${fast.length} product${fast.length === 1 ? " is" : "s are"} moving faster than the normal threshold and may deserve a stock check.` : "Sales velocity provides an early indicator for where inventory deserves attention.",
     evidence: r.map((x) => ({ label: x.name, value: `${x.avg_daily_units.toFixed(1)}/day`, detail: `${x.units_sold} units sold · ${money(x.revenue)} revenue · ${x.signal.replaceAll("_", " ")}` })),
-    whyItMatters: fast.length ? `${fast.length} product${fast.length === 1 ? " is" : "s are"} moving faster than the normal threshold and may deserve a stock check.` : "Sales velocity provides an early indicator for where inventory deserves attention.",
   };
   const explain = () => onExplain?.(reasoning);
   return (
