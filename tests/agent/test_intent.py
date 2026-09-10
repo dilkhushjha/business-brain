@@ -28,6 +28,17 @@ def test_supplier_analysis_intent():
     assert classify_intent("Have any of my suppliers raised prices?") == "supplier_analysis"
 
 
+def test_expense_analysis_intent():
+    assert classify_intent("What are my expenses this month?") == "expense_analysis"
+    assert classify_intent("Why are my overhead costs so high?") == "expense_analysis"
+
+
+def test_purchase_cost_still_hits_supplier_not_expense():
+    """Regression guard: 'purchase cost' (supplier_analysis) must not get
+    swallowed by expense_analysis's broader cost-related keywords."""
+    assert classify_intent("Why did my purchase cost go up?") == "supplier_analysis"
+
+
 def test_customer_analysis_intent():
     assert classify_intent("Which customers are at risk?") == "customer_analysis"
 

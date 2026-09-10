@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from packages.analytics.business_brain.context.models import BusinessContext, Evidence
 from packages.analytics.business_brain.metrics.customer_risk import customer_concentration
+from packages.analytics.business_brain.metrics.expenses import expense_summary
 from packages.analytics.business_brain.metrics.margin import margin_summary
 from packages.analytics.business_brain.metrics.payables import payables_summary
 from packages.analytics.business_brain.metrics.receivables import receivables_summary
@@ -84,6 +85,14 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
             source="supplier_risk_engine", metric="supplier_concentration_top_share_pct",
             value=Decimal(str(supplier_conc["top_share_pct"])), period="all_time",
             metadata={"top_suppliers": supplier_conc["top_suppliers"], "risk": supplier_conc["risk"]},
+        ))
+
+    expenses = expense_summary(db, business_id)
+    if expenses["total"]:
+        evidence.append(Evidence(
+            source="expense_engine", metric="total_expenses",
+            value=Decimal(str(expenses["total"])), period="trailing_30_days",
+            metadata={"by_category": expenses["by_category"]},
         ))
 
     return BusinessContext(

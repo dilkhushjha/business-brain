@@ -24,6 +24,8 @@ from apps.api.app.api.routes.agent import router as agent_router
 from apps.api.app.api.routes.connectors import router as connectors_router
 from apps.api.app.api.routes.kpis import router as kpis_router
 from apps.api.app.api.routes.discounts import router as discounts_router
+from apps.api.app.api.routes.expenses import router as expenses_router
+from apps.api.app.api.routes.ingestion import router as ingestion_router
 from apps.api.app.api.routes.payables import router as payables_router
 from apps.api.app.api.routes.signals import router as signals_router
 from apps.api.app.api.routes.supplier_risk import router as supplier_risk_router
@@ -39,6 +41,8 @@ def client(db_session):
     app.include_router(agent_router, prefix="/api")
     app.include_router(payables_router, prefix="/api")
     app.include_router(discounts_router, prefix="/api")
+    app.include_router(expenses_router, prefix="/api")
+    app.include_router(ingestion_router, prefix="/api")
     app.include_router(supplier_risk_router, prefix="/api")
     app.dependency_overrides[get_db] = lambda: db_session
     return TestClient(app)
@@ -139,4 +143,22 @@ def test_discounts_route_is_also_protected(client, seeder):
     assert client.get(f"/api/discounts/{business.id}/anomalies").status_code == 401
     token = _register(client, business.id)
     response = client.get(f"/api/discounts/{business.id}/anomalies", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+
+
+def test_expense_import_route_is_also_protected(client, seeder):
+    business = seeder.business()
+    csv_bytes = b"Date,Ledger,Amount\n01-01-2026,Rent,1000\n"
+    response = client.post(
+        f"/api/ingestion/import-expenses/{business.id}",
+        files={"file": ("expenses.csv", csv_bytes, "text/csv")},
+    )
+    assert response.status_code == 401
+
+
+def test_expenses_route_is_also_protected(client, seeder):
+    business = seeder.business()
+    assert client.get(f"/api/expenses/{business.id}/summary").status_code == 401
+    token = _register(client, business.id)
+    response = client.get(f"/api/expenses/{business.id}/summary", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200

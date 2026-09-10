@@ -178,4 +178,21 @@ def generate_recommendations(context: RecommendationContext) -> list[Recommendat
                     ],
                 )
             )
+        elif signal.code == "EXPENSE_SPIKE":
+            category = signal.evidence.get("category", "an expense category")
+            recommendations.append(
+                Recommendation(
+                    code="REVIEW_EXPENSE_SPIKE",
+                    title=f"Review the rise in {category} expenses",
+                    priority="high" if signal.severity == "critical" else "medium",
+                    confidence=signal.confidence,
+                    rationale=f"{category} spend has increased materially against its prior baseline.",
+                    evidence={"signal": signal.code, "category": category, "change": str(signal.change)},
+                    actions=[
+                        f"Review the individual {category} expenses behind the increase.",
+                        "Confirm whether this reflects a one-off cost or a new ongoing rate.",
+                        f"Check if a vendor or rate change is behind the {category} increase.",
+                    ],
+                )
+            )
     return recommendations

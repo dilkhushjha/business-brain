@@ -6,6 +6,7 @@ from packages.analytics.business_brain.signals.rules import (
     detect_customer_decline_signals,
     detect_customer_inactivity_signals,
     detect_discount_anomaly_signals,
+    detect_expense_spike_signals,
     detect_kpi_signals,
     detect_margin_signals,
     detect_payables_signals,
@@ -175,4 +176,19 @@ def test_detect_discount_anomaly_signals():
     assert signals[0].code == "DISCOUNT_ANOMALY"
     assert signals[0].severity == "critical"
     assert signals[0].evidence["customer"] == "Big Discount Customer"
+    assert signals[1].severity == "warning"
+
+
+def test_detect_expense_spike_signals():
+    rows = [
+        {"category": "Transport", "current_total": 12000.0, "previous_total": 5000.0,
+         "change_pct": 140.0, "severity": "high"},
+        {"category": "Utilities", "current_total": 4500.0, "previous_total": 4000.0,
+         "change_pct": 12.5, "severity": "medium"},
+    ]
+    signals = detect_expense_spike_signals(rows)
+    assert len(signals) == 2
+    assert signals[0].code == "EXPENSE_SPIKE"
+    assert signals[0].severity == "critical"
+    assert signals[0].evidence["category"] == "Transport"
     assert signals[1].severity == "warning"

@@ -256,3 +256,31 @@ def test_discount_anomaly_produces_verification_recommendation():
 def test_mild_discount_anomaly_is_medium_priority():
     recs = generate_recommendations(RecommendationContext(signals=[_discount_anomaly_signal("warning")], drivers=[]))
     assert recs[0].priority == "medium"
+
+
+def _expense_spike_signal(severity: str) -> Signal:
+    return Signal(
+        code="EXPENSE_SPIKE",
+        title="Transport expenses have spiked",
+        severity=severity,
+        confidence=Decimal("0.80"),
+        metric="expense_total",
+        current_value=Decimal("12000"),
+        baseline_value=Decimal("5000"),
+        change=Decimal("140"),
+        evidence={"category": "Transport", "rule": "expense increase >= threshold vs prior period"},
+        recommended_next_step="Review recent Transport expenses for the cause of the increase.",
+    )
+
+
+def test_expense_spike_produces_review_recommendation():
+    recs = generate_recommendations(RecommendationContext(signals=[_expense_spike_signal("critical")], drivers=[]))
+    assert len(recs) == 1
+    assert recs[0].code == "REVIEW_EXPENSE_SPIKE"
+    assert recs[0].priority == "high"
+    assert "Transport" in recs[0].title
+
+
+def test_mild_expense_spike_is_medium_priority():
+    recs = generate_recommendations(RecommendationContext(signals=[_expense_spike_signal("warning")], drivers=[]))
+    assert recs[0].priority == "medium"

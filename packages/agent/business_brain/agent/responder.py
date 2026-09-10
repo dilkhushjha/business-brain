@@ -119,6 +119,22 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
         else:
             answer = "I don't have enough purchase data to assess your suppliers yet."
 
+    elif intent == "expense_analysis":
+        expenses = _evidence_for(evidence, "total_expenses")
+        if expenses:
+            grounded = True
+            by_category = expenses.get("metadata", {}).get("by_category", {})
+            answer = f"Your expenses over the trailing 30 days total {_money(expenses['value'])}."
+            if by_category:
+                top_category = max(by_category, key=by_category.get)
+                answer += f" {top_category} is your largest expense category at {_money(by_category[top_category])}."
+            spikes = _signals_with_codes(signals, {"EXPENSE_SPIKE"})
+            if spikes:
+                category = spikes[0].get("evidence", {}).get("category", "one category")
+                answer += f" {category} expenses have risen materially against their prior baseline."
+        else:
+            answer = "I don't have enough expense data on record yet."
+
     elif intent == "customer_analysis":
         customer_signals = _signals_with_codes(signals, {"CUSTOMER_REVENUE_DECLINE", "CUSTOMER_INACTIVE"})
         concentration = _evidence_for(evidence, "customer_concentration_top_share_pct")

@@ -158,3 +158,29 @@ def test_root_cause_cites_top_signal_as_a_hypothesis_not_a_certainty():
 def test_root_cause_without_signals_is_not_grounded():
     answer, confidence = render_grounded_response("Why did this happen?", "root_cause", {})
     assert confidence == "insufficient_evidence"
+
+
+def test_expense_analysis_with_evidence_is_grounded():
+    context = {
+        "evidence": [{"metric": "total_expenses", "value": "32000",
+                      "metadata": {"by_category": {"Rent": 25000.0, "Transport": 7000.0}}}],
+        "signals": [],
+    }
+    answer, confidence = render_grounded_response("What are my expenses?", "expense_analysis", context)
+    assert confidence == "grounded"
+    assert "Rent" in answer
+
+
+def test_expense_analysis_mentions_spike_signal():
+    context = {
+        "evidence": [{"metric": "total_expenses", "value": "32000", "metadata": {"by_category": {"Transport": 12000.0}}}],
+        "signals": [{"code": "EXPENSE_SPIKE", "evidence": {"category": "Transport"}}],
+    }
+    answer, confidence = render_grounded_response("Why are my costs up?", "expense_analysis", context)
+    assert confidence == "grounded"
+    assert "Transport" in answer
+
+
+def test_expense_analysis_without_evidence_is_not_grounded():
+    answer, confidence = render_grounded_response("What are my expenses?", "expense_analysis", {})
+    assert confidence == "insufficient_evidence"

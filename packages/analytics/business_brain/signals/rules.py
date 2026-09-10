@@ -261,3 +261,29 @@ def detect_discount_anomaly_signals(discount_anomalies: list[dict]) -> list[Sign
             )
         )
     return signals
+
+
+def detect_expense_spike_signals(expense_spikes: list[dict]) -> list[Signal]:
+    """Convert expense-spike rows (see metrics.expenses.expense_spikes)
+    into evidence-backed signals -- same current-vs-previous-window
+    comparison shape as slow-moving products or supplier price increases,
+    applied to an expense category's total spend."""
+    signals: list[Signal] = []
+    for row in expense_spikes:
+        change_pct = Decimal(str(row["change_pct"]))
+        confidence = Decimal("0.80") if row.get("severity") == "high" else Decimal("0.65")
+        signals.append(
+            Signal(
+                code="EXPENSE_SPIKE",
+                title=f"{row['category']} expenses have spiked",
+                severity="critical" if row.get("severity") == "high" else "warning",
+                confidence=confidence,
+                metric="expense_total",
+                current_value=Decimal(str(row["current_total"])),
+                baseline_value=Decimal(str(row["previous_total"])),
+                change=change_pct,
+                evidence={"category": row["category"], "rule": "expense increase >= threshold vs prior period"},
+                recommended_next_step=f"Review recent {row['category']} expenses for the cause of the increase.",
+            )
+        )
+    return signals

@@ -117,6 +117,17 @@ def test_detect_signals_surfaces_discount_anomaly_from_real_data(db_session, see
     assert discount_signals[0].evidence["customer"] == "Big Discount Customer"
 
 
+def test_detect_signals_surfaces_expense_spike_from_real_data(db_session, seeder):
+    business = seeder.business()
+    seeder.expense(business.id, days_ago=45, category="Transport", amount=Decimal("5000"))
+    seeder.expense(business.id, days_ago=5, category="Transport", amount=Decimal("12000"))
+
+    signals = detect_signals(db_session, business.id, date.today())
+    expense_signals = [s for s in signals if s.code == "EXPENSE_SPIKE"]
+    assert len(expense_signals) == 1
+    assert expense_signals[0].evidence["category"] == "Transport"
+
+
 def test_detect_signals_returns_empty_for_healthy_business(db_session, seeder):
     business = seeder.business()
     product = seeder.product(business.id, "Steady Widget")

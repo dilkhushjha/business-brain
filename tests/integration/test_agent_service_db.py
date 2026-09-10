@@ -115,3 +115,14 @@ def test_margin_question_on_healthy_business_is_not_grounded(db_session, seeder)
     result = answer(db_session, business.id, "Why is my margin so low?", date.today())
     assert result.confidence == "insufficient_evidence"
     assert "don't have enough" in result.answer
+
+
+def test_expense_question_is_grounded_from_real_data(db_session, seeder):
+    business = seeder.business()
+    seeder.expense(business.id, days_ago=45, category="Transport", amount=Decimal("5000"))
+    seeder.expense(business.id, days_ago=5, category="Transport", amount=Decimal("12000"))
+
+    result = answer(db_session, business.id, "Why are my expenses so high?", date.today())
+    assert result.intent == "expense_analysis"
+    assert result.confidence == "grounded"
+    assert "Transport" in result.answer

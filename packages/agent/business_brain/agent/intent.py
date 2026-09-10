@@ -21,6 +21,8 @@ def classify_intent(question: str) -> str:
         return "payables_analysis"
     if any(term in text for term in ("supplier", "vendor", "procurement", "purchase cost")):
         return "supplier_analysis"
+    if any(term in text for term in ("expense", "expenses", "overhead", "operating cost", "running cost", "spending")):
+        return "expense_analysis"
     if any(term in text for term in ("revenue", "sales", "turnover")):
         return "sales_performance"
     if any(term in text for term in ("customer", "client")):
