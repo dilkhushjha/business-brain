@@ -24,14 +24,14 @@ export default function ReceivablesIntelligence({ onExplain }: { onExplain?: (re
     value: money(s.outstanding),
     change: `${s.overdue_pct}% overdue`,
     context: "Outstanding invoice balances are based on recorded receivables; overdue amounts are invoices past their recorded due date.",
-    whatItTellsYou: "This separates money already earned from money actually collected. A rising overdue balance can put pressure on cash even when sales look healthy.",
+    why: "This separates money already earned from money actually collected. A rising overdue balance can put pressure on cash even when sales look healthy.",
+    implication: s.overdue > 0 ? `${money(s.overdue)} is overdue, so collection timing deserves attention.` : "Receivables visibility helps protect cash flow and collection discipline.",
     evidence: [
       { label: "Outstanding", value: money(s.outstanding) },
       { label: "Overdue", value: money(s.overdue) },
       { label: "Overdue share", value: `${s.overdue_pct}%` },
       ...(c.length ? [{ label: "Customers needing collection", value: `${c.length}`, detail: "Highest overdue balances returned by the receivables analysis" }] : []),
     ],
-    whyItMatters: s.overdue > 0 ? `${money(s.overdue)} is overdue, so collection timing deserves attention.` : "Receivables visibility helps protect cash flow and collection discipline.",
   };
   const explain = () => onExplain?.(reasoning);
   return (
