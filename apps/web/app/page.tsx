@@ -8,7 +8,9 @@ import ReceivablesIntelligence from "../components/ReceivablesIntelligence";
 import InventoryIntelligence from "../components/InventoryIntelligence";
 import DataFreshness from "../components/DataFreshness";
 import ConnectGate from "../components/ConnectGate";
+import DashboardReasoningOverlay from "../components/DashboardReasoningOverlay";
 import { ApiAuthError, apiFetch, clearToken, getBusinessId, hasToken } from "../lib/api";
+import { buildHealthReasoning, buildMetricReasoning, type ReasoningPayload } from "../lib/reasoning";
 
 type Evidence = { metric?: string; value?: string; metadata?: { change?: number } };
 type Context = {
@@ -81,11 +83,19 @@ function Icon({ name, className }: { name: IconName; className?: string }) {
   );
 }
 
-function Metric({ label, value, change, note, icon, tone = "primary" }: { label: string; value: string; change: string; note: string; icon: IconName; tone?: "primary" | "success" | "danger" | "amber" }) {
+function Metric({ label, value, change, note, icon, tone = "primary", onClick }: { label: string; value: string; change: string; note: string; icon: IconName; tone?: "primary" | "success" | "danger" | "amber"; onClick?: () => void }) {
   const up = change.startsWith("+") && change !== "+0%";
   const down = change.startsWith("-");
+  const clickable = Boolean(onClick);
   return (
-    <div className={`metric tone-${tone}`}>
+    <div
+      className={`metric tone-${tone}${clickable ? " metricClickable" : ""}`}
+      onClick={onClick}
+      onKeyDown={(event) => { if (clickable && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onClick?.(); } }}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      aria-label={clickable ? `Explain ${label}` : undefined}
+    >
       <div className="metricTop">
         <span className="metricLabel">{label}</span>
         <span className="iconChip"><Icon name={icon} className="icon" /></span>
@@ -117,6 +127,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [connected, setConnected] = useState(false);
   const [checkedAuth, setCheckedAuth] = useState(false);
+  const [selectedReasoning, setSelectedReasoning] = useState<ReasoningPayload | null>(null);
 
   useEffect(() => {
     setConnected(hasToken());
@@ -137,9 +148,6 @@ export default function Home() {
       .then(([a, b, c]) => { setContext(a); setKpis(b); setAnomalies(c); setLive(true); })
       .catch((err) => {
         if (err instanceof ApiAuthError) {
-          // The stored token was rejected (expired/revoked/wrong business) --
-          // clear it and show the connect gate again rather than silently
-          // rendering fake demo data as if everything were fine.
           clearToken();
           setConnected(false);
           return;
@@ -171,6 +179,15 @@ export default function Home() {
         : "No major warning signals are currently visible.";
   const healthIcon = health === "Needs attention" ? "alert" : health === "Watch closely" ? "pulse" : "check";
   const healthTone = health === "Needs attention" ? "danger" : health === "Watch closely" ? "amber" : "success";
+
+  function explainMetric(id: string) {
+    const reasoning = buildMetricReasoning(id, kpis, context || {});
+    if (reasoning) setSelectedReasoning(reasoning);
+  }
+
+  function explainHealth() {
+    setSelectedReasoning(buildHealthReasoning(context || {}, health));
+  }
 
   async function runQuestion(q: string) {
     if (!q.trim()) return;
@@ -242,7 +259,14 @@ export default function Home() {
       </section>
 
       <section className="healthBar">
-        <div className={`healthPanel tone-${healthTone}`}>
+        <div
+          className={`healthPanel tone-${healthTone} reasoningClickable`}
+          onClick={explainHealth}
+          onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); explainHealth(); } }}
+          role="button"
+          tabIndex={0}
+          aria-label="Explain business health"
+        >
           <span className="iconChip lg"><Icon name={healthIcon} className="icon" /></span>
           <div>
             <span className="eyebrow">BUSINESS HEALTH</span>
@@ -264,10 +288,10 @@ export default function Home() {
 
       <section className="sectionHeading"><span>BUSINESS OVERVIEW</span><small>All imported data + current period</small></section>
       <section className="metrics">
-        <Metric label="Total Revenue" value={money(totalRevenue?.value ?? revenue?.value)} change="" note="all imported data" icon="wallet" tone="primary" />
-        <Metric label="Total Invoices" value={totalInvoices?.value ?? "—"} change="" note="all imported data" icon="invoice" tone="primary" />
-        <Metric label="Current Month Revenue" value={money(rk?.value)} change={pct(revenueChange)} note="vs previous month" icon="trend" tone={revenueChange == null ? "primary" : Number(revenueChange) < 0 ? "danger" : "success"} />
-        <Metric label="Average Invoice Value" value={money(ak?.value)} change={pct(ak?.change)} note="current month" icon="receipt" tone="amber" />
+        <Metric label="Total Revenue" value={money(totalRevenue?.value ?? revenue?.value)} change="" note="all imported data" icon="wallet" tone="primary" onClick={() => explainMetric("total-revenue")} />
+        <Metric label="Total Invoices" value={totalInvoices?.value ?? "—"} change="" note="all imported data" icon="invoice" tone="primary" onClick={() => explainMetric("total-invoices")} />
+        <Metric label="Current Month Revenue" value={money(rk?.value)} change={pct(revenueChange)} note="vs previous month" icon="trend" tone={revenueChange == null ? "primary" : Number(revenueChange) < 0 ? "danger" : "success"} onClick={() => explainMetric("current-month-revenue")} />
+        <Metric label="Average Invoice Value" value={money(ak?.value)} change={pct(ak?.change)} note="current month" icon="receipt" tone="amber" onClick={() => explainMetric("average-invoice-value")} />
       </section>
 
       <div className="dashboardGrid">
@@ -361,6 +385,8 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      <DashboardReasoningOverlay reasoning={selectedReasoning} onClose={() => setSelectedReasoning(null)} />
     </main>
   );
 }
