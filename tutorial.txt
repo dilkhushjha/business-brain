@@ -1,0 +1,35 @@
+1. Start Docker
+cd "C:\Users\91916\Desktop\AI\business-brain"
+docker compose up -d
+docker compose ps
+
+You should see the Postgres/Redis/MinIO services running.
+
+2. Start the backend
+
+In the same terminal:
+
+uvicorn apps.api.app.main:app --reload --port 8000
+
+Leave this terminal running.
+
+3. Open a second terminal in VS Code
+
+Go to:
+
+cd "C:\Users\91916\Desktop\AI\business-brain\apps\web"
+npm run dev
+
+Leave this running too.
+
+4. Open the application
+
+Browser:
+
+http://localhost:3000
+
+Backend/API documentation:
+
+http://localhost:8000/docs
+
+Your final setup should be
