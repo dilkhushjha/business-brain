@@ -284,3 +284,61 @@ def test_expense_spike_produces_review_recommendation():
 def test_mild_expense_spike_is_medium_priority():
     recs = generate_recommendations(RecommendationContext(signals=[_expense_spike_signal("warning")], drivers=[]))
     assert recs[0].priority == "medium"
+
+
+def _stockout_signal(severity: str) -> Signal:
+    return Signal(
+        code="STOCKOUT_RISK",
+        title="LED Bulb 9W may run out soon",
+        severity=severity,
+        confidence=Decimal("0.85"),
+        metric="days_of_cover",
+        current_value=Decimal("2.0"),
+        baseline_value=None,
+        change=None,
+        evidence={"product": "LED Bulb 9W", "quantity_on_hand": 20.0, "avg_daily_units": 10.0,
+                  "snapshot_date": "2026-08-31", "rule": "days_of_cover < threshold, given current sales velocity"},
+        recommended_next_step="Reorder LED Bulb 9W soon.",
+    )
+
+
+def _excess_signal(severity: str) -> Signal:
+    return Signal(
+        code="EXCESS_INVENTORY",
+        title="Slow Widget has much more stock than it's selling",
+        severity=severity,
+        confidence=Decimal("0.75"),
+        metric="days_of_cover",
+        current_value=Decimal("500.0"),
+        baseline_value=None,
+        change=None,
+        evidence={"product": "Slow Widget", "quantity_on_hand": 500.0, "avg_daily_units": 1.0,
+                  "snapshot_date": "2026-08-31", "rule": "days_of_cover > threshold, given current sales velocity"},
+        recommended_next_step="Consider a promotion for Slow Widget.",
+    )
+
+
+def test_stockout_risk_produces_reorder_recommendation():
+    recs = generate_recommendations(RecommendationContext(signals=[_stockout_signal("critical")], drivers=[]))
+    assert len(recs) == 1
+    assert recs[0].code == "REORDER_STOCKOUT_RISK"
+    assert recs[0].priority == "high"
+    assert "LED Bulb 9W" in recs[0].title
+
+
+def test_mild_stockout_risk_is_medium_priority():
+    recs = generate_recommendations(RecommendationContext(signals=[_stockout_signal("warning")], drivers=[]))
+    assert recs[0].priority == "medium"
+
+
+def test_excess_inventory_produces_reduce_recommendation():
+    recs = generate_recommendations(RecommendationContext(signals=[_excess_signal("critical")], drivers=[]))
+    assert len(recs) == 1
+    assert recs[0].code == "REDUCE_EXCESS_INVENTORY"
+    assert recs[0].priority == "high"
+    assert "Slow Widget" in recs[0].title
+
+
+def test_mild_excess_inventory_is_medium_priority():
+    recs = generate_recommendations(RecommendationContext(signals=[_excess_signal("warning")], drivers=[]))
+    assert recs[0].priority == "medium"

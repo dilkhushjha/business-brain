@@ -287,3 +287,55 @@ def detect_expense_spike_signals(expense_spikes: list[dict]) -> list[Signal]:
             )
         )
     return signals
+
+
+def detect_stock_risk_signals(stock_risk: dict) -> list[Signal]:
+    """Convert stock_risk() rows (see metrics.inventory.stock_risk) into
+    evidence-backed signals. Two distinct signal codes from one function:
+    STOCKOUT_RISK (about to run out, given current sales velocity) and
+    EXCESS_INVENTORY (far more stock than current velocity justifies,
+    capital tied up in slow-turning stock). Both require a real recent
+    stock snapshot and real recent sales velocity -- see stock_risk()'s
+    own docstring for why a product with zero velocity is never flagged."""
+    signals: list[Signal] = []
+    for row in stock_risk.get("stockout_risk", []):
+        confidence = Decimal("0.85") if row.get("severity") == "high" else Decimal("0.70")
+        signals.append(
+            Signal(
+                code="STOCKOUT_RISK",
+                title=f"{row['name']} may run out soon",
+                severity="critical" if row.get("severity") == "high" else "warning",
+                confidence=confidence,
+                metric="days_of_cover",
+                current_value=Decimal(str(row["days_of_cover"])),
+                baseline_value=None,
+                change=None,
+                evidence={
+                    "product": row["name"], "quantity_on_hand": row["quantity_on_hand"],
+                    "avg_daily_units": row["avg_daily_units"], "snapshot_date": row["snapshot_date"],
+                    "rule": "days_of_cover < threshold, given current sales velocity",
+                },
+                recommended_next_step=f"Reorder {row['name']} soon -- at current sales pace, stock covers only about {row['days_of_cover']:.0f} more day(s).",
+            )
+        )
+    for row in stock_risk.get("excess_inventory", []):
+        confidence = Decimal("0.75") if row.get("severity") == "high" else Decimal("0.60")
+        signals.append(
+            Signal(
+                code="EXCESS_INVENTORY",
+                title=f"{row['name']} has much more stock than it's selling",
+                severity="critical" if row.get("severity") == "high" else "warning",
+                confidence=confidence,
+                metric="days_of_cover",
+                current_value=Decimal(str(row["days_of_cover"])),
+                baseline_value=None,
+                change=None,
+                evidence={
+                    "product": row["name"], "quantity_on_hand": row["quantity_on_hand"],
+                    "avg_daily_units": row["avg_daily_units"], "snapshot_date": row["snapshot_date"],
+                    "rule": "days_of_cover > threshold, given current sales velocity",
+                },
+                recommended_next_step=f"Consider a promotion or reduced reorder for {row['name']} -- current stock covers roughly {row['days_of_cover']:.0f} days at today's sales pace.",
+            )
+        )
+    return signals

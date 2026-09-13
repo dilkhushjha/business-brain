@@ -195,4 +195,40 @@ def generate_recommendations(context: RecommendationContext) -> list[Recommendat
                     ],
                 )
             )
+        elif signal.code == "STOCKOUT_RISK":
+            product = signal.evidence.get("product", "a product")
+            days = signal.current_value
+            recommendations.append(
+                Recommendation(
+                    code="REORDER_STOCKOUT_RISK",
+                    title=f"Reorder {product} soon",
+                    priority="high" if signal.severity == "critical" else "medium",
+                    confidence=signal.confidence,
+                    rationale=f"At current sales pace, {product}'s stock covers only about {days} more day(s).",
+                    evidence={"signal": signal.code, "product": product, "days_of_cover": str(days)},
+                    actions=[
+                        f"Place a reorder for {product} now to avoid a stockout.",
+                        "Confirm supplier lead time still fits within the remaining days of cover.",
+                        "Check if demand has picked up recently, which would shorten this further.",
+                    ],
+                )
+            )
+        elif signal.code == "EXCESS_INVENTORY":
+            product = signal.evidence.get("product", "a product")
+            days = signal.current_value
+            recommendations.append(
+                Recommendation(
+                    code="REDUCE_EXCESS_INVENTORY",
+                    title=f"Reduce stock on {product}",
+                    priority="high" if signal.severity == "critical" else "medium",
+                    confidence=signal.confidence,
+                    rationale=f"{product}'s current stock covers roughly {days} days at today's sales pace -- capital may be tied up unnecessarily.",
+                    evidence={"signal": signal.code, "product": product, "days_of_cover": str(days)},
+                    actions=[
+                        f"Pause or reduce reordering {product} until stock works down.",
+                        f"Consider a promotion or discount to move {product} faster.",
+                        "Confirm this isn't seasonal stock being held ahead of demand.",
+                    ],
+                )
+            )
     return recommendations

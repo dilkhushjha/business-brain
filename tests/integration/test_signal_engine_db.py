@@ -128,6 +128,30 @@ def test_detect_signals_surfaces_expense_spike_from_real_data(db_session, seeder
     assert expense_signals[0].evidence["category"] == "Transport"
 
 
+def test_detect_signals_surfaces_stockout_risk_from_real_data(db_session, seeder):
+    business = seeder.business()
+    product = seeder.product(business.id, "LED Bulb 9W")
+    seeder.sale_with_line(business.id, product.id, days_ago=5, quantity=300, unit_price=10)
+    seeder.inventory_snapshot(business.id, product.id, days_ago=1, quantity=20, value=200)
+
+    signals = detect_signals(db_session, business.id, date.today())
+    stockout_signals = [s for s in signals if s.code == "STOCKOUT_RISK"]
+    assert len(stockout_signals) == 1
+    assert stockout_signals[0].evidence["product"] == "LED Bulb 9W"
+
+
+def test_detect_signals_surfaces_excess_inventory_from_real_data(db_session, seeder):
+    business = seeder.business()
+    product = seeder.product(business.id, "Slow Widget")
+    seeder.sale_with_line(business.id, product.id, days_ago=5, quantity=30, unit_price=10)
+    seeder.inventory_snapshot(business.id, product.id, days_ago=1, quantity=500, value=5000)
+
+    signals = detect_signals(db_session, business.id, date.today())
+    excess_signals = [s for s in signals if s.code == "EXCESS_INVENTORY"]
+    assert len(excess_signals) == 1
+    assert excess_signals[0].evidence["product"] == "Slow Widget"
+
+
 def test_detect_signals_returns_empty_for_healthy_business(db_session, seeder):
     business = seeder.business()
     product = seeder.product(business.id, "Steady Widget")

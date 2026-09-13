@@ -7,6 +7,7 @@ from packages.analytics.business_brain.signals.rules import (
     detect_customer_inactivity_signals,
     detect_discount_anomaly_signals,
     detect_expense_spike_signals,
+    detect_stock_risk_signals,
     detect_kpi_signals,
     detect_margin_signals,
     detect_payables_signals,
@@ -192,3 +193,28 @@ def test_detect_expense_spike_signals():
     assert signals[0].severity == "critical"
     assert signals[0].evidence["category"] == "Transport"
     assert signals[1].severity == "warning"
+
+
+def test_detect_stock_risk_signals():
+    payload = {
+        "stockout_risk": [
+            {"name": "LED Bulb 9W", "quantity_on_hand": 20.0, "avg_daily_units": 10.0,
+             "days_of_cover": 2.0, "snapshot_date": "2026-08-31", "severity": "high"},
+        ],
+        "excess_inventory": [
+            {"name": "Slow Widget", "quantity_on_hand": 500.0, "avg_daily_units": 1.0,
+             "days_of_cover": 500.0, "snapshot_date": "2026-08-31", "severity": "medium"},
+        ],
+    }
+    signals = detect_stock_risk_signals(payload)
+    assert len(signals) == 2
+    assert signals[0].code == "STOCKOUT_RISK"
+    assert signals[0].severity == "critical"
+    assert signals[0].evidence["product"] == "LED Bulb 9W"
+    assert signals[1].code == "EXCESS_INVENTORY"
+    assert signals[1].severity == "warning"
+    assert signals[1].evidence["product"] == "Slow Widget"
+
+
+def test_detect_stock_risk_signals_handles_empty_payload():
+    assert detect_stock_risk_signals({"stockout_risk": [], "excess_inventory": []}) == []

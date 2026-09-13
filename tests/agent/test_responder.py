@@ -184,3 +184,14 @@ def test_expense_analysis_mentions_spike_signal():
 def test_expense_analysis_without_evidence_is_not_grounded():
     answer, confidence = render_grounded_response("What are my expenses?", "expense_analysis", {})
     assert confidence == "insufficient_evidence"
+
+
+def test_product_analysis_mentions_stockout_risk():
+    context = {
+        "evidence": [],
+        "signals": [{"code": "STOCKOUT_RISK", "evidence": {"product": "LED Bulb 9W"}}],
+    }
+    answer, confidence = render_grounded_response("Which products aren't selling?", "product_analysis", context)
+    assert confidence == "grounded"
+    assert "LED Bulb 9W" in answer
+    assert "running out" in answer.lower() or "run out" in answer.lower()

@@ -151,11 +151,16 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
             answer = "I don't have enough customer-level evidence yet."
 
     elif intent == "product_analysis":
-        product_signals = _signals_with_codes(signals, {"PRODUCT_MARGIN_DETERIORATION", "PRODUCT_SLOW_MOVING"})
+        product_signals = _signals_with_codes(signals, {"PRODUCT_MARGIN_DETERIORATION", "PRODUCT_SLOW_MOVING", "STOCKOUT_RISK", "EXCESS_INVENTORY"})
         if product_signals:
             grounded = True
             names = sorted({s.get("evidence", {}).get("product", "a product") for s in product_signals})
             answer = f"{len(product_signals)} product-level issue(s) detected, including: {', '.join(names[:3])}."
+            stockouts = _signals_with_codes(signals, {"STOCKOUT_RISK"})
+            if stockouts:
+                worst = stockouts[0]
+                product = worst.get("evidence", {}).get("product", "one product")
+                answer += f" {product} is at risk of running out soon."
         else:
             answer = "I don't have enough product-level evidence yet."
 
