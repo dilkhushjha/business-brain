@@ -62,6 +62,17 @@ def prepare_expense_file(path: str | Path, *, source_name: str | None = None) ->
     return _prepare(path, rules, source_name=source_name)
 
 
+def prepare_inventory_file(path: str | Path, *, source_name: str | None = None) -> tuple[IngestionResult, list[PreparedRow]]:
+    """Same pipeline again, for a Tally Stock Summary export: one row per
+    item as of a given date (closing quantity/value), not a transaction --
+    no invoice_number, no customer/supplier concept. transaction_date here
+    means "as-on date" (the snapshot date), not a voucher date."""
+    rules = [
+        FieldRule("transaction_date", required=True),
+    ]
+    return _prepare(path, rules, source_name=source_name)
+
+
 def _prepare(path: str | Path, rules: list[FieldRule], *, source_name: str | None = None) -> tuple[IngestionResult, list[PreparedRow]]:
     path = Path(path)
     rows = normalize_tally_rows(_adapter(path).ingest(path))

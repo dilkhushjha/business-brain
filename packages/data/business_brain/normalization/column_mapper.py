@@ -30,6 +30,8 @@ ALIASES: dict[str, tuple[str, ...]] = {
     "supplier_name": ("supplier", "supplier name", "vendor", "vendor name", "party supplier"),
     "category": ("category", "expense head", "expense category", "ledger", "ledger name", "account", "particulars"),
     "description": ("description", "narration", "remarks", "notes"),
+    "closing_qty": ("closing qty", "closing quantity", "closing balance", "closing stock", "stock qty", "stock quantity"),
+    "closing_value": ("closing value", "closing balance value", "stock value", "closing stock value"),
 }
 
 

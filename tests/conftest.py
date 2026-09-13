@@ -20,6 +20,7 @@ from packages.shared.database.models import (
     BusinessModel,
     CustomerModel,
     ExpenseModel,
+    InventorySnapshotModel,
     ProductModel,
     PurchaseLineModel,
     PurchaseModel,
@@ -267,6 +268,27 @@ class Seeder:
         self.db.add(expense)
         self.db.commit()
         return expense
+
+    def inventory_snapshot(
+        self,
+        business_id: UUID,
+        product_id: UUID,
+        *,
+        days_ago: int = 0,
+        quantity: Decimal | float = 0,
+        value: Decimal | float = 0,
+    ) -> InventorySnapshotModel:
+        snapshot = InventorySnapshotModel(
+            id=uuid4(),
+            business_id=business_id,
+            product_id=product_id,
+            snapshot_date=date.today() - timedelta(days=days_ago),
+            quantity=Decimal(str(quantity)),
+            value=Decimal(str(value)),
+        )
+        self.db.add(snapshot)
+        self.db.commit()
+        return snapshot
 
 
 @pytest.fixture()

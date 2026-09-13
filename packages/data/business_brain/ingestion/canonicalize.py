@@ -60,7 +60,9 @@ def canonicalize_purchase_row(row: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("transaction_date could not be parsed")
 
     quantity = parse_decimal(row.get("quantity"))
-    unit_cost = parse_decimal(row.get("unit_price")) or parse_decimal(row.get("cost_price"))
+    unit_cost = parse_decimal(row.get("unit_price"))
+    if unit_cost is None:
+        unit_cost = parse_decimal(row.get("cost_price"))
     total_amount = parse_decimal(row.get("total_amount"))
 
     if total_amount is None and quantity is not None and unit_cost is not None:
@@ -108,6 +110,41 @@ def canonicalize_expense_row(row: dict[str, Any]) -> dict[str, Any]:
         "amount": amount,
         "description": _text(row.get("description")),
         "external_id": _text(row.get("invoice_number")),
+    }
+
+
+def canonicalize_inventory_snapshot_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Convert a prepared source row (a Tally Stock Summary export -- one
+    row per item as of a given date, not a transaction) into database-ready
+    inventory snapshot fields. This is the shape a real Tally stock report
+    actually takes: a point-in-time closing quantity/value per item, not a
+    ledger of every movement -- so this ingests InventorySnapshotModel
+    only, not InventoryMovementModel (which would need a full stock
+    movement ledger, largely redundant with what Sale/PurchaseLine already
+    capture)."""
+    parsed_date = parse_date(row.get("transaction_date"))
+    if parsed_date is None:
+        raise ValueError("snapshot_date could not be parsed")
+
+    quantity = parse_decimal(row.get("closing_qty"))
+    if quantity is None:
+        quantity = parse_decimal(row.get("quantity"))
+    if quantity is None or quantity < 0:
+        raise ValueError("closing quantity could not be determined or is negative")
+
+    value = parse_decimal(row.get("closing_value"))
+    if value is None:
+        value = parse_decimal(row.get("total_amount"))
+    if value is None:
+        value = Decimal("0")
+    if value < 0:
+        raise ValueError("closing value cannot be negative")
+
+    return {
+        "product_name": _text(row.get("product_name")) or "Unknown product",
+        "snapshot_date": parsed_date,
+        "quantity": quantity,
+        "value": value,
     }
 
 

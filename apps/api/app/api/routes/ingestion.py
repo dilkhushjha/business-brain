@@ -10,11 +10,12 @@ from sqlalchemy.orm import Session
 
 from packages.data.business_brain.ingestion.column_mapping import suggest_mapping
 from packages.data.business_brain.ingestion.duplicate import already_imported
-from packages.data.business_brain.ingestion.orchestrator import prepare_expense_file, prepare_file
+from packages.data.business_brain.ingestion.orchestrator import prepare_expense_file, prepare_file, prepare_inventory_file
 from packages.data.business_brain.ingestion.persistence import persist_ingestion_run
 from packages.data.business_brain.ingestion.repository import persist_sales
 from packages.data.business_brain.ingestion.purchase_repository import persist_purchases
 from packages.data.business_brain.ingestion.expense_repository import persist_expenses
+from packages.data.business_brain.ingestion.inventory_repository import persist_inventory_snapshots
 from apps.api.app.api.connector_auth import require_business_access
 from packages.shared.database.session import get_db
 
@@ -248,6 +249,66 @@ def record_expense_ingestion_run(
     except Exception as exc:
         db.rollback()
         logger.exception("Expense ingestion failure request=%s business=%s", request_id, business_id)
+        detail = str(exc).strip() or "The database operation returned no diagnostic message. Check the backend traceback."
+        raise HTTPException(
+            500,
+            detail=f"Import failed; no partial data was committed. {type(exc).__name__}: {detail} Request: {request_id}",
+        ) from exc
+    finally:
+        Path(temp_path).unlink(missing_ok=True)
+
+
+@router.post("/import-inventory/{business_id}")
+def record_inventory_ingestion_run(
+    business_id: UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _auth: dict = Depends(require_business_access),
+):
+    """Mirrors the other import routes, for a Tally Stock Summary export:
+    uses prepare_inventory_file() (no invoice_number requirement, see
+    orchestrator.py) and persist_inventory_snapshots() on the write side."""
+    request_id = str(uuid4())
+    result, prepared, temp_path = _prepare_upload(file, business_id, db, prepare_fn=prepare_inventory_file)
+    try:
+        if result.rows_rejected:
+            raise HTTPException(
+                422,
+                detail=f"Import blocked: {result.rows_rejected} row(s) failed validation",
+            )
+
+        logger.info(
+            "Starting inventory ingestion request=%s business=%s source=%s rows=%s",
+            request_id, business_id, result.source.name, result.rows_accepted,
+        )
+        run = persist_ingestion_run(db, business_id, result)
+        created_snapshots = persist_inventory_snapshots(db, business_id, [row.values for row in prepared])
+        db.commit()
+        db.refresh(run)
+        return {
+            "run_id": str(run.id),
+            "status": run.status,
+            "source": result.source.name,
+            "checksum": result.source.checksum,
+            "rows_read": result.rows_read,
+            "rows_accepted": result.rows_accepted,
+            "rows_rejected": result.rows_rejected,
+            "snapshots_created": created_snapshots,
+            "request_id": request_id,
+        }
+    except HTTPException:
+        db.rollback()
+        raise
+    except IntegrityError as exc:
+        db.rollback()
+        logger.exception("Inventory ingestion integrity failure request=%s business=%s", request_id, business_id)
+        raise HTTPException(
+            409,
+            detail=f"Import could not be saved because the source or one of its business records already exists. No partial data was committed. Request: {request_id}",
+        ) from exc
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Inventory ingestion failure request=%s business=%s", request_id, business_id)
         detail = str(exc).strip() or "The database operation returned no diagnostic message. Check the backend traceback."
         raise HTTPException(
             500,
