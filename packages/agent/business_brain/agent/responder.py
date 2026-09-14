@@ -151,7 +151,7 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
             answer = "I don't have enough customer-level evidence yet."
 
     elif intent == "product_analysis":
-        product_signals = _signals_with_codes(signals, {"PRODUCT_MARGIN_DETERIORATION", "PRODUCT_SLOW_MOVING", "STOCKOUT_RISK", "EXCESS_INVENTORY"})
+        product_signals = _signals_with_codes(signals, {"PRODUCT_MARGIN_DETERIORATION", "PRODUCT_SLOW_MOVING", "STOCKOUT_RISK", "EXCESS_INVENTORY", "DEMAND_SPIKE", "DEAD_STOCK"})
         if product_signals:
             grounded = True
             names = sorted({s.get("evidence", {}).get("product", "a product") for s in product_signals})

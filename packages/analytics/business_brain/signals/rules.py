@@ -339,3 +339,57 @@ def detect_stock_risk_signals(stock_risk: dict) -> list[Signal]:
             )
         )
     return signals
+
+
+def detect_demand_spike_signals(demand_spikes: list[dict]) -> list[Signal]:
+    """Convert demand-spike rows (see metrics.inventory.demand_spikes)
+    into evidence-backed signals -- symmetric opposite of
+    detect_slow_moving_product_signals()."""
+    signals: list[Signal] = []
+    for row in demand_spikes:
+        change_pct = Decimal(str(row["change_pct"]))
+        confidence = Decimal("0.75") if row.get("severity") == "high" else Decimal("0.60")
+        signals.append(
+            Signal(
+                code="DEMAND_SPIKE",
+                title=f"{row['name']} demand has spiked",
+                severity="critical" if row.get("severity") == "high" else "warning",
+                confidence=confidence,
+                metric="units_sold",
+                current_value=Decimal(str(row["current_units"])),
+                baseline_value=Decimal(str(row["previous_units"])),
+                change=change_pct,
+                evidence={"product": row["name"], "rule": "sales velocity increase >= threshold vs prior period"},
+                recommended_next_step=f"Check stock and reorder lead time for {row['name']} -- demand has increased materially.",
+            )
+        )
+    return signals
+
+
+def detect_dead_stock_signals(dead_stock: list[dict]) -> list[Signal]:
+    """Convert dead-stock rows (see metrics.inventory.dead_stock) into
+    evidence-backed signals. Distinct from EXCESS_INVENTORY: this is real
+    stock with literally zero sales over the trailing window, not merely
+    slow-turning stock -- stock_risk() deliberately excludes this case
+    since a days-of-cover ratio isn't meaningful at zero velocity."""
+    signals: list[Signal] = []
+    for row in dead_stock:
+        signals.append(
+            Signal(
+                code="DEAD_STOCK",
+                title=f"{row['name']} hasn't sold in a while",
+                severity="warning",
+                confidence=Decimal("0.70"),
+                metric="quantity_on_hand",
+                current_value=Decimal(str(row["quantity_on_hand"])),
+                baseline_value=None,
+                change=None,
+                evidence={
+                    "product": row["name"], "snapshot_date": row["snapshot_date"],
+                    "velocity_window_days": row["velocity_window_days"],
+                    "rule": "quantity on hand > 0 with zero sales over the velocity window",
+                },
+                recommended_next_step=f"Consider a clearance promotion or writing down {row['name']}'s stock value -- it hasn't sold in {row['velocity_window_days']} days.",
+            )
+        )
+    return signals

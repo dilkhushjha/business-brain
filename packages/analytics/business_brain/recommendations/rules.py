@@ -231,4 +231,39 @@ def generate_recommendations(context: RecommendationContext) -> list[Recommendat
                     ],
                 )
             )
+        elif signal.code == "DEMAND_SPIKE":
+            product = signal.evidence.get("product", "a product")
+            recommendations.append(
+                Recommendation(
+                    code="REVIEW_DEMAND_SPIKE",
+                    title=f"Check stock for {product}'s demand spike",
+                    priority="high" if signal.severity == "critical" else "medium",
+                    confidence=signal.confidence,
+                    rationale=f"{product}'s sales velocity has increased materially against its prior baseline.",
+                    evidence={"signal": signal.code, "product": product, "change": str(signal.change)},
+                    actions=[
+                        f"Confirm there's enough {product} stock to meet the increased demand.",
+                        f"Check reorder lead time for {product} in case a stockout risk follows.",
+                        "Consider whether this is a one-off (promotion, season) or a lasting shift.",
+                    ],
+                )
+            )
+        elif signal.code == "DEAD_STOCK":
+            product = signal.evidence.get("product", "a product")
+            days = signal.evidence.get("velocity_window_days")
+            recommendations.append(
+                Recommendation(
+                    code="CLEAR_DEAD_STOCK",
+                    title=f"Clear dead stock: {product}",
+                    priority="medium",
+                    confidence=signal.confidence,
+                    rationale=f"{product} has real stock on hand but hasn't sold at all in {days} days.",
+                    evidence={"signal": signal.code, "product": product, "quantity_on_hand": str(signal.current_value)},
+                    actions=[
+                        f"Consider a clearance sale or bundle to move {product}.",
+                        f"Check whether {product} is discontinued or superseded by another item.",
+                        "Consider writing down its stock value if it's unlikely to sell.",
+                    ],
+                )
+            )
     return recommendations

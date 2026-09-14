@@ -342,3 +342,55 @@ def test_excess_inventory_produces_reduce_recommendation():
 def test_mild_excess_inventory_is_medium_priority():
     recs = generate_recommendations(RecommendationContext(signals=[_excess_signal("warning")], drivers=[]))
     assert recs[0].priority == "medium"
+
+
+def _demand_spike_signal(severity: str) -> Signal:
+    return Signal(
+        code="DEMAND_SPIKE",
+        title="Umbrella demand has spiked",
+        severity=severity,
+        confidence=Decimal("0.75"),
+        metric="units_sold",
+        current_value=Decimal("30"),
+        baseline_value=Decimal("10"),
+        change=Decimal("200"),
+        evidence={"product": "Umbrella", "rule": "sales velocity increase >= threshold vs prior period"},
+        recommended_next_step="Check stock and reorder lead time for Umbrella.",
+    )
+
+
+def _dead_stock_signal() -> Signal:
+    return Signal(
+        code="DEAD_STOCK",
+        title="Forgotten Item hasn't sold in a while",
+        severity="warning",
+        confidence=Decimal("0.70"),
+        metric="quantity_on_hand",
+        current_value=Decimal("200"),
+        baseline_value=None,
+        change=None,
+        evidence={"product": "Forgotten Item", "snapshot_date": "2026-08-31", "velocity_window_days": 60,
+                  "rule": "quantity on hand > 0 with zero sales over the velocity window"},
+        recommended_next_step="Consider a clearance promotion for Forgotten Item.",
+    )
+
+
+def test_demand_spike_produces_review_recommendation():
+    recs = generate_recommendations(RecommendationContext(signals=[_demand_spike_signal("critical")], drivers=[]))
+    assert len(recs) == 1
+    assert recs[0].code == "REVIEW_DEMAND_SPIKE"
+    assert recs[0].priority == "high"
+    assert "Umbrella" in recs[0].title
+
+
+def test_mild_demand_spike_is_medium_priority():
+    recs = generate_recommendations(RecommendationContext(signals=[_demand_spike_signal("warning")], drivers=[]))
+    assert recs[0].priority == "medium"
+
+
+def test_dead_stock_produces_clear_recommendation():
+    recs = generate_recommendations(RecommendationContext(signals=[_dead_stock_signal()], drivers=[]))
+    assert len(recs) == 1
+    assert recs[0].code == "CLEAR_DEAD_STOCK"
+    assert recs[0].priority == "medium"
+    assert "Forgotten Item" in recs[0].title

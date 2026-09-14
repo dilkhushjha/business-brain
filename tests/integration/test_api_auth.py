@@ -182,3 +182,19 @@ def test_inventory_stock_risk_route_is_also_protected(client, seeder):
     token = _register(client, business.id)
     response = client.get(f"/api/inventory/{business.id}/stock-risk", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
+
+
+def test_inventory_demand_spikes_route_is_also_protected(client, seeder):
+    business = seeder.business()
+    assert client.get(f"/api/inventory/{business.id}/demand-spikes").status_code == 401
+    token = _register(client, business.id)
+    response = client.get(f"/api/inventory/{business.id}/demand-spikes", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+
+
+def test_inventory_dead_stock_route_is_also_protected(client, seeder):
+    business = seeder.business()
+    assert client.get(f"/api/inventory/{business.id}/dead-stock").status_code == 401
+    token = _register(client, business.id)
+    response = client.get(f"/api/inventory/{business.id}/dead-stock", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200

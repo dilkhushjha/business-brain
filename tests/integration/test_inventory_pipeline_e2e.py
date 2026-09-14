@@ -78,3 +78,26 @@ def test_stock_summary_csv_would_be_rejected_by_the_sales_shaped_validator(tmp_p
     result, prepared = prepare_file(csv_path)
     assert result.rows_rejected == 1
     assert result.rows_accepted == 0
+
+
+def test_csv_stock_summary_produces_a_real_dead_stock_signal(db_session, seeder, tmp_path: Path):
+    """Same proof pattern once more: a real Stock Summary CSV showing real
+    stock, with no accompanying sales at all, through the actual
+    production ingestion path, into a firing DEAD_STOCK signal."""
+    from packages.analytics.business_brain.signals.engine import detect_signals
+
+    business = seeder.business()
+    csv_path = tmp_path / "stock_summary.csv"
+    csv_path.write_text(
+        "Date,Item Name,Closing Qty,Closing Value\n"
+        f"{date.today().strftime('%d-%m-%Y')},Forgotten Item,200,2000\n",
+        encoding="utf-8",
+    )
+    _, prepared = prepare_inventory_file(csv_path)
+    persist_inventory_snapshots(db_session, business.id, [row.values for row in prepared])
+    db_session.commit()
+
+    signals = detect_signals(db_session, business.id, date.today())
+    dead_signals = [s for s in signals if s.code == "DEAD_STOCK"]
+    assert len(dead_signals) == 1
+    assert dead_signals[0].evidence["product"] == "Forgotten Item"

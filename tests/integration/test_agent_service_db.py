@@ -138,3 +138,14 @@ def test_stock_question_is_grounded_from_real_data(db_session, seeder):
     assert result.intent == "product_analysis"
     assert result.confidence == "grounded"
     assert "LED Bulb 9W" in result.answer
+
+
+def test_dead_stock_question_is_grounded_from_real_data(db_session, seeder):
+    business = seeder.business()
+    product = seeder.product(business.id, "Forgotten Item")
+    seeder.inventory_snapshot(business.id, product.id, days_ago=1, quantity=200, value=2000)
+
+    result = answer(db_session, business.id, "Which products aren't selling well?", date.today())
+    assert result.intent == "product_analysis"
+    assert result.confidence == "grounded"
+    assert "Forgotten Item" in result.answer

@@ -7,6 +7,8 @@ from packages.analytics.business_brain.signals.rules import (
     detect_customer_inactivity_signals,
     detect_discount_anomaly_signals,
     detect_expense_spike_signals,
+    detect_dead_stock_signals,
+    detect_demand_spike_signals,
     detect_stock_risk_signals,
     detect_kpi_signals,
     detect_margin_signals,
@@ -218,3 +220,28 @@ def test_detect_stock_risk_signals():
 
 def test_detect_stock_risk_signals_handles_empty_payload():
     assert detect_stock_risk_signals({"stockout_risk": [], "excess_inventory": []}) == []
+
+
+def test_detect_demand_spike_signals():
+    rows = [
+        {"name": "Umbrella", "current_units": 30.0, "previous_units": 10.0, "change_pct": 200.0, "severity": "high"},
+        {"name": "Raincoat", "current_units": 22.0, "previous_units": 20.0, "change_pct": 10.0, "severity": "medium"},
+    ]
+    signals = detect_demand_spike_signals(rows)
+    assert len(signals) == 2
+    assert signals[0].code == "DEMAND_SPIKE"
+    assert signals[0].severity == "critical"
+    assert signals[0].evidence["product"] == "Umbrella"
+    assert signals[1].severity == "warning"
+
+
+def test_detect_dead_stock_signals():
+    rows = [
+        {"name": "Forgotten Item", "quantity_on_hand": 200.0, "snapshot_date": "2026-08-31", "velocity_window_days": 60},
+    ]
+    signals = detect_dead_stock_signals(rows)
+    assert len(signals) == 1
+    assert signals[0].code == "DEAD_STOCK"
+    assert signals[0].severity == "warning"
+    assert signals[0].evidence["product"] == "Forgotten Item"
+    assert signals[0].evidence["velocity_window_days"] == 60

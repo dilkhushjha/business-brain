@@ -152,6 +152,29 @@ def test_detect_signals_surfaces_excess_inventory_from_real_data(db_session, see
     assert excess_signals[0].evidence["product"] == "Slow Widget"
 
 
+def test_detect_signals_surfaces_demand_spike_from_real_data(db_session, seeder):
+    business = seeder.business()
+    product = seeder.product(business.id, "Umbrella")
+    seeder.sale_with_line(business.id, product.id, days_ago=45, quantity=10, unit_price=100)
+    seeder.sale_with_line(business.id, product.id, days_ago=5, quantity=30, unit_price=100)
+
+    signals = detect_signals(db_session, business.id, date.today())
+    demand_signals = [s for s in signals if s.code == "DEMAND_SPIKE"]
+    assert len(demand_signals) == 1
+    assert demand_signals[0].evidence["product"] == "Umbrella"
+
+
+def test_detect_signals_surfaces_dead_stock_from_real_data(db_session, seeder):
+    business = seeder.business()
+    product = seeder.product(business.id, "Forgotten Item")
+    seeder.inventory_snapshot(business.id, product.id, days_ago=1, quantity=200, value=2000)
+
+    signals = detect_signals(db_session, business.id, date.today())
+    dead_signals = [s for s in signals if s.code == "DEAD_STOCK"]
+    assert len(dead_signals) == 1
+    assert dead_signals[0].evidence["product"] == "Forgotten Item"
+
+
 def test_detect_signals_returns_empty_for_healthy_business(db_session, seeder):
     business = seeder.business()
     product = seeder.product(business.id, "Steady Widget")

@@ -25,7 +25,15 @@ risk (STOCKOUT_RISK) and excess inventory (EXCESS_INVENTORY, both from
 `metrics.inventory.stock_risk()`: current stock-on-hand from a real
 InventorySnapshot divided by recent sales velocity gives days-of-cover;
 low days-of-cover is a stockout risk, very high days-of-cover is excess
-stock tying up capital).
+stock tying up capital), demand spike (DEMAND_SPIKE, the symmetric
+opposite of PRODUCT_SLOW_MOVING -- a material sales-velocity *increase*
+vs. the prior period, same comparison machinery), and dead stock
+(DEAD_STOCK, real stock-on-hand with literally zero sales over a longer
+trailing window -- the case stock_risk() deliberately excludes since a
+days-of-cover ratio isn't meaningful at zero velocity, detected on its
+own terms via `metrics.inventory.dead_stock()` instead).
+
+**All 14 catalogued signal types are now wired.**
 
 Purchase-register ingestion now exists end to end
 (`/ingestion/import-purchases/{business_id}` ->
@@ -56,26 +64,7 @@ do (`ExpenseModel.external_id` has no unique constraint, and most real
 expense exports won't populate it) -- falls back to exact-match dedup
 (date + category + amount + description) when no voucher number is present.
 
-Not yet implemented:
-- **Demand spike** -- not built as its own signal. slow_moving_products()
-  already detects a material velocity *drop*; a symmetric "material
-  velocity *increase*" detector would be a small addition on top of the
-  same current-vs-previous-window machinery, but hasn't been written.
-- **InventoryMovement-based tracking** -- InventorySnapshotModel is now
-  ingested (a Tally Stock Summary export: closing quantity/value per item
-  as of a date) and drives STOCKOUT_RISK/EXCESS_INVENTORY above.
-  InventoryMovementModel (a full per-transaction stock ledger) is still
-  unused -- largely redundant with what Sale/PurchaseLine already capture,
-  and wasn't needed to get real stockout/excess detection working.
-- **Dead stock** (stock on hand with zero recent sales velocity) --
-  stock_risk() deliberately excludes products with zero velocity, since
-  dividing by zero isn't meaningful for a days-of-cover calculation. A
-  product with real stock and truly no sales isn't "excess" by this
-  measure, it's a different, currently-undetected problem.
-
-12 of 14 catalogued signal types are now wired (accounting demand spike
-and dead stock as distinct from what's listed above). Inventory ingestion
-(`/ingestion/import-inventory/{business_id}` ->
+Inventory ingestion (`/ingestion/import-inventory/{business_id}` ->
 `packages/data/business_brain/ingestion/inventory_repository.py`) needed
 its own validation rules for the same reason expenses did -- a Tally
 Stock Summary export has no invoice_number, no customer/supplier, no line
@@ -85,10 +74,26 @@ natural key (business_id, product_id, snapshot_date) with a unique
 constraint, so reconciling a re-exported snapshot is a straightforward
 upsert, not the exact-match fallback expenses need.
 
-Verified with a real CSV file, through the real ingestion path
-(prepare_inventory_file + persist_inventory_snapshots), into a firing
-STOCKOUT_RISK signal -- not a hand-built fixture
+Verified with real CSV files, through the real ingestion path, into
+firing STOCKOUT_RISK and DEAD_STOCK signals -- not hand-built fixtures
 (tests/integration/test_inventory_pipeline_e2e.py). The dashboard's
-inventory card (apps/web/components/InventoryIntelligence.tsx) now
-prefers this real stock-risk data when available, falling back to the
+inventory card (apps/web/components/InventoryIntelligence.tsx) prefers
+this real stock-risk data when available, falling back to the
 sales-velocity proxy view (with its existing honest caveat) when it isn't.
+
+## What's still genuinely open, distinct from catalog coverage
+
+- **InventoryMovement-based tracking** -- InventorySnapshotModel is
+  ingested and drives every inventory signal above.
+  InventoryMovementModel (a full per-transaction stock ledger) is still
+  unused -- largely redundant with what Sale/PurchaseLine already
+  capture, and wasn't needed to get real inventory signals working.
+- **PaymentModel** -- still unused schema. No ingestion path writes to
+  it and nothing reads it; Sale.paid_amount/Purchase.paid_amount already
+  drive receivables/payables without it.
+- **Signal thresholds are reasonable defaults, not calibrated** -- every
+  threshold in this file (10% margin, 40% velocity drop, 100% demand
+  spike, 7/90-day stock cover, etc.) is a defensible guess, not a number
+  tuned against a real business's data. The pilot plan's own success
+  criteria (signal usefulness) requires exactly that kind of validation,
+  which hasn't happened yet.
