@@ -40,42 +40,48 @@ export default function ConnectGate({ onConnected }: { onConnected: () => void }
   }
 
   return (
-    <section className="card" style={{ maxWidth: 520, margin: "48px auto" }}>
-      <div className="cardTitle">
-        <span>🔒</span>
-        <h3>Connect to your business</h3>
+    <section className="connectGate">
+      <div className="connectCard">
+        <div className="connectBrand">
+          <span className="brandMark"><span>✦</span></span>
+          <div>
+            <span className="eyebrow">BUSINESS BRAIN</span>
+            <h2>Welcome back.</h2>
+          </div>
+        </div>
+        <p className="connectLead">Connect your business workspace to unlock evidence-backed intelligence, metrics and recommendations.</p>
+
+        <form onSubmit={handleRegister} className="connectForm">
+          <div className="connectSection">
+            <div className="connectSectionTitle"><span>01</span><div><b>Business workspace</b><small>Identify the business you want to access.</small></div></div>
+            <label className="connectField">
+              <span>Business ID</span>
+              <input value={businessId} onChange={(e) => setBusinessIdInput(e.target.value)} placeholder="Enter business UUID" autoComplete="organization" />
+            </label>
+            <label className="connectField">
+              <span>Registration key <em>optional for local development</em></span>
+              <input value={registrationKey} onChange={(e) => setRegistrationKey(e.target.value)} placeholder="Enter registration key" type="password" autoComplete="off" />
+            </label>
+            <button className="connectPrimary" disabled={busy}>{busy ? "Connecting…" : "Connect to Business Brain →"}</button>
+          </div>
+        </form>
+
+        <div className="connectDivider"><span>or</span></div>
+
+        <form onSubmit={handleUseExisting} className="connectForm">
+          <div className="connectSection secondary">
+            <div className="connectSectionTitle"><span>02</span><div><b>Existing access</b><small>Use an API token you already received.</small></div></div>
+            <label className="connectField">
+              <span>API access token</span>
+              <input value={existingToken} onChange={(e) => setExistingToken(e.target.value)} placeholder="Paste your token" type="password" autoComplete="current-password" />
+            </label>
+            <button className="connectSecondary" type="submit">Use existing token</button>
+          </div>
+        </form>
+
+        {error && <div className="connectError">{error}</div>}
+        <p className="connectFootnote">Your access token is stored locally in this browser and attached to Business Brain API requests.</p>
       </div>
-      <p className="muted">
-        Every dashboard request now requires an API access token for your business. Register a new
-        one below, or paste a token you already have (for example, one printed by the connector's{" "}
-        <code>register</code> command).
-      </p>
-
-      <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-        <label>
-          Business ID
-          <input value={businessId} onChange={(e) => setBusinessIdInput(e.target.value)} placeholder="Business UUID" />
-        </label>
-        <label>
-          Registration key (leave blank in local development)
-          <input
-            value={registrationKey}
-            onChange={(e) => setRegistrationKey(e.target.value)}
-            placeholder="X-Connector-Registration-Key"
-          />
-        </label>
-        <button disabled={busy}>{busy ? "Connecting…" : "Register & connect"}</button>
-      </form>
-
-      <form onSubmit={handleUseExisting} style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-        <label>
-          Or paste an existing token
-          <input value={existingToken} onChange={(e) => setExistingToken(e.target.value)} placeholder="API token" />
-        </label>
-        <button type="submit">Use this token</button>
-      </form>
-
-      {error && <p className="errorBox">{error}</p>}
     </section>
   );
 }
