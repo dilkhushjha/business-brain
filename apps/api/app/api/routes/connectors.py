@@ -35,6 +35,13 @@ def register_connector(
     elif settings.app_env.lower() not in {"development", "dev", "local"}:
         raise HTTPException(503, "Connector registration is not configured")
 
+    exists = db.execute(
+        text("SELECT 1 FROM businesses WHERE id=:business_id"),
+        {"business_id": str(business_id)},
+    ).first()
+    if not exists:
+        raise HTTPException(404, "Business not found")
+
     connector_id, token = create_connector(db, business_id)
     warning = "Store this token securely. It is shown only once."
     if not expected:
