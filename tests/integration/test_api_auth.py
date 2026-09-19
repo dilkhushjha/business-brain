@@ -14,12 +14,11 @@ rather than importing apps.api.app.main.
 """
 from __future__ import annotations
 
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import select
 
 from apps.api.app.api.routes.agent import router as agent_router
 from apps.api.app.api.routes.connectors import router as connectors_router
@@ -31,7 +30,6 @@ from apps.api.app.api.routes.inventory import router as inventory_router
 from apps.api.app.api.routes.payables import router as payables_router
 from apps.api.app.api.routes.signals import router as signals_router
 from apps.api.app.api.routes.supplier_risk import router as supplier_risk_router
-from packages.shared.database.models import BusinessModel
 from packages.shared.database.session import get_db
 
 
@@ -69,7 +67,7 @@ def test_connector_registration_creates_token_for_existing_business(client, db_s
 
     kpis = client.get(
         f"/api/kpis/sales/{business.id}",
-        headers={"Authorization": f"Bearer {data["token"]}"},
+        headers={"Authorization": f"Bearer {data['token']}" },
     )
     assert kpis.status_code == 200
 
