@@ -14,12 +14,11 @@ rather than importing apps.api.app.main.
 """
 from __future__ import annotations
 
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import select
 
 from apps.api.app.api.routes.agent import router as agent_router
 from apps.api.app.api.routes.connectors import router as connectors_router
@@ -31,7 +30,6 @@ from apps.api.app.api.routes.inventory import router as inventory_router
 from apps.api.app.api.routes.payables import router as payables_router
 from apps.api.app.api.routes.signals import router as signals_router
 from apps.api.app.api.routes.supplier_risk import router as supplier_risk_router
-from packages.shared.database.models import BusinessModel
 from packages.shared.database.session import get_db
 
 
@@ -58,26 +56,18 @@ def _register(client, business_id) -> str:
     return response.json()["token"]
 
 
-def test_client_registration_creates_business_record_and_token(client, db_session):
-    response = client.post(
-        "/api/connectors/register",
-        json={"business_name": "Acme Electricals", "industry": "distribution"},
-    )
+def test_connector_registration_creates_token_for_existing_business(client, db_session, seeder):
+    business = seeder.business("Acme Electricals", "distribution")
+    response = client.post(f"/api/connectors/register/{business.id}")
     assert response.status_code == 200, response.text
     data = response.json()
-    assert data["business_name"] == "Acme Electricals"
-    assert data["industry"] == "distribution"
-    assert data["business_id"]
+    assert data["business_id"] == str(business.id)
     assert data["token"]
 
-    business = db_session.execute(
-        select(BusinessModel).where(BusinessModel.id == UUID(data["business_id"]))
-    ).scalar_one()
-    assert business.name == "Acme Electricals"
 
     kpis = client.get(
-        f"/api/kpis/sales/{data['business_id']}",
-        headers={"Authorization": f"Bearer {data['token']}"},
+        f"/api/kpis/sales/{business.id}",
+        headers={"Authorization": f"Bearer {data['token']}" },
     )
     assert kpis.status_code == 200
 

@@ -1,5 +1,12 @@
-from fastapi import FastAPI
+from __future__ import annotations
+
+import logging
+from uuid import uuid4
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from apps.api.app.api.routes.health import router as health_router
@@ -24,52 +31,73 @@ from apps.api.app.api.routes.discounts import router as discounts_router
 from apps.api.app.api.routes.expenses import router as expenses_router
 from apps.api.app.api.routes.inventory import router as inventory_router
 from apps.api.app.api.routes.import_history import router as import_history_router
+from apps.api.app.core.config import settings
 from packages.shared.database.session import engine
 
+logger = logging.getLogger(__name__)
 
-def ensure_schema_compatibility() -> None:
-    """Apply additive compatibility changes for databases created by older V1 builds."""
-    statements = (
-        "ALTER TABLE sales ADD COLUMN IF NOT EXISTS due_date DATE",
-        "ALTER TABLE sales ADD COLUMN IF NOT EXISTS paid_amount NUMERIC(18,2) NOT NULL DEFAULT 0",
-    )
-    with engine.begin() as connection:
-        for statement in statements:
-            connection.execute(text(statement))
-
-
-def ensure_connector_schema() -> None:
-    """Create the connector registry used by V2 authentication/status APIs."""
-    with engine.begin() as connection:
-        connection.execute(text("""
-            CREATE TABLE IF NOT EXISTS business_brain_connectors (
-                id UUID PRIMARY KEY,
-                business_id UUID NOT NULL,
-                name VARCHAR(255) NOT NULL DEFAULT 'Business Brain Connector',
-                token_hash VARCHAR(64) NOT NULL UNIQUE,
-                token_prefix VARCHAR(16) NOT NULL,
-                status VARCHAR(32) NOT NULL DEFAULT 'active',
-                version VARCHAR(32),
-                last_seen_at TIMESTAMPTZ,
-                last_sync_at TIMESTAMPTZ,
-                last_success_at TIMESTAMPTZ,
-                last_error TEXT,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-        """))
-
-
-app = FastAPI(title="Business Brain API", version="0.1.0")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+docs_enabled = settings.enable_api_docs and not settings.is_production
+app = FastAPI(
+    title="Business Brain API",
+    version="0.1.0",
+    docs_url="/docs" if docs_enabled else None,
+    redoc_url="/redoc" if docs_enabled else None,
+    openapi_url="/openapi.json" if docs_enabled else None,
 )
 
-ensure_schema_compatibility()
-ensure_connector_schema()
+if settings.allowed_host_list and "*" not in settings.allowed_host_list:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_host_list)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origin_list,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Connector-Registration-Key"],
+)
+
+
+@app.middleware("http")
+async def production_safety_headers(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > settings.max_upload_bytes:
+                return JSONResponse(status_code=413, content={"detail": "Request payload is too large."})
+        except ValueError:
+            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header."})
+
+    request_id = request.headers.get("X-Request-ID") or str(uuid4())
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception("Unhandled request failure request=%s path=%s", request_id, request.url.path)
+        response = JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error.", "request_id": request_id},
+        )
+
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if settings.is_production:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+
+@app.get("/api/health/ready", tags=["health"])
+def readiness():
+    """Readiness probe: the process and its primary database must be usable."""
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        logger.exception("Readiness check failed")
+        return JSONResponse(status_code=503, content={"status": "unavailable"})
+    return {"status": "ready"}
+
 
 for router in (
     health_router,

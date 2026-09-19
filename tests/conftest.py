@@ -12,7 +12,7 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -50,6 +50,29 @@ def db_session():
         poolclass=StaticPool,
     )
     Base.metadata.create_all(engine)
+    with engine.begin() as connection:
+        connection.execute(text("""
+            CREATE TABLE business_brain_connectors (
+                id UUID PRIMARY KEY,
+                business_id UUID NOT NULL,
+                name VARCHAR(255) NOT NULL DEFAULT 'Business Brain Connector',
+                token_hash VARCHAR(64) NOT NULL UNIQUE,
+                token_prefix VARCHAR(16) NOT NULL,
+                status VARCHAR(32) NOT NULL DEFAULT 'active',
+                version VARCHAR(32),
+                last_seen_at TIMESTAMP,
+                last_sync_at TIMESTAMP,
+                last_success_at TIMESTAMP,
+                last_error TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        connection.execute(text(
+            "CREATE INDEX ix_business_brain_connectors_business_id ON business_brain_connectors (business_id)"
+        ))
+        connection.execute(text(
+            "CREATE INDEX ix_business_brain_connectors_status ON business_brain_connectors (status)"
+        ))
     session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
     session = session_factory()
     try:

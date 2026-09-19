@@ -169,9 +169,21 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
             grounded = True
             top = signals[0]
             title = top.get("title", "a detected issue")
+            entity = None
+            for signal in signals:
+                signal_evidence = signal.get("evidence", {})
+                entity = (
+                    signal_evidence.get("customer")
+                    or signal_evidence.get("product")
+                    or signal_evidence.get("supplier")
+                    or signal_evidence.get("category")
+                )
+                if entity:
+                    break
+            detail = f" ({entity})" if entity else ""
             answer = (
                 f"I can't assign a single definitive cause, but {len(signals)} detected signal(s) are the most "
-                f"likely contributing factors -- most notably: {title}."
+                f"likely contributing factors -- most notably: {title}{detail}."
             )
         else:
             answer = "I don't have any detected signals to point to a cause yet."

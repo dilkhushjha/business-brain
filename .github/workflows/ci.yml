@@ -25,6 +25,15 @@ jobs:
       - name: Run tests
         run: pytest tests -q
 
+  production-container:
+    name: Production API container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build production API image
+        run: docker build --tag business-brain-api:ci .
+
   frontend-build:
     name: Frontend typecheck + build
     runs-on: ubuntu-latest
