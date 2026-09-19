@@ -8,11 +8,13 @@ from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from apps.api.app.api.connector_auth import create_connector, mark_connector_sync, require_business_access, require_connector
 from apps.api.app.api.routes.ingestion import _prepare_upload
 from packages.data.business_brain.ingestion.persistence import persist_ingestion_run
 from packages.data.business_brain.ingestion.repository import persist_sales
+from packages.shared.database.models import BusinessModel
 from packages.shared.database.session import get_db
 
 router = APIRouter(prefix="/connectors", tags=["connectors"])
@@ -35,11 +37,10 @@ def register_connector(
     elif settings.app_env.lower() not in {"development", "dev", "local"}:
         raise HTTPException(503, "Connector registration is not configured")
 
-    exists = db.execute(
-        text("SELECT 1 FROM businesses WHERE id=:business_id"),
-        {"business_id": str(business_id)},
-    ).first()
-    if not exists:
+    business = db.execute(
+        select(BusinessModel).where(BusinessModel.id == business_id)
+    ).scalar_one_or_none()
+    if business is None:
         raise HTTPException(404, "Business not found")
 
     connector_id, token = create_connector(db, business_id)
