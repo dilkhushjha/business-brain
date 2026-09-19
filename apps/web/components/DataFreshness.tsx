@@ -25,7 +25,7 @@ function formatTime(value?: string) {
   });
 }
 
-export default function DataFreshness() {
+export default function DataFreshness({ businessName }: { businessName: string }) {
   const [sync, setSync] = useState<SyncStatus | null>(null);
   const [latest, setLatest] = useState<ImportRun | null>(null);
 
@@ -47,16 +47,12 @@ export default function DataFreshness() {
   const failed = Boolean(sync?.last_error) && !connected;
 
   return (
-    <div className={`freshnessCard ${connected ? "isConnected" : failed ? "hasError" : ""}`}>
-      <div className="freshnessStatus">
-        <span className="freshnessDot" />
-        <span>{connected ? "Data connection active" : failed ? "Data connection needs attention" : "Data connection not configured"}</span>
-      </div>
-      <div className="freshnessDetails">
-        <span>Last synced <strong>{formatTime(lastSync)}</strong></span>
-        {latest?.file_name ? <span>Source <strong>{latest.file_name}</strong></span> : null}
-        {sync?.last_error ? <span className="freshnessError">{sync.last_error}</span> : null}
-      </div>
+    <div className={`freshnessInline ${connected ? "isConnected" : failed ? "hasError" : ""}`}>
+      <span className="freshnessDot" />
+      <strong>{businessName}</strong>
+      <span className="freshnessSeparator">·</span>
+      <span>Last synced {formatTime(lastSync)}</span>
+      {latest?.file_name ? <><span className="freshnessSeparator">·</span><span>{latest.file_name}</span></> : null}
     </div>
   );
 }
