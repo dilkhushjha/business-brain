@@ -1203,3 +1203,195 @@ button:disabled {
     grid-column: 2
   }
 }
+
+/* auth / connection gate */
+.connectGate {
+  min-height: calc(100vh - 150px);
+  display: grid;
+  place-items: center;
+  padding: 24px 0 70px;
+}
+.connectCard {
+  width: min(560px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 32px;
+  box-shadow: 0 22px 60px rgba(16, 24, 40, .10);
+}
+.connectBrand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.connectBrand .brandMark {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+}
+.connectBrand .brandMark span {
+  font-size: 22px;
+  line-height: 1;
+}
+.connectBrand h2 {
+  margin: 4px 0 0;
+  font-size: 28px;
+  letter-spacing: -.045em;
+}
+.connectLead {
+  margin: 20px 0 24px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.connectForm { margin: 0; }
+.connectSection {
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  padding: 18px;
+  background: #fcfdff;
+}
+.connectSection.secondary {
+  background: var(--surface-2);
+}
+.connectSectionTitle {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 17px;
+}
+.connectSectionTitle > span {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: var(--primary-tint);
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 850;
+}
+.connectSectionTitle b {
+  display: block;
+  font-size: 13px;
+}
+.connectSectionTitle small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.connectField {
+  display: block;
+  margin-bottom: 13px;
+}
+.connectField > span {
+  display: block;
+  margin-bottom: 7px;
+  color: #526174;
+  font-size: 11px;
+  font-weight: 800;
+}
+.connectField em {
+  color: var(--text-faint);
+  font-style: normal;
+  font-weight: 500;
+}
+.connectField input {
+  width: 100%;
+  background: #fff;
+}
+.connectPrimary,
+.connectSecondary {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 4px;
+}
+.connectSecondary {
+  background: #fff;
+  color: var(--primary-dark);
+  border: 1px solid #ccd6e5;
+}
+.connectSecondary:hover {
+  background: var(--primary-tint);
+}
+.connectDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: var(--text-faint);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-weight: 800;
+}
+.connectDivider::before,
+.connectDivider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--border-soft);
+}
+.connectError {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid #f0c7cc;
+  border-radius: 10px;
+  background: var(--danger-tint);
+  color: #a52d3d;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.connectFootnote {
+  margin: 18px 2px 0;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+/* logout + sticky ask */
+.logoutButton {
+  padding: 9px 13px;
+  background: #fff;
+  color: #526174;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+}
+.logoutButton:hover {
+  background: var(--danger-tint);
+  border-color: #efc6cd;
+  color: var(--danger);
+}
+.stickyAsk {
+  position: sticky;
+  bottom: 14px;
+  z-index: 30;
+  box-shadow: 0 18px 44px rgba(16, 24, 40, .16);
+  border-color: #cfd8e6;
+  backdrop-filter: blur(12px);
+  background: rgba(255,255,255,.96);
+}
+.shell {
+  padding-bottom: 110px;
+}
+
+@media(max-width:600px) {
+  .connectCard {
+    padding: 22px 18px;
+    border-radius: 17px;
+  }
+  .connectGate {
+    min-height: auto;
+    padding-top: 8px;
+  }
+  .connectBrand h2 {
+    font-size: 25px;
+  }
+  .stickyAsk {
+    bottom: 8px;
+  }
+}
