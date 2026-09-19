@@ -1395,3 +1395,89 @@ button:disabled {
     bottom: 8px;
   }
 }
+
+
+/* compact dashboard hero + chat */
+.hero {
+  padding: 18px 24px;
+}
+.freshnessInline {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #c9d5e6;
+  font-size: 12px;
+  line-height: 1.4;
+  min-height: 24px;
+}
+.freshnessInline strong {
+  color: #fff;
+  font-weight: 750;
+}
+.freshnessDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7f8da3;
+  flex: none;
+}
+.freshnessInline.isConnected .freshnessDot {
+  background: #63c78a;
+  box-shadow: 0 0 0 3px rgba(99,199,138,.14);
+}
+.freshnessInline.hasError .freshnessDot {
+  background: #e47b88;
+}
+.freshnessSeparator {
+  color: #71819a;
+}
+.stickyAsk {
+  padding: 12px 16px;
+}
+.stickyAsk .askHead {
+  margin-bottom: 8px;
+}
+.stickyAsk .askHead .iconChip {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+.stickyAsk .askHead .iconChip .icon {
+  width: 15px;
+  height: 15px;
+}
+.stickyAsk .ask h3 {
+  font-size: 16px;
+}
+.stickyAsk h3 {
+  font-size: 16px;
+}
+.stickyAsk form {
+  gap: 8px;
+}
+.stickyAsk input {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+.stickyAsk button {
+  padding: 10px 16px;
+  font-size: 12px;
+}
+.stickyAsk .response {
+  margin-top: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+@media(max-width:600px) {
+  .hero {
+    padding: 15px 18px;
+  }
+  .freshnessInline {
+    flex-wrap: wrap;
+    gap: 5px 7px;
+  }
+  .stickyAsk {
+    padding: 10px 12px;
+  }
+}
