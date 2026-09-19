@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { getBusinessId, registerAndConnect, setBusinessId, setToken } from "../lib/api";
 
 export default function ConnectGate({ onConnected }: { onConnected: () => void }) {
-  const [businessId, setBusinessIdInput] = useState(getBusinessId());
+  const [businessIdInput, setBusinessIdInput] = useState(getBusinessId());
   const [registrationKey, setRegistrationKey] = useState("");
   const [existingToken, setExistingToken] = useState("");
   const [error, setError] = useState("");
@@ -12,14 +12,14 @@ export default function ConnectGate({ onConnected }: { onConnected: () => void }
 
   async function handleRegister(e: FormEvent) {
     e.preventDefault();
-    if (!businessId.trim()) {
+    if (!businessIdInput.trim()) {
       setError("Business ID is required.");
       return;
     }
     setBusy(true);
     setError("");
     try {
-      await registerAndConnect(businessId.trim(), registrationKey.trim() || undefined);
+      await registerAndConnect(businessIdInput.trim(), registrationKey.trim() || undefined);
       onConnected();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed.");
@@ -30,12 +30,12 @@ export default function ConnectGate({ onConnected }: { onConnected: () => void }
 
   function handleUseExisting(e: FormEvent) {
     e.preventDefault();
-    if (!businessId.trim() || !existingToken.trim()) {
+    if (!businessIdInput.trim() || !existingToken.trim()) {
       setError("Business ID and token are both required.");
       return;
     }
-    setBusinessId(businessId.trim());
-    setToken(businessId.trim(), existingToken.trim());
+    setBusinessId(businessIdInput.trim());
+    setToken(businessIdInput.trim(), existingToken.trim());
     onConnected();
   }
 
@@ -56,7 +56,7 @@ export default function ConnectGate({ onConnected }: { onConnected: () => void }
             <div className="connectSectionTitle"><span>01</span><div><b>Business workspace</b><small>Identify the business you want to access.</small></div></div>
             <label className="connectField">
               <span>Business ID</span>
-              <input value={businessId} onChange={(e) => setBusinessIdInput(e.target.value)} placeholder="Enter business UUID" autoComplete="organization" />
+              <input value={businessIdInput} onChange={(e) => setBusinessIdInput(e.target.value)} placeholder="Enter business UUID" autoComplete="organization" />
             </label>
             <label className="connectField">
               <span>Registration key <em>optional for local development</em></span>
