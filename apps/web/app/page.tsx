@@ -14,6 +14,7 @@ import { buildHealthReasoning, buildMetricReasoning, type ReasoningPayload } fro
 
 type Evidence = { metric?: string; value?: string; metadata?: { change?: number } };
 type Context = {
+  entities?: Array<{ entity_type?: string; label?: string }>;
   evidence?: Evidence[];
   signals?: Array<Record<string, unknown>>;
   recommendations?: Array<Record<string, unknown>>;
@@ -33,8 +34,6 @@ const DEMO_CONTEXT: Context = {
     { title: "Review LED 9W inventory", description: "Positive product momentum may create a stock opportunity." },
   ],
 };
-
-const SUGGESTED_QUESTIONS = ["Why did my sales fall?", "How is the business doing overall?", "Which customers need follow-up?"];
 
 function demoAnswer(q: string) {
   const s = q.toLowerCase();
@@ -124,9 +123,8 @@ export default function Home() {
     }).finally(() => setLoading(false));
   }, [checkedAuth, connected]);
 
-  const greeting = useMemo(() => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; }, []);
-  const today = useMemo(() => new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" }), []);
   const revenue = useMemo(() => context?.evidence?.find((e) => e.metric === "revenue"), [context]);
+  const businessName = useMemo(() => context?.entities?.find((entity) => entity.entity_type?.toLowerCase() === "business")?.label || "Business workspace", [context]);
   const find = (...n: string[]) => kpis.find((k) => n.some((x) => k.name.toLowerCase().includes(x)) && k.period !== "all_time");
   const totalRevenue = kpis.find((k) => k.name === "total_revenue");
   const totalInvoices = kpis.find((k) => k.name === "total_invoice_count");
@@ -156,7 +154,6 @@ export default function Home() {
     } finally { setAsking(false); }
   }
   function ask(e: FormEvent) { e.preventDefault(); runQuestion(question); }
-  function askSuggested(q: string) { setQuestion(q); runQuestion(q); }
   function logout() { clearToken(); setConnected(false); setAnswer(""); setQuestion(""); setError(""); }
 
   if (checkedAuth && !connected) return <main className="shell"><header className="header"><div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div></div></header><ConnectGate onConnected={() => setConnected(true)} /></main>;
@@ -164,7 +161,7 @@ export default function Home() {
   return <main className="shell">
     <header className="header"><div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div></div><div className="headerRight"><a className="status" href="/import">Import data</a><span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Connecting…" : live ? "Live data" : "Demo mode"}</span><button type="button" className="logoutButton" onClick={logout}>Log out</button></div></header>
     {!live && !loading && <div className="demoBanner"><strong>DEMO MODE</strong><span>Sample electrical-wholesaler scenario · safe for testing</span></div>}
-    <section className="hero"><div className="heroGlow" aria-hidden="true" /><p className="muted">{today} · Evidence-backed intelligence</p><h2>{greeting}.</h2><p className="muted">Here is what changed, what needs attention, and where to act.</p><DataFreshness /></section>
+    <section className="hero"><div className="heroGlow" aria-hidden="true" /><DataFreshness businessName={businessName} /></section>
     <section className="healthBar"><div className={`healthPanel tone-${healthTone} reasoningClickable`} onClick={explainHealth} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); explainHealth(); } }} role="button" tabIndex={0} aria-label="Explain business health"><span className="iconChip lg"><Icon name={healthIcon} className="icon" /></span><div><span className="eyebrow">BUSINESS HEALTH</span><h3>{health}</h3><p>{healthText}</p></div></div><div className="healthFacts"><div><span className="iconChip sm tone-danger"><Icon name="alert" className="icon" /></span><b>{highSignals.length}</b><span>priority concerns</span></div><div><span className="iconChip sm tone-success"><Icon name="check" className="icon" /></span><b>{positiveSignals.length}</b><span>positive signals</span></div></div></section>
     <section className="sectionHeading"><span>BUSINESS OVERVIEW</span><small>All imported data + current period</small></section>
     <section className="metrics"><Metric label="Total Revenue" value={money(totalRevenue?.value ?? revenue?.value)} change="" note="all imported data" icon="wallet" tone="primary" onClick={() => explainMetric("total-revenue")} /><Metric label="Total Invoices" value={totalInvoices?.value ?? "—"} change="" note="all imported data" icon="invoice" tone="primary" onClick={() => explainMetric("total-invoices")} /><Metric label="Current Month Revenue" value={money(rk?.value)} change={pct(revenueChange)} note="vs previous month" icon="trend" tone={revenueChange == null ? "primary" : Number(revenueChange) < 0 ? "danger" : "success"} onClick={() => explainMetric("current-month-revenue")} /><Metric label="Average Invoice Value" value={money(ak?.value)} change={pct(ak?.change)} note="current month" icon="receipt" tone="amber" onClick={() => explainMetric("average-invoice-value")} /></section>
@@ -183,7 +180,7 @@ export default function Home() {
       </aside></div>
     {anomalies.length > 0 && <><section className="sectionHeading"><span>EXCEPTIONS</span><small>Unusual movements worth investigating</small></section><section className="card anomalyCard">{anomalies.map((a, i) => <div className="anomaly" key={i}><span className={`iconChip sm tone-${a.severity === "high" ? "danger" : "amber"}`}><Icon name="alert" className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{a.name}</b><span className={`tag ${a.severity === "high" ? "danger" : "warning"}`}>{a.severity.toUpperCase()}</span></div><p>Revenue {a.change_pct >= 0 ? "increased" : "decreased"} <strong>{Math.abs(a.change_pct).toFixed(0)}%</strong> versus the prior period.</p></div></div>)}</section></>}
     {error && <div className="errorBox">{error}</div>}
-    <section className="ask card stickyAsk"><div className="askHead"><span className="iconChip"><Icon name="chat" className="icon" /></span><div><span className="eyebrow">ASK BUSINESS BRAIN</span><h3>Ask about your business</h3></div></div><div className="suggestions">{SUGGESTED_QUESTIONS.map((q) => <button type="button" className="suggestionChip" key={q} onClick={() => askSuggested(q)} disabled={asking}>{q}</button>)}</div><form onSubmit={ask}><input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Why did my sales fall?" disabled={asking} /><button disabled={asking}>{asking ? "Thinking…" : "Ask"}</button></form>{answer && <div className="response"><strong>Business Brain {live ? "· Live" : "· Demo"}</strong><p>{answer}</p></div>}</section>
+    <section className="ask card stickyAsk"><div className="askHead"><span className="iconChip"><Icon name="chat" className="icon" /></span><div><span className="eyebrow">ASK BUSINESS BRAIN</span><h3>Ask about your business</h3></div></div><form onSubmit={ask}><input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Why did my sales fall?" disabled={asking} /><button disabled={asking}>{asking ? "Thinking…" : "Ask"}</button></form>{answer && <div className="response"><strong>Business Brain {live ? "· Live" : "· Demo"}</strong><p>{answer}</p></div>}</section>
     <DashboardReasoningOverlay reasoning={selectedReasoning} onClose={() => setSelectedReasoning(null)} />
   </main>;
 }
