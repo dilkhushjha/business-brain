@@ -52,7 +52,6 @@ export default function DataFreshness({ businessName }: { businessName: string }
       <strong>{businessName}</strong>
       <span className="freshnessSeparator">·</span>
       <span>Last synced {formatTime(lastSync)}</span>
-      {latest?.file_name ? <><span className="freshnessSeparator">·</span><span>{latest.file_name}</span></> : null}
     </div>
   );
 }
