@@ -17,16 +17,18 @@ against that specific business_id -- a token issued for one business gets a
 isolation.
 
 V1 has no separate user/login system. The one credential a business has --
-the token issued by `POST /connectors/register/{business_id}` -- doubles as
+the token issued by `POST /connectors/register` -- doubles as
 both the automated connector's upload credential and the general API access
 token for that business's dashboard/chat. This is a deliberate simplification
 for the pilot stage, not an oversight; splitting these into distinct
 credential types is future work once there's a real login system.
 
-**Immediate consequence, not yet addressed**: `apps/web` sends no
-`Authorization` header at all today. Locking down the API means the existing
-dashboard/chat UI will get 401s on every request until the frontend is
-updated to obtain and send a token -- that update hasn't been made yet.
+Client onboarding now creates the `businesses` row and connector token
+together. The dashboard asks for a client name and industry, receives the
+server-generated internal business ID, stores it locally with the token, and
+then sends `Authorization` on API calls. The older
+`POST /connectors/register/{business_id}` path remains only for provisioning a
+connector against an existing business record; it rejects unknown IDs.
 
 **Still open:**
 - `GET /health` remains intentionally unauthenticated (infra/load-balancer

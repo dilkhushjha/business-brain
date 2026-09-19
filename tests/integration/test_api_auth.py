@@ -14,11 +14,12 @@ rather than importing apps.api.app.main.
 """
 from __future__ import annotations
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from apps.api.app.api.routes.agent import router as agent_router
 from apps.api.app.api.routes.connectors import router as connectors_router
@@ -30,6 +31,7 @@ from apps.api.app.api.routes.inventory import router as inventory_router
 from apps.api.app.api.routes.payables import router as payables_router
 from apps.api.app.api.routes.signals import router as signals_router
 from apps.api.app.api.routes.supplier_risk import router as supplier_risk_router
+from packages.shared.database.models import BusinessModel
 from packages.shared.database.session import get_db
 
 
@@ -54,6 +56,47 @@ def _register(client, business_id) -> str:
     response = client.post(f"/api/connectors/register/{business_id}")
     assert response.status_code == 200, response.text
     return response.json()["token"]
+
+
+def test_client_registration_creates_business_record_and_token(client, db_session):
+    response = client.post(
+        "/api/connectors/register",
+        json={"business_name": "Acme Electricals", "industry": "distribution"},
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["business_name"] == "Acme Electricals"
+    assert data["industry"] == "distribution"
+    assert data["business_id"]
+    assert data["token"]
+
+    business = db_session.execute(
+        select(BusinessModel).where(BusinessModel.id == UUID(data["business_id"]))
+    ).scalar_one()
+    assert business.name == "Acme Electricals"
+
+    kpis = client.get(
+        f"/api/kpis/sales/{data['business_id']}",
+        headers={"Authorization": f"Bearer {data['token']}"},
+    )
+    assert kpis.status_code == 200
+
+    csv_bytes = (
+        b"Bill Date,Party Name,Item Name,Qty,Rate,Net Amount,Invoice No\n"
+        b"27-08-2026,ABC Electrical,LED Bulb 9W,10,100,1000,INV-CLIENT-001\n"
+    )
+    imported = client.post(
+        f"/api/ingestion/import/{data['business_id']}",
+        files={"file": ("sales.csv", csv_bytes, "text/csv")},
+        headers={"Authorization": f"Bearer {data['token']}"},
+    )
+    assert imported.status_code == 200, imported.text
+    assert imported.json()["sales_created"] == 1
+
+
+def test_connector_registration_rejects_unknown_business_id(client):
+    response = client.post(f"/api/connectors/register/{uuid4()}")
+    assert response.status_code == 404
 
 
 def test_protected_route_rejects_missing_credential(client, seeder):
