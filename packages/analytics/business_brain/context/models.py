@@ -30,3 +30,4 @@ class BusinessContext:
     evidence: list[Evidence]
     signals: list[Any]
     recommendations: list[Any]
+    state: Any | None = None
