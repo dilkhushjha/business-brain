@@ -3,9 +3,9 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
-from packages.shared.database.models import InventorySnapshotModel, ProductModel, SaleLineModel, SaleModel
+from packages.shared.database.models import InventoryMovementModel, InventorySnapshotModel, ProductModel, SaleLineModel, SaleModel
 
 def inventory_signals(db: Session, business_id: UUID, days: int = 30, limit: int = 10) -> list[dict[str, Any]]:
     end=date.today(); start=end-timedelta(days=days-1)
@@ -180,3 +180,35 @@ def stock_risk(db: Session, business_id: UUID, velocity_days: int = 30, low_days
     stockout.sort(key=lambda x: x["days_of_cover"])
     excess.sort(key=lambda x: -x["days_of_cover"])
     return {"stockout_risk": stockout[:limit], "excess_inventory": excess[:limit]}
+
+
+def current_inventory_position(db: Session, business_id: UUID, limit: int = 50) -> list[dict[str, Any]]:
+    """Return movement-derived inventory position for products with a ledger."""
+    rows = db.execute(
+        select(
+            ProductModel.id,
+            ProductModel.name,
+            func.coalesce(func.sum(
+                case(
+                    (InventoryMovementModel.movement_type.in_(["purchase", "return_in"]), InventoryMovementModel.quantity),
+                    (InventoryMovementModel.movement_type.in_(["sale", "return_out"]), -InventoryMovementModel.quantity),
+                    else_=0,
+                )
+            ), 0),
+            func.coalesce(func.sum(
+                case(
+                    (InventoryMovementModel.movement_type.in_(["purchase", "return_in"]), InventoryMovementModel.quantity * InventoryMovementModel.unit_cost),
+                    else_=0,
+                )
+            ), 0),
+        )
+        .join(InventoryMovementModel, InventoryMovementModel.product_id == ProductModel.id)
+        .where(InventoryMovementModel.business_id == business_id, ProductModel.business_id == business_id)
+        .group_by(ProductModel.id, ProductModel.name)
+        .order_by(ProductModel.name)
+        .limit(max(1, min(limit, 100)))
+    ).all()
+    return [
+        {"name": name, "quantity_on_hand": float(quantity), "ledger_inventory_value": float(value), "source": "inventory_movement_ledger"}
+        for _, name, quantity, value in rows
+    ]
