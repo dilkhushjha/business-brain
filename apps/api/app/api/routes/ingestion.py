@@ -170,40 +170,80 @@ def record_ingestion_run(
 @router.post("/import-purchases/{business_id}")
 def record_purchase_ingestion_run(
     business_id: UUID,
-    file: UploadFile = File(...),
+    files: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
     _auth: dict = Depends(require_business_access),
 ):
-    """Mirrors record_ingestion_run() (the sales-side import), but persists
-    a purchase register instead: same file handling, validation, and
-    duplicate-source detection; persist_purchases() instead of
-    persist_sales() on the write side."""
+    """Import one or more purchase-register files atomically.
+
+    Purchase invoices are reconciled by business + invoice number. Re-importing
+    an invoice updates its header and replaces its source-owned lines instead
+    of creating a duplicate.
+    """
     request_id = str(uuid4())
-    result, prepared, temp_path = _prepare_upload(file, business_id, db)
+    batch = _prepare_upload_batch(files, business_id, db)
     try:
-        if result.rows_rejected:
+        rejected = sum(result.rows_rejected for result, _, _ in batch)
+        if rejected:
             raise HTTPException(
                 422,
-                detail=f"Import blocked: {result.rows_rejected} row(s) failed validation",
+                detail=f"Purchase import blocked: {rejected} row(s) failed validation across the selected files",
             )
 
         logger.info(
-            "Starting purchase ingestion request=%s business=%s source=%s rows=%s",
-            request_id, business_id, result.source.name, result.rows_accepted,
+            "Starting purchase ingestion batch request=%s business=%s files=%s rows=%s",
+            request_id, business_id, len(batch),
+            sum(result.rows_accepted for result, _, _ in batch),
         )
-        run = persist_ingestion_run(db, business_id, result)
-        created_purchases = persist_purchases(db, business_id, [row.values for row in prepared])
+
+        runs = []
+        created_purchases = 0
+        reconciled_purchases = 0
+        for result, prepared, _ in batch:
+            run = persist_ingestion_run(db, business_id, result)
+            before = created_purchases
+            created = persist_purchases(db, business_id, [row.values for row in prepared])
+            created_purchases += created
+            # The repository returns only newly-created invoices. Accepted
+            # rows grouped into invoices minus new invoices are reconciliations.
+            invoice_numbers = {
+                row.values.get("invoice_number")
+                for row in prepared
+                if row.values.get("invoice_number")
+            }
+            reconciled_purchases += max(0, len(invoice_numbers) - (created_purchases - before))
+            runs.append(run)
+
         db.commit()
-        db.refresh(run)
+        db.expire_all()
+        for run in runs:
+            db.refresh(run)
+
+        from sqlalchemy import select, func
+        from packages.shared.database.models import PurchaseModel
+        from datetime import date
+
+        totals = db.execute(
+            select(
+                func.coalesce(func.sum(PurchaseModel.total_amount), 0),
+                func.count(PurchaseModel.id),
+                func.coalesce(func.sum(PurchaseModel.total_amount - PurchaseModel.paid_amount), 0),
+            ).where(PurchaseModel.business_id == business_id)
+        ).one()
+
         return {
-            "run_id": str(run.id),
-            "status": run.status,
-            "source": result.source.name,
-            "checksum": result.source.checksum,
-            "rows_read": result.rows_read,
-            "rows_accepted": result.rows_accepted,
-            "rows_rejected": result.rows_rejected,
+            "status": "completed",
+            "run_ids": [str(run.id) for run in runs],
+            "file_count": len(runs),
+            "sources": [result.source.name for result, _, _ in batch],
+            "rows_read": sum(result.rows_read for result, _, _ in batch),
+            "rows_accepted": sum(result.rows_accepted for result, _, _ in batch),
+            "rows_rejected": rejected,
             "purchases_created": created_purchases,
+            "purchases_reconciled": reconciled_purchases,
+            "total_purchase_amount_after_import": str(totals[0]),
+            "total_purchase_invoice_count_after_import": int(totals[1]),
+            "total_purchase_outstanding_after_import": str(totals[2]),
             "request_id": request_id,
         }
     except HTTPException:
@@ -211,21 +251,22 @@ def record_purchase_ingestion_run(
         raise
     except IntegrityError as exc:
         db.rollback()
-        logger.exception("Purchase ingestion integrity failure request=%s business=%s", request_id, business_id)
+        logger.exception("Purchase batch integrity failure request=%s business=%s", request_id, business_id)
         raise HTTPException(
             409,
-            detail=f"Import could not be saved because the source or one of its business records already exists. No partial data was committed. Request: {request_id}",
+            detail=f"Purchase import could not be saved. No partial data was committed. Request: {request_id}",
         ) from exc
     except Exception as exc:
         db.rollback()
-        logger.exception("Purchase ingestion failure request=%s business=%s", request_id, business_id)
+        logger.exception("Purchase batch failure request=%s business=%s", request_id, business_id)
         detail = str(exc).strip() or "The database operation returned no diagnostic message. Check the backend traceback."
         raise HTTPException(
             500,
-            detail=f"Import failed; no partial data was committed. {type(exc).__name__}: {detail} Request: {request_id}",
+            detail=f"Purchase import failed; no partial data was committed. {type(exc).__name__}: {detail} Request: {request_id}",
         ) from exc
     finally:
-        Path(temp_path).unlink(missing_ok=True)
+        for _, _, temp_path in batch:
+            Path(temp_path).unlink(missing_ok=True)
 
 
 @router.post("/import-expenses/{business_id}")
