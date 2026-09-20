@@ -2,6 +2,8 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
+import sqlalchemy as sa
+
 from sqlalchemy import (
     CheckConstraint,
     Date,
@@ -226,6 +228,28 @@ class InventoryMovementModel(Base):
     quantity: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
     reference: Mapped[str | None] = mapped_column(String(255))
+
+
+
+class BusinessSituationHistoryModel(Base):
+    __tablename__ = "business_situation_history"
+    __table_args__ = (
+        UniqueConstraint("business_id", "situation_code", name="uq_situation_history_business_code"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    business_id: Mapped[UUID] = mapped_column(ForeignKey("businesses.id"), nullable=False, index=True)
+    situation_code: Mapped[str] = mapped_column(String(128), nullable=False)
+    first_seen_at: Mapped[date] = mapped_column(Date, nullable=False)
+    last_seen_at: Mapped[date] = mapped_column(Date, nullable=False)
+    resolved_at: Mapped[date | None] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    severity: Mapped[str] = mapped_column(String(16), nullable=False)
+    priority_score: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    confidence: Mapped[Decimal] = mapped_column(Numeric(6, 4), nullable=False)
+    last_title: Mapped[str] = mapped_column(String(500), nullable=False)
+    last_explanation: Mapped[str] = mapped_column(Text, nullable=False)
+    last_evidence: Mapped[dict] = mapped_column(sa.JSON, nullable=False, default=dict)
 
 
 class IngestionRunModel(Base):
