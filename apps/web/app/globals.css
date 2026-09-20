@@ -1839,3 +1839,320 @@ button:disabled {
   .headerRight { gap: 6px; }
   .dashboardSection { margin-bottom: 34px; }
 }
+
+
+/* Collapsible application sidebar */
+.appShell {
+  max-width: none;
+  width: 100%;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 15% 85%;
+  gap: 0;
+  padding: 0;
+  background: var(--bg);
+}
+.appShell.sidebarCollapsed { grid-template-columns: 5% 95%; }
+.appSidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 17px 10px;
+  z-index: 20;
+}
+.sidebarTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 4px 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.sidebarBrand {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+}
+.sidebarBrandText { min-width: 0; }
+.sidebarBrandText strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebarBrand .brandMark {
+  width: 34px;
+  height: 34px;
+  flex: none;
+}
+.sidebarToggle {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 15px;
+}
+.sidebarToggle:hover { color: var(--text); border-color: var(--border-strong); }
+.sidebarNav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 17px 1px;
+}
+.navGroup { margin-bottom: 20px; }
+.navGroupLabel {
+  display: block;
+  padding: 0 9px 7px;
+  color: var(--text-faint);
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+.navItem {
+  width: 100%;
+  min-height: 39px;
+  padding: 7px 9px;
+  margin: 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #657286;
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: background .12s ease, color .12s ease;
+}
+.navItem:hover { background: var(--surface-2); color: var(--text); }
+.navItem.active {
+  background: var(--primary-tint);
+  color: var(--primary-dark);
+  font-weight: 750;
+}
+.navIcon {
+  width: 25px;
+  height: 25px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+}
+.navItem.active .navIcon { background: var(--surface); }
+.navIcon .icon { width: 15px; height: 15px; }
+.navLabel { overflow: hidden; text-overflow: ellipsis; }
+.sidebarBottom {
+  border-top: 1px solid var(--border-soft);
+  padding: 11px 1px 0;
+}
+.sidebarAsk {
+  width: 100%;
+  min-height: 39px;
+  padding: 7px 9px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--primary-dark);
+  font-size: 11px;
+  font-weight: 750;
+  text-align: left;
+}
+.sidebarAsk:hover { background: var(--primary-tint); }
+.sidebarAsk .icon { width: 16px; height: 16px; flex: none; }
+.sidebarCollapsed .appSidebar { padding-left: 7px; padding-right: 7px; }
+.sidebarCollapsed .sidebarBrand { justify-content: center; }
+.sidebarCollapsed .sidebarBrandText,
+.sidebarCollapsed .navGroupLabel,
+.sidebarCollapsed .navLabel { display: none; }
+.sidebarCollapsed .sidebarTop { justify-content: center; }
+.sidebarCollapsed .sidebarToggle { position: absolute; right: 7px; top: 17px; }
+.sidebarCollapsed .sidebarNav { padding-top: 55px; }
+.sidebarCollapsed .navItem { justify-content: center; padding-left: 0; padding-right: 0; }
+.sidebarCollapsed .navIcon { width: 31px; height: 31px; }
+.sidebarCollapsed .sidebarAsk { justify-content: center; padding-left: 0; padding-right: 0; }
+.appMain {
+  min-width: 0;
+  min-height: 100vh;
+  padding: 0 3.2%;
+}
+.appMain .dashboardHeader {
+  max-width: none;
+  min-height: 70px;
+  margin: 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.mobileBrand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+}
+.mobileBrand .brandMark { width: 31px; height: 31px; }
+.pageContent {
+  max-width: 1380px;
+  margin: 0 auto;
+  padding: 4px 0 110px;
+}
+.contentSection {
+  padding-top: 31px;
+  scroll-margin-top: 20px;
+}
+.contentTitle { margin-bottom: 23px; }
+.contentTitle > span { font-size: 15px; color: var(--text); letter-spacing: -.01em; }
+.contentTitle small { font-size: 11.5px; }
+.inlineAction {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+}
+.chatLauncher {
+  position: fixed;
+  right: 26px;
+  bottom: 25px;
+  z-index: 30;
+  min-height: 46px;
+  padding: 0 17px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 8px 28px rgba(18, 31, 49, .13);
+  font-size: 11.5px;
+  font-weight: 750;
+}
+.chatLauncher:hover { transform: translateY(-1px); box-shadow: 0 11px 32px rgba(18, 31, 49, .17); }
+.chatLauncher .icon { width: 17px; height: 17px; color: var(--primary); }
+.chatOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 30px;
+  background: rgba(12, 19, 31, .48);
+  backdrop-filter: blur(4px);
+}
+.chatWindow {
+  width: min(850px, 94vw);
+  height: min(720px, 88vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 25px 80px rgba(12, 19, 31, .25);
+}
+.chatHeader {
+  padding: 24px 26px 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.chatHeader h3 { margin: 5px 0 4px; font-size: 22px; letter-spacing: -.035em; }
+.chatHeader p { margin: 0; color: var(--text-muted); font-size: 11.5px; }
+.chatClose {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 21px;
+}
+.chatBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 25px;
+}
+.chatEmpty {
+  height: 100%;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+  color: var(--text-muted);
+}
+.chatEmpty .iconChip { margin-bottom: 13px; }
+.chatEmpty b { color: var(--text); font-size: 15px; }
+.chatEmpty p { max-width: 380px; margin: 6px 0 0; font-size: 11.5px; line-height: 1.6; }
+.chatResponse {
+  max-width: 700px;
+  margin: 10px auto;
+  padding: 20px;
+  border-radius: 13px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.chatResponse p { line-height: 1.7; }
+.chatForm {
+  padding: 15px 20px;
+  display: flex;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.chatForm input {
+  min-width: 0;
+  flex: 1;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  outline: none;
+}
+.chatForm input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-tint); }
+.chatForm button { min-width: 78px; }
+@media(max-width:900px) {
+  .appShell, .appShell.sidebarCollapsed { grid-template-columns: 64px 1fr; }
+  .appSidebar { padding-left: 7px; padding-right: 7px; }
+  .sidebarBrandText, .navGroupLabel, .navLabel { display: none; }
+  .sidebarBrand { justify-content: center; }
+  .sidebarTop { justify-content: center; }
+  .sidebarToggle { position: absolute; right: 7px; top: 17px; }
+  .sidebarNav { padding-top: 55px; }
+  .navItem { justify-content: center; padding-left: 0; padding-right: 0; }
+  .navIcon { width: 31px; height: 31px; }
+  .sidebarAsk { justify-content: center; padding-left: 0; padding-right: 0; }
+  .appMain { padding: 0 20px; }
+}
+@media(max-width:600px) {
+  .appShell, .appShell.sidebarCollapsed { grid-template-columns: 54px 1fr; }
+  .appMain { padding: 0 12px; }
+  .profileName { display: none; }
+  .chatOverlay { padding: 0; }
+  .chatWindow { width: 100%; height: 100%; border-radius: 0; }
+  .chatLauncher { right: 14px; bottom: 14px; }
+}
