@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://business_brain:business_brain@localhost:5432/business_brain"
     redis_url: str = "redis://localhost:6379/0"
     connector_registration_key: str | None = None
+    jwt_secret_key: str = "development-only-change-this-jwt-secret"
+    access_token_expire_minutes: int = 60
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     allowed_hosts: str = "localhost,127.0.0.1"
     max_upload_bytes: int = 25_000_000
@@ -34,6 +36,10 @@ class Settings(BaseSettings):
             raise ValueError("CONNECTOR_REGISTRATION_KEY must be configured in production")
         if self.connector_registration_key.strip().lower() in {"change-me", "changeme", "secret"}:
             raise ValueError("CONNECTOR_REGISTRATION_KEY must not use a placeholder value")
+        if not self.jwt_secret_key or self.jwt_secret_key == "development-only-change-this-jwt-secret" or len(self.jwt_secret_key) < 32:
+            raise ValueError("JWT_SECRET_KEY must be a strong secret of at least 32 characters in production")
+        if self.access_token_expire_minutes < 5 or self.access_token_expire_minutes > 24 * 60:
+            raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES must be between 5 and 1440")
         if "localhost" in self.database_url or "127.0.0.1" in self.database_url:
             raise ValueError("DATABASE_URL must point to a remote production database")
         if not self.cors_origin_list or any(origin.startswith("http://localhost") for origin in self.cors_origin_list):
