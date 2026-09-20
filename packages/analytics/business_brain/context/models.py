@@ -31,3 +31,4 @@ class BusinessContext:
     signals: list[Any]
     recommendations: list[Any]
     state: Any | None = None
+    situations: list[Any] = field(default_factory=list)
