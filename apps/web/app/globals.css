@@ -2870,3 +2870,7 @@ button:disabled {
 @media(max-width:1000px){.topCustomerCards{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:650px){.topCustomerCards{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:420px){.topCustomerCards{grid-template-columns:1fr;}}
+
+
+.topCustomers30Card { width: 100%; }
+.topCustomers30Card .topCustomerCards { width: 100%; }
