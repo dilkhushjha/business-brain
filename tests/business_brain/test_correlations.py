@@ -96,12 +96,14 @@ def test_working_capital_situation_uses_state_totals_when_available():
     state = SimpleNamespace(
         receivables_outstanding=Decimal("12000"),
         payables_outstanding=Decimal("9000"),
+        net_working_capital=Decimal("3000"),
     )
 
-    situation = correlate_signals(signals, state)
+    situations = correlate_signals(signals, state)
 
-    assert situation[0].evidence["receivables_outstanding"] == "12000"
-    assert situation[0].evidence["payables_outstanding"] == "9000"
+    assert situations[0].evidence["receivables_outstanding"] == "12000"
+    assert situations[0].evidence["payables_outstanding"] == "9000"
+    assert situations[0].evidence["net_working_capital"] == "3000"
 
 
 def test_procurement_demand_pressure_requires_both_signals():
@@ -115,6 +117,42 @@ def test_procurement_demand_pressure_requires_both_signals():
     assert len(situations) == 1
     assert situations[0].code == "PROCUREMENT_DEMAND_PRESSURE"
     assert situations[0].confidence == Decimal("0.82")
+
+
+def test_profitability_pressure_links_margin_and_expense_signals():
+    signals = [
+        signal("PRODUCT_MARGIN_DETERIORATION", evidence={"product": "Cable"}),
+        signal("EXPENSE_SPIKE", evidence={"category": "Freight"}),
+    ]
+    state = SimpleNamespace(
+        gross_profit=Decimal("30000"),
+        total_expenses=Decimal("35000"),
+        operating_surplus=Decimal("-5000"),
+    )
+
+    situations = correlate_signals(signals, state)
+
+    assert len(situations) == 1
+    assert situations[0].code == "PROFITABILITY_PRESSURE"
+    assert situations[0].evidence["operating_surplus"] == "-5000"
+
+
+def test_revenue_cost_squeeze_requires_revenue_decline_and_expense_spike():
+    signals = [
+        signal("REVENUE_DECLINE", evidence={"rule": "change <= -10%"}),
+        signal("EXPENSE_SPIKE", evidence={"category": "Rent"}),
+    ]
+    state = SimpleNamespace(
+        revenue=Decimal("80000"),
+        revenue_change_pct=Decimal("-15"),
+        expense_to_revenue_pct=Decimal("22"),
+    )
+
+    situations = correlate_signals(signals, state)
+
+    assert len(situations) == 1
+    assert situations[0].code == "REVENUE_COST_SQUEEZE"
+    assert situations[0].severity == "warning"
 
 
 def test_unrelated_signals_do_not_create_a_situation():
