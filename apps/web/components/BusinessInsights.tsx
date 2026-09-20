@@ -7,6 +7,7 @@ type InsightContext = {
   recommendations?: Array<Record<string, unknown>>;
   situations?: Array<Record<string, unknown>>;
   priorities?: Array<Record<string, unknown>>;
+  decision_actions?: Array<Record<string, unknown>>;
 };
 
 type Anomaly = { name: string; change_pct: number; severity: string };
@@ -57,6 +58,7 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
   const positive = signals.filter((s) => severity(s.severity) === "positive").length;
   const attention = critical + warning;
   const recommendations = context?.recommendations || [];
+  const decisionActions = context?.decision_actions || [];
   const priorityByCode = new Map(
     (context?.priorities || []).map((p) => [String(p.situation_code || ""), p])
   );
@@ -147,8 +149,17 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
 
         <aside className="insightRail">
           <section className="insightSideCard">
-            <div className="insightSideHead"><div><span className="eyebrow">DECISION SUPPORT</span><h3>Recommended actions</h3></div><span className="insightCount">{recommendations.length}</span></div>
-            {recommendations.length ? recommendations.slice(0, 5).map((r, i) => (
+            <div className="insightSideHead"><div><span className="eyebrow">DECISION SUPPORT</span><h3>Recommended actions</h3></div><span className="insightCount">{decisionActions.length || recommendations.length}</span></div>
+            {decisionActions.length ? decisionActions.slice(0, 5).map((a, i) => (
+              <div className="recommendationItem" key={String(a.code || i)}>
+                <span className="recommendationNo">{i + 1}</span>
+                <div>
+                  <b>{String(a.title || "Recommended action")}</b>
+                  <p>{String(a.why_now || "Evidence-backed action available.")}</p>
+                  <small>{String(a.priority_level || "monitor")} · {Math.round(Number(a.confidence || 0) * 100)}% confidence</small>
+                </div>
+              </div>
+            )) : recommendations.length ? recommendations.slice(0, 5).map((r, i) => (
               <div className="recommendationItem" key={String(r.code || i)}>
                 <span className="recommendationNo">{i + 1}</span>
                 <div><b>{String(r.title || r.name || "Recommended action")}</b><p>{String(r.rationale || r.description || r.message || "Evidence-backed action available.")}</p></div>
