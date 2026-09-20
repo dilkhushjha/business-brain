@@ -240,7 +240,7 @@ export default function Home() {
       <section className="dashboardSection"><div className="sectionHeading sectionHeadingLarge"><span>BUSINESS HEALTH</span><small>At-a-glance signals that deserve your attention</small></div><div className="healthLiteGrid">
         <div className={`healthLiteMain tone-${healthTone}`} onClick={explainHealth} role="button" tabIndex={0}><div className="healthLiteIcon"><Icon name={healthIcon} className="icon" /></div><div><span className="eyebrow">CURRENT STATUS</span><h3>{health}</h3><p>{healthText}</p></div><span className="cardArrow">→</span></div>
         <Metric label="Priority concerns" value={String(highSignals.length)} change="" note="signals requiring review" icon="alert" tone="danger" onClick={() => setActiveSection("insights")} />
-        <Metric label="Positive signals" value={String(positiveSignals.length)} change="" note="positive or notable movements" icon="check" tone="success" onClick={() => setActiveSection("insights")} />
+        <Metric label="Positive / notable signals" value={String(positiveSignals.length)} change="" note="positive or informational movements" icon="check" tone="success" onClick={() => setActiveSection("insights")} />
       </div></section>
       <section className="dashboardSection"><div className="sectionHeading sectionHeadingLarge"><span>BUSINESS OVERVIEW</span><small>Core numbers from your imported business data</small></div><div className="metrics">
         <Metric label="Total Revenue" value={money(totalRevenue?.value ?? revenue?.value)} change="" note="all imported data" icon="wallet" onClick={() => explainMetric("total-revenue")} />
