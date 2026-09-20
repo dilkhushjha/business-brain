@@ -5,6 +5,7 @@ import Icon from "./Icons";
 type InsightContext = {
   signals?: Array<Record<string, unknown>>;
   recommendations?: Array<Record<string, unknown>>;
+  situations?: Array<Record<string, unknown>>;
 };
 
 type Anomaly = { name: string; change_pct: number; severity: string };
@@ -69,6 +70,27 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
           <span>{attention === 1 ? "priority signal" : "priority signals"}</span>
         </div>
       </div>
+
+      {(context?.situations || []).length > 0 && <section className="businessSituations">
+        <div className="situationsHead">
+          <div><span className="eyebrow">CROSS-DOMAIN INTELLIGENCE</span><h3>Business situations</h3><p>Related signals that point to the same underlying business issue.</p></div>
+          <span className="insightCount">{context?.situations?.length || 0}</span>
+        </div>
+        <div className="situationsGrid">
+          {(context?.situations || []).slice(0, 4).map((s, i) => {
+            const sev = severity(s.severity);
+            const evidence = s.evidence && typeof s.evidence === "object" ? Object.entries(s.evidence as Record<string, unknown>).filter(([, v]) => v !== null && v !== undefined && v !== "").slice(0, 2).map(([k, v]) => k.replaceAll("_", " ") + ": " + (typeof v === "object" ? JSON.stringify(v) : String(v))).join(" · ") : "";
+            return <article className={"situationCard situation-" + severityClass(sev)} key={String(s.code || i)}>
+              <div className="situationTop"><span className="insightSignalMetric">{String(s.code || "Situation").replaceAll("_", " ")}</span><span className="insightSeverity">{severityLabel(sev)}</span></div>
+              <h4>{String(s.title || "Business situation")}</h4>
+              <p>{String(s.explanation || "Related business signals require review together.")}</p>
+              {evidence && <div className="situationEvidence"><b>Evidence</b><span>{evidence}</span></div>}
+              {s.recommended_next_step && <div className="situationAction"><b>Investigate</b><span>{String(s.recommended_next_step)}</span></div>}
+              {s.confidence !== undefined && <small>Confidence {Math.round(Number(s.confidence) * 100)}%</small>}
+            </article>;
+          })}
+        </div>
+      </section>}
 
       <div className="insightSummaryBar">
         <div><b>{critical}</b><span>Critical</span></div>
