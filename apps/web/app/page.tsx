@@ -231,7 +231,7 @@ export default function Home() {
       <section className="card"><div className="cardTitle"><b>Management attention</b><small>Highest-priority signals</small></div>{context?.signals?.slice(0, 5).map((s, i) => { const sev = severityIcon(s.severity as string | undefined); return <div className="signal" key={i}><span className={`iconChip sm tone-${sev.tone}`}><Icon name={sev.icon} className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{String(s.title || s.name || "Business signal")}</b><span className={`tag ${["critical", "warning", "high"].includes(String(s.severity).toLowerCase()) ? "danger" : ["positive", "info"].includes(String(s.severity).toLowerCase()) ? "good" : "warning"}`}>{String(s.severity || "REVIEW").toUpperCase()}</span></div><p>{String(s.message || s.description || "Review this signal.")}</p></div></div>; })}</section>
       <section className="card"><div className="cardTitle"><b>Recommended actions</b><small>What to consider next</small></div>{context?.recommendations?.map((r, i) => <div className="signal" key={i}><div className="actionNo">{i + 1}</div><div className="signalBody"><b>{String(r.title || r.name || "Recommendation")}</b><p>{String(r.description || r.message || "Evidence-backed action available.")}</p></div></div>)}</section>
     </div>{anomalies.length > 0 && <section className="card anomalyCard"><div className="cardTitle"><b>Exceptions</b><small>Unusual movements worth investigating</small></div>{anomalies.map((a, i) => <div className="anomaly" key={i}><span className={`iconChip sm tone-${a.severity === "high" ? "danger" : "amber"}`}><Icon name="alert" className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{a.name}</b><span className={`tag ${a.severity === "high" ? "danger" : "warning"}`}>{a.severity.toUpperCase()}</span></div><p>Revenue {a.change_pct >= 0 ? "increased" : "decreased"} <strong>{Math.abs(a.change_pct).toFixed(0)}%</strong> versus the prior period.</p></div></div>)}</section>}</section>;
-    if (activeSection === "reports") return <section className="contentSection"><SectionTitle title="REPORTS" subtitle="Reporting and analysis workspace" /><div className="card reportCard"><Icon name="trend" className="reportIcon" /><div><b>Detailed reporting</b><p>Review the business data and performance views. Report exports can be added here as the reporting layer grows.</p></div></div></section>;
+    if (activeSection === "reports") return <section className="contentSection"><SectionTitle title="REPORTS" subtitle="Reporting and analysis workspace" /><div className="card reportCard"><Icon name="trend" className="reportIcon" /><div><b>Detailed reporting</b><p>Review the business data and performance views. Report exports can be added here as the reporting layer grows.</p></div></section></section>;
     return <section className="contentSection"><SectionTitle title="DATA & IMPORTS" subtitle="Upload, validate and commit business data without leaving the dashboard" /><ImportWorkspace businessName={businessName} onImported={() => setDataVersion((v) => v + 1)} onDone={() => setActiveSection("overview")} /></section>;
   }
 
@@ -254,17 +254,33 @@ export default function Home() {
   </main>;
 }
 
-
 function ImportWorkspace({ businessName, onImported, onDone }: { businessName: string; onImported: () => void; onDone: () => void }) {
   const [files, setFiles] = useState<File[]>([]);
   const [preview, setPreview] = useState<any | null>(null);
   const [result, setResult] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [dragging, setDragging] = useState(false);
+
+  function applyFiles(selected: File[]) {
+    const accepted = selected.filter((file) => /\.(csv|xlsx?|xls)$/i.test(file.name));
+    setFiles(accepted);
+    setPreview(null);
+    setResult(null);
+    setError(accepted.length === selected.length ? "" : "Only CSV, XLSX or XLS files can be uploaded.");
+  }
 
   function chooseFile(event: ChangeEvent<HTMLInputElement>) {
-    setFiles(Array.from(event.target.files || [])); setPreview(null); setResult(null); setError("");
+    applyFiles(Array.from(event.target.files || []));
   }
+
+  function handleDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragging(false);
+    applyFiles(Array.from(event.dataTransfer.files || []));
+  }
+
   async function send(path: "preview" | "record-run") {
     if (!files.length) throw new Error("Choose at least one CSV or Excel file first.");
     const businessId = getBusinessId();
@@ -286,10 +302,10 @@ function ImportWorkspace({ businessName, onImported, onDone }: { businessName: s
   return <div className="importWorkspace">
     <section className="card importCard">
       <div className="importCardHead"><div><span className="eyebrow">DATA & IMPORTS</span><h3>Bring your sales data into Business Brain</h3><p>Upload one or more Tally CSV or Excel exports. We’ll validate everything before anything is committed.</p></div><span className="status">Workspace · {businessName}</span></div>
-      <div className="uploadZone" onClick={() => document.getElementById("businessBrainFileInput")?.click()}>
+      <div className={`uploadZone ${dragging ? "dragging" : ""}`} onClick={() => document.getElementById("businessBrainFileInput")?.click()} onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); setDragging(true); }} onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); setDragging(true); }} onDragLeave={(event) => { event.preventDefault(); event.stopPropagation(); if (event.currentTarget === event.target) setDragging(false); }} onDrop={handleDrop} role="button" tabIndex={0} aria-label="Upload sales files">
         <input id="businessBrainFileInput" className="uploadInput" type="file" multiple accept=".csv,.xlsx,.xls" onClick={(event) => { event.stopPropagation(); event.currentTarget.value = ""; }} onChange={chooseFile} />
         <div className="uploadIcon"><Icon name="arrow" className="icon" /></div>
-        <div className="uploadCopy"><strong>Drop your sales files here</strong><span>or click to browse from your computer</span><small>CSV, XLSX or XLS · Multiple files supported</small></div>
+        <div className="uploadCopy"><strong>{dragging ? "Release to add your sales files" : "Drop your sales files here"}</strong><span>or click to browse from your computer</span><small>CSV, XLSX or XLS · Multiple files supported</small></div>
         <span className="uploadBrowse">Choose files</span>
       </div>
       {files.length > 0 && <div className="selectedFiles">{files.map((selectedFile) => <span className="selectedFile" key={`${selectedFile.name}-${selectedFile.size}`}>{selectedFile.name} · {(selectedFile.size / 1024).toFixed(1)} KB</span>)}</div>}
