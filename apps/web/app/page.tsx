@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import RevenueTrend from "../components/RevenueTrend";
 import PerformanceTables from "../components/PerformanceTables";
 import MarginIntelligence from "../components/MarginIntelligence";
@@ -239,7 +239,7 @@ function ImportWorkspace({ businessName }: { businessName: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  function chooseFile(event: React.ChangeEvent<HTMLInputElement>) {
+  function chooseFile(event: ChangeEvent<HTMLInputElement>) {
     setFile(event.target.files?.[0] || null); setPreview(null); setResult(null); setError("");
   }
   async function send(path: "preview" | "record-run") {
