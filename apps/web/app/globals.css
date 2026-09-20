@@ -2384,3 +2384,24 @@ button:disabled {
   .importSummaryItem:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
   .importVerification { margin-left: 20px; margin-right: 20px; grid-template-columns: 1fr; }
 }
+
+
+/* Profile control polish */
+.profileButton .avatar {
+  color: var(--primary-dark);
+}
+.profileButton .avatar .icon {
+  width: 15px;
+  height: 15px;
+}
+.profileButton.open {
+  border-color: #c8d4ef;
+  background: var(--primary-tint);
+}
+.profileButton.open .profileChevron {
+  transform: rotate(180deg);
+  color: var(--primary-dark);
+}
+.profileChevron {
+  transition: transform .15s ease, color .15s ease;
+}
