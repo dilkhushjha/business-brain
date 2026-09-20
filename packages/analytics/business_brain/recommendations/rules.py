@@ -5,6 +5,64 @@ from packages.analytics.business_brain.recommendations.models import Recommendat
 
 def generate_recommendations(context: RecommendationContext) -> list[Recommendation]:
     recommendations: list[Recommendation] = []
+    for situation in context.drivers:
+        if situation.code == "MARGIN_PRESSURE":
+            recommendations.append(Recommendation(
+                code="INVESTIGATE_MARGIN_PRESSURE",
+                title="Investigate procurement-driven margin pressure",
+                priority="high" if situation.severity == "critical" else "medium",
+                confidence=situation.confidence,
+                rationale=situation.explanation,
+                evidence=situation.evidence,
+                actions=[
+                    "Review supplier pricing for the affected products.",
+                    "Compare current selling prices with the higher procurement costs.",
+                    "Check alternative suppliers or renegotiate buying terms.",
+                ],
+            ))
+        elif situation.code == "SUPPLIER_DEPENDENCY_PRESSURE":
+            recommendations.append(Recommendation(
+                code="REDUCE_SUPPLIER_DEPENDENCY",
+                title="Review concentrated supplier dependency",
+                priority="high" if situation.severity == "critical" else "medium",
+                confidence=situation.confidence,
+                rationale=situation.explanation,
+                evidence=situation.evidence,
+                actions=[
+                    "Identify viable secondary suppliers.",
+                    "Review negotiation leverage and current buying terms.",
+                    "Check the margin impact if this supplier raises prices further.",
+                ],
+            ))
+        elif situation.code == "PROCUREMENT_DEMAND_PRESSURE":
+            recommendations.append(Recommendation(
+                code="ALIGN_PROCUREMENT_WITH_DEMAND",
+                title="Align purchasing with rising demand",
+                priority="high" if situation.severity == "critical" else "medium",
+                confidence=situation.confidence,
+                rationale=situation.explanation,
+                evidence=situation.evidence,
+                actions=[
+                    "Check stock coverage for products with rising demand.",
+                    "Confirm supplier lead times and reorder requirements.",
+                    "Separate repeatable demand growth from one-off orders.",
+                ],
+            ))
+        elif situation.code == "WORKING_CAPITAL_PRESSURE":
+            recommendations.append(Recommendation(
+                code="REVIEW_WORKING_CAPITAL_PRESSURE",
+                title="Review near-term working capital pressure",
+                priority="high" if situation.severity == "critical" else "medium",
+                confidence=situation.confidence,
+                rationale=situation.explanation,
+                evidence=situation.evidence,
+                actions=[
+                    "Prioritize collection of overdue customer receivables.",
+                    "Review supplier payment priorities and available terms.",
+                    "Check near-term cash requirements before committing to new purchases.",
+                ],
+            ))
+
     for signal in context.signals:
         if signal.code == "REVENUE_DECLINE":
             recommendations.append(
