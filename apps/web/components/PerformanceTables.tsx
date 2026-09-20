@@ -138,30 +138,8 @@ export default function PerformanceTables({ section = "sales", dataVersion = 0 }
             {concentration && <section className="customerCommandCard customerActionCard"><div className="customerCommandHead"><div><span className="eyebrow">RECOMMENDED REVIEW</span><h4>Customer dependency</h4></div></div><div className="customerAction"><Icon name="users" className="icon" /><p>{concentration.risk === "high" ? "A small group of customers contributes a large share of revenue. Protect these relationships while reducing dependency over time." : concentration.risk === "medium" ? "Leading customers have meaningful revenue influence. Monitor retention and avoid over-reliance on a small group." : "Revenue is reasonably distributed across customers. Continue monitoring concentration as the mix changes."}</p></div></section>}
           </div>
         </div>
-      )}}
-
-            <div className="card customerInsightCard">
-              <div className="cardTitle"><span><Icon name="trendDown" className="icon" /></span><h3>Customers losing momentum</h3><small>Revenue decline</small></div>
-              {declining.length ? declining.map((c) => (
-                <div className="customerAlert" key={c.name}>
-                  <div><b>{c.name}</b><span className={`tag ${c.severity === "high" ? "danger" : "warning"}`}>{c.severity.toUpperCase()}</span></div>
-                  <p>Revenue changed <strong className="negative">{pct(c.change_pct)}</strong>, from {money(c.previous_revenue)} to {money(c.current_revenue)}.</p>
-                </div>
-              )) : <p className="emptyInsight">No customers have crossed the decline threshold.</p>}
-            </div>
-
-            <div className="card customerInsightCard">
-              <div className="cardTitle"><span><Icon name="clock" className="icon" /></span><h3>Customers to follow up</h3><small>No recent orders</small></div>
-              {inactive.length ? inactive.map((c) => (
-                <div className="customerAlert" key={c.name}>
-                  <div><b>{c.name}</b><span className="tag warning">FOLLOW UP</span></div>
-                  <p>Last order {c.last_order || "unknown"} · <strong>{c.inactive_days ?? "—"} days inactive</strong> · lifetime {money(c.lifetime_revenue)}.</p>
-                </div>
-              )) : <p className="emptyInsight">No inactive customers detected.</p>}
-            </div>
-          </section>
-        </>
       )}
+
     </>
   );
 }
