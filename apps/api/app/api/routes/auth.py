@@ -16,6 +16,7 @@ from packages.shared.database.session import get_db
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 password_hash = PasswordHash.recommended()
+DUMMY_PASSWORD_HASH = password_hash.hash("business-brain-dummy-password")
 ALGORITHM = "HS256"
 
 
@@ -161,7 +162,8 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 @router.post("/login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = _find_user(db, payload.identifier)
-    if not user or not user["is_active"] or not password_hash.verify(payload.password, user["password_hash"]):
+    password_ok = password_hash.verify(payload.password, user["password_hash"] if user else DUMMY_PASSWORD_HASH)
+    if not user or not user["is_active"] or not password_ok:
         raise HTTPException(401, "Invalid username, email/phone, or password")
 
     row = _user_row(db, UUID(str(user["id"])))
