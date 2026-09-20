@@ -34,7 +34,6 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
     """
     kpis = monthly_sales_kpis(db, business_id, as_of)
     signals = detect_signals(db, business_id, as_of)
-    recommendations = recommend(db, business_id, as_of)
     evidence = [
         Evidence(
             source="kpi_engine",
@@ -119,7 +118,6 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
     )
 
     situations = correlate_signals(signals, state)
-    recommendations = recommend(db, business_id, as_of)
     from packages.analytics.business_brain.recommendations.rules import generate_recommendations
     from packages.analytics.business_brain.recommendations.models import RecommendationContext
     recommendations = generate_recommendations(RecommendationContext(signals=signals, drivers=situations))
