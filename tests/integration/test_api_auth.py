@@ -202,3 +202,40 @@ def test_import_route_requires_user_auth(client, seeder):
         files={"file": ("expenses.csv", csv_bytes, "text/csv")},
     )
     assert response.status_code == 401
+
+
+def test_sales_import_persists_new_and_reimported_invoices(client, seeder):
+    """Regression test for the dashboard symptom where an accepted import did not change KPIs."""
+    business = seeder.business("Import Regression Business")
+    register = client.post("/api/auth/register", json={
+        "username": f"import_{uuid4().hex[:10]}",
+        "email": f"import_{uuid4().hex[:10]}@example.com",
+        "password": "StrongPassword!123",
+        "business_name": "Import Regression Business",
+        "industry": "distribution",
+    })
+    assert register.status_code == 200, register.text
+    token = register.json()["access_token"]
+    business_id = register.json()["user"]["business"]["id"]
+
+    first = b"invoice_number,date,customer,product,category,quantity,unit_price,total_amount,payment_method,status\nREG001,2026-09-01,Alpha,Network Cable,Cables,1,1000,1000,UPI,Completed\n"
+    second = b"invoice_number,date,customer,product,category,quantity,unit_price,total_amount,payment_method,status\nREG002,2026-09-02,Beta,USB Connector,Connectors,1,2500,2500,Cash,Completed\n"
+
+    headers = {"Authorization": f"Bearer {token}"}
+    r1 = client.post(f"/api/ingestion/record-run/{business_id}", headers=headers, files={"files": ("test.csv", first, "text/csv")})
+    assert r1.status_code == 200, r1.text
+    assert r1.json()["sales_created"] == 1
+    assert r1.json()["total_revenue_after_import"] == "1000.00"
+    assert r1.json()["total_invoice_count_after_import"] == 1
+
+    r2 = client.post(f"/api/ingestion/record-run/{business_id}", headers=headers, files={"files": ("test.csv", second, "text/csv")})
+    assert r2.status_code == 200, r2.text
+    assert r2.json()["sales_created"] == 1
+    assert r2.json()["total_revenue_after_import"] == "3500.00"
+    assert r2.json()["total_invoice_count_after_import"] == 2
+
+    kpis = client.get(f"/api/kpis/sales/{business_id}", headers=headers)
+    assert kpis.status_code == 200, kpis.text
+    payload = {item["name"]: item for item in kpis.json()}
+    assert payload["total_revenue"]["value"] == "3500.00"
+    assert payload["total_invoice_count"]["value"] == "2"
