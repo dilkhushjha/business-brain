@@ -336,7 +336,7 @@ function ImportWorkspace({ businessName, onImported, onDone }: { businessName: s
         <div className="uploadCopy"><strong>{dragging ? "Release to add your sales files" : "Drop your sales files here"}</strong><span>or click to browse from your computer</span><small>CSV, XLSX or XLS · Multiple files supported</small></div>
         <span className="uploadBrowse">Choose files</span>
       </div>
-      {files.length > 0 && <div className="selectedFiles">{files.map((selectedFile) => <span className="selectedFile" key={`${selectedFile.name}-${selectedFile.size}`}>{selectedFile.name} · {(selectedFile.size / 1024).toFixed(1)} KB</span>)}</div>}
+      {files.length > 0 && <div className="selectedFiles"><div className="selectedFilesHeader"><b>{files.length} file{files.length === 1 ? "" : "s"} selected</b><button type="button" className="clearFilesButton" onClick={() => { setFiles([]); setPreview(null); setResult(null); setError(""); }}>Clear selection</button></div>{files.map((selectedFile, index) => <div className="selectedFile" key={`${selectedFile.name}-${selectedFile.size}-${index}`}><span>{selectedFile.name} · {(selectedFile.size / 1024).toFixed(1)} KB</span><button type="button" className="removeFileButton" aria-label={`Remove ${selectedFile.name}`} onClick={() => { const next = files.filter((_, fileIndex) => fileIndex !== index); setFiles(next); setPreview(null); setResult(null); setError(""); }}>×</button></div>)}</div>}
       <div className="actions"><button onClick={previewFile} disabled={busy || files.length === 0}>{busy ? "Checking…" : "Preview & Validate"}</button></div>
     </section>
     {error && <div className="errorBox">{error}</div>}
