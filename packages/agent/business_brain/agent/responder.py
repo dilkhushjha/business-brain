@@ -36,9 +36,6 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
     situations = context.get("situations", [])
     grounded = False
 
-    def _situation_for(codes: set[str]) -> dict | None:
-        return next((item for item in situations if item.get("code") in codes), None)
-
     if intent == "business_health":
         revenue = _evidence_for(evidence, "revenue")
         if revenue:
@@ -201,7 +198,7 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
         answer += f" Business Brain also identified {len(situations)} cross-domain business situation(s) linking related signals."
         top_situation = situations[0]
         if top_situation.get("title"):
-            answer += f" The most relevant is: {top_situation["title"]}."
+            answer += " The most relevant is: " + str(top_situation.get("title")) + "."
     if recommendations:
         answer += f" There are {len(recommendations)} evidence-backed recommendation(s) available."
     return answer, "grounded" if grounded else "insufficient_evidence"
