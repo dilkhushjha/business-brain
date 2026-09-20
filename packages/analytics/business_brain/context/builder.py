@@ -19,6 +19,7 @@ from packages.analytics.business_brain.correlations import correlate_signals
 from packages.analytics.business_brain.analysis import analyze_situation
 from packages.analytics.business_brain.prioritization import prioritize_situations
 from packages.analytics.business_brain.decision_support import build_decision_actions
+from packages.analytics.business_brain.history import record_situation_history
 from packages.analytics.business_brain.recommendations.rules import generate_recommendations
 from packages.analytics.business_brain.recommendations.models import RecommendationContext
 
@@ -116,6 +117,13 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
     recommendations = generate_recommendations(
         RecommendationContext(signals=signals, drivers=situations)
     )
+    situation_history = record_situation_history(
+        db=db,
+        business_id=business_id,
+        as_of=as_of,
+        situations=situations,
+        priorities=priorities,
+    )
     decision_actions = build_decision_actions(
         situations=situations,
         priorities=priorities,
@@ -134,4 +142,5 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
         analyses=analyses,
         priorities=priorities,
         decision_actions=decision_actions,
+        situation_history=situation_history,
     )
