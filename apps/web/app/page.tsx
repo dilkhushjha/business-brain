@@ -89,9 +89,26 @@ function Metric({ label, value, change, note, icon, tone = "primary", onClick }:
   </div>;
 }
 
+type SignalSeverity = "critical" | "warning" | "high" | "positive" | "info" | "medium" | "unknown";
+
+function normalizeSeverity(severity?: string): SignalSeverity {
+  const value = String(severity || "").trim().toLowerCase();
+  if (value === "critical" || value === "warning" || value === "high" || value === "positive" || value === "info" || value === "medium") return value;
+  return "unknown";
+}
+
+function isPrioritySeverity(severity?: string) {
+  return ["critical", "warning", "high"].includes(normalizeSeverity(severity));
+}
+
+function isPositiveSeverity(severity?: string) {
+  return ["positive", "info"].includes(normalizeSeverity(severity));
+}
+
 function severityIcon(severity?: string): { icon: IconName; tone: string } {
-  if (severity === "high") return { icon: "alert", tone: "danger" };
-  if (severity === "positive") return { icon: "check", tone: "success" };
+  const normalized = normalizeSeverity(severity);
+  if (isPrioritySeverity(normalized)) return { icon: "alert", tone: "danger" };
+  if (isPositiveSeverity(normalized)) return { icon: "check", tone: "success" };
   return { icon: "pulse", tone: "amber" };
 }
 
@@ -159,8 +176,8 @@ export default function Home() {
   const totalInvoices = kpis.find((k) => k.name === "total_invoice_count");
   const rk = find("revenue"), ak = find("average", "aov");
   const revenueChange = rk?.change ?? (revenue?.metadata?.change != null ? revenue.metadata.change * 100 : null);
-  const prioritySignals = (context?.signals || []).filter((s) => ["critical", "warning", "high"].includes(String(s.severity).toLowerCase()));
-  const positiveSignals = (context?.signals || []).filter((s) => ["positive", "info"].includes(String(s.severity).toLowerCase()));
+  const prioritySignals = (context?.signals || []).filter((s) => isPrioritySeverity(String(s.severity || "")));
+  const positiveSignals = (context?.signals || []).filter((s) => isPositiveSeverity(String(s.severity || "")));
   const highSignals = prioritySignals;
   const health = highSignals.length >= 2 ? "Needs attention" : highSignals.length === 1 ? "Watch closely" : "On track";
   const healthText = health === "Needs attention" ? "A few issues deserve attention today." : health === "Watch closely" ? "Performance is mixed. Review the highlighted signals." : "No major warning signals are currently visible.";
@@ -228,7 +245,7 @@ export default function Home() {
     if (activeSection === "financials") return <section className="contentSection"><SectionTitle title="FINANCIALS" subtitle="Profitability, margins, cash position and receivables" /><div className="statGrid"><MarginIntelligence onExplain={setSelectedReasoning} /><ReceivablesIntelligence onExplain={setSelectedReasoning} /></div></section>;
     if (activeSection === "operations") return <section className="contentSection"><SectionTitle title="OPERATIONS" subtitle="Inventory health and operational intelligence" /><InventoryIntelligence onExplain={setSelectedReasoning} /></section>;
     if (activeSection === "insights") return <section className="contentSection"><SectionTitle title="BUSINESS INSIGHTS" subtitle="Signals, anomalies and recommended actions" /><div className="insightColumns">
-      <section className="card"><div className="cardTitle"><b>Management attention</b><small>Highest-priority signals</small></div>{context?.signals?.slice(0, 5).map((s, i) => { const sev = severityIcon(s.severity as string | undefined); return <div className="signal" key={i}><span className={`iconChip sm tone-${sev.tone}`}><Icon name={sev.icon} className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{String(s.title || s.name || "Business signal")}</b><span className={`tag ${["critical", "warning", "high"].includes(String(s.severity).toLowerCase()) ? "danger" : ["positive", "info"].includes(String(s.severity).toLowerCase()) ? "good" : "warning"}`}>{String(s.severity || "REVIEW").toUpperCase()}</span></div><p>{String(s.message || s.description || "Review this signal.")}</p></div></div>; })}</section>
+      <section className="card"><div className="cardTitle"><b>Management attention</b><small>Highest-priority signals</small></div>{context?.signals?.slice(0, 5).map((s, i) => { const sev = severityIcon(String(s.severity || "")); return <div className="signal" key={i}><span className={`iconChip sm tone-${sev.tone}`}><Icon name={sev.icon} className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{String(s.title || s.name || "Business signal")}</b><span className={`tag ${isPrioritySeverity(String(s.severity || "")) ? "danger" : isPositiveSeverity(String(s.severity || "")) ? "good" : "warning"}`}>{String(s.severity || "REVIEW").toUpperCase()}</span></div><p>{String(s.message || s.description || "Review this signal.")}</p></div></div>; })}</section>
       <section className="card"><div className="cardTitle"><b>Recommended actions</b><small>What to consider next</small></div>{context?.recommendations?.map((r, i) => <div className="signal" key={i}><div className="actionNo">{i + 1}</div><div className="signalBody"><b>{String(r.title || r.name || "Recommendation")}</b><p>{String(r.description || r.message || "Evidence-backed action available.")}</p></div></div>)}</section>
     </div>{anomalies.length > 0 && <section className="card anomalyCard"><div className="cardTitle"><b>Exceptions</b><small>Unusual movements worth investigating</small></div>{anomalies.map((a, i) => <div className="anomaly" key={i}><span className={`iconChip sm tone-${a.severity === "high" ? "danger" : "amber"}`}><Icon name="alert" className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{a.name}</b><span className={`tag ${a.severity === "high" ? "danger" : "warning"}`}>{a.severity.toUpperCase()}</span></div><p>Revenue {a.change_pct >= 0 ? "increased" : "decreased"} <strong>{Math.abs(a.change_pct).toFixed(0)}%</strong> versus the prior period.</p></div></div>)}</section>}</section>;
     if (activeSection === "reports") return <section className="contentSection"><SectionTitle title="REPORTS" subtitle="Reporting and analysis workspace" /><div className="card reportCard"><Icon name="trend" className="reportIcon" /><div><b>Detailed reporting</b><p>Review the business data and performance views. Report exports can be added here as the reporting layer grows.</p></div></section>;
