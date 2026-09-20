@@ -19,6 +19,7 @@ export default function ReceivablesIntelligence({ onExplain }: { onExplain?: (re
   }, []);
   if (!s || !s.outstanding) return null;
 
+  const notDue = Math.max(s.outstanding - s.overdue, 0);
   const reasoning: ReasoningPayload = {
     title: "Receivables & cash",
     value: money(s.outstanding),
@@ -29,6 +30,7 @@ export default function ReceivablesIntelligence({ onExplain }: { onExplain?: (re
     evidence: [
       { label: "Outstanding", value: money(s.outstanding) },
       { label: "Overdue", value: money(s.overdue) },
+      { label: "Not overdue", value: money(notDue) },
       { label: "Overdue share", value: `${s.overdue_pct}%` },
       ...(c.length ? [{ label: "Customers needing collection", value: `${c.length}`, detail: "Highest overdue balances returned by the receivables analysis" }] : []),
     ],
@@ -36,11 +38,15 @@ export default function ReceivablesIntelligence({ onExplain }: { onExplain?: (re
   const explain = () => onExplain?.(reasoning);
   return (
     <section className={`card ${onExplain ? "reasoningClickable" : ""}`} onClick={onExplain ? explain : undefined} onKeyDown={onExplain ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); explain(); } } : undefined} role={onExplain ? "button" : undefined} tabIndex={onExplain ? 0 : undefined}>
-      <div className="cardTitle"><span><Icon name="clock" className="icon" /></span><h3>Receivables &amp; cash</h3><small>Outstanding invoices</small></div>
+      <div className="cardTitle"><span><Icon name="clock" className="icon" /></span><h3>Receivables &amp; cash</h3><small>Business-level invoice position</small></div>
       <div className="marginStats">
         <div><span>Outstanding</span><b>{money(s.outstanding)}</b></div>
+        <div><span>Not overdue</span><b>{money(notDue)}</b></div>
         <div><span>Overdue</span><b className={s.overdue > 0 ? "negative" : undefined}>{money(s.overdue)}</b></div>
-        <div><span>Overdue share</span><b>{s.overdue_pct}%</b></div>
+      </div>
+      <div className="receivablesMeta">
+        <span>Overdue share <b>{s.overdue_pct}%</b></span>
+        <span>Outstanding = unpaid invoice value</span>
       </div>
       {c.length > 0 && <div className="marginAlerts"><strong>Customers needing collection</strong>{c.map((x) => <div className="marginRow" key={x.name}><span>{x.name}</span><b>{money(x.overdue_amount)}</b><em>{x.days_overdue} days overdue</em></div>)}</div>}
     </section>
