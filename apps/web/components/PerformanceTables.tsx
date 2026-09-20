@@ -53,15 +53,15 @@ export default function PerformanceTables({ section = "sales", dataVersion = 0 }
   return (
     <>
       <section className="grid performanceGrid">
-        {section === "sales" && <div className="card">
+        {section === "sales" && <div className="card topProductsCard">
           <div className="cardTitle"><span><Icon name="trophy" className="icon" /></span><h3>Top products</h3><small>Last 30 days</small></div>
-          {products.length ? products.map((p, i) => (
-            <div className="performanceRow" key={p.name}>
-              <span className="rank">{i + 1}</span>
-              <div><b>{p.name}</b><small>{p.quantity} units sold</small></div>
+          {products.length ? <div className="topProductCards">{products.map((p, i) => (
+            <div className="topProductCard" key={p.name}>
+              <div className="topProductRank">{i + 1}</div>
+              <div className="topProductBody"><b>{p.name}</b><span>{p.quantity} units sold</span></div>
               <strong>{money(p.revenue)}</strong>
             </div>
-          )) : <p className="emptyInsight">No product sales found.</p>}
+          ))}</div> : <p className="emptyInsight">No product sales found.</p>}
         </div>}
         {section === "customers" && <div className="card topCustomers30Card">
           <div className="cardTitle"><span><Icon name="users" className="icon" /></span><h3>Top customers</h3><small>Last 30 days</small></div>
