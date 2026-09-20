@@ -120,13 +120,21 @@ def record_ingestion_run(
 
         runs = []
         created_sales = 0
+        reconciled_sales = 0
         for result, prepared, _ in batch:
             run = persist_ingestion_run(db, business_id, result)
-            created_sales += persist_sales(db, business_id, [row.values for row in prepared])
+            sales_result = persist_sales(db, business_id, [row.values for row in prepared])
+            created_sales += sales_result["created"]
+            reconciled_sales += sales_result["reconciled"]
             runs.append(run)
         db.commit()
+        db.expire_all()
         for run in runs:
             db.refresh(run)
+
+        from packages.analytics.business_brain.query.sales import sales_summary
+        from datetime import date
+        totals = sales_summary(db, business_id, date(2000, 1, 1), date.today())
 
         return {
             "status": "completed",
@@ -137,6 +145,9 @@ def record_ingestion_run(
             "rows_accepted": sum(result.rows_accepted for result, _, _ in batch),
             "rows_rejected": rejected,
             "sales_created": created_sales,
+            "sales_reconciled": reconciled_sales,
+            "total_revenue_after_import": str(totals.revenue),
+            "total_invoice_count_after_import": totals.invoice_count,
             "request_id": request_id,
         }
     except HTTPException:
