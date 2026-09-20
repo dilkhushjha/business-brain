@@ -7,7 +7,13 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from packages.data.business_brain.ingestion.canonicalize import canonicalize_purchase_row
-from packages.shared.database.models import ProductModel, PurchaseLineModel, PurchaseModel, SupplierModel
+from packages.shared.database.models import (
+    InventoryMovementModel,
+    ProductModel,
+    PurchaseLineModel,
+    PurchaseModel,
+    SupplierModel,
+)
 
 
 def _get_or_create_supplier(db: Session, business_id: UUID, name: str | None) -> SupplierModel | None:
@@ -53,7 +59,35 @@ def _replace_purchase_lines(db: Session, purchase: PurchaseModel, rows: list[dic
         )
 
 
-def persist_purchases(db: Session, business_id: UUID, rows: list[dict]) -> int:
+def _replace_purchase_inventory_movements(
+    db: Session,
+    business_id: UUID,
+    invoice_number: str,
+    purchase_rows: list[dict],
+) -> None:
+    """Rebuild source-owned purchase movements for one invoice."""
+    db.execute(
+        delete(InventoryMovementModel).where(
+            InventoryMovementModel.business_id == business_id,
+            InventoryMovementModel.movement_type == "purchase",
+            InventoryMovementModel.reference == invoice_number,
+        )
+    )
+    for row in purchase_rows:
+        db.add(
+            InventoryMovementModel(
+                business_id=business_id,
+                product_id=row["product_id"],
+                movement_date=row["transaction_date"],
+                movement_type="purchase",
+                quantity=row["quantity"],
+                unit_cost=row["unit_cost"],
+                reference=invoice_number,
+            )
+        )
+
+
+def persist_purchases(db: Session, business_id: UUID, rows: list[dict]) -> dict[str, int]:
     """Persist purchases as invoice-level records and reconcile repeated
     exports. Mirrors persist_sales() in repository.py exactly, on the
     purchase side of the ledger: a Tally purchase register commonly has
@@ -72,6 +106,7 @@ def persist_purchases(db: Session, business_id: UUID, rows: list[dict]) -> int:
             grouped[invoice].append(row)
 
     created = 0
+    reconciled = 0
     for invoice, invoice_rows in grouped.items():
         header = invoice_rows[0]
         supplier = _get_or_create_supplier(db, business_id, header["supplier_name"])
@@ -91,6 +126,20 @@ def persist_purchases(db: Session, business_id: UUID, rows: list[dict]) -> int:
             existing.due_date = header["due_date"]
             existing.paid_amount = header["paid_amount"]
             _replace_purchase_lines(db, existing, invoice_rows)
+            db.flush()
+            movement_rows = [
+                {
+                    "product_id": line.product_id,
+                    "quantity": line.quantity,
+                    "unit_cost": line.unit_cost,
+                    "transaction_date": existing.transaction_date,
+                }
+                for line in db.execute(
+                    select(PurchaseLineModel).where(PurchaseLineModel.purchase_id == existing.id)
+                ).scalars().all()
+            ]
+            _replace_purchase_inventory_movements(db, business_id, invoice, movement_rows)
+            reconciled += 1
             continue
 
         purchase = PurchaseModel(
@@ -107,6 +156,19 @@ def persist_purchases(db: Session, business_id: UUID, rows: list[dict]) -> int:
         db.add(purchase)
         db.flush()
         _replace_purchase_lines(db, purchase, invoice_rows)
+        db.flush()
+        movement_rows = [
+            {
+                "product_id": line.product_id,
+                "quantity": line.quantity,
+                "unit_cost": line.unit_cost,
+                "transaction_date": purchase.transaction_date,
+            }
+            for line in db.execute(
+                select(PurchaseLineModel).where(PurchaseLineModel.purchase_id == purchase.id)
+            ).scalars().all()
+        ]
+        _replace_purchase_inventory_movements(db, business_id, invoice, movement_rows)
         created += 1
 
-    return created
+    return {"created": created, "reconciled": reconciled}
