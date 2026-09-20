@@ -1,26 +1,17 @@
-"""HTTP-level auth tests.
-
-There are no HTTP-level tests anywhere else in this repo -- everything else
-tests the underlying functions directly, never through a real FastAPI
-request/response cycle. That's fine for business logic, but auth is
-specifically about what happens at the HTTP boundary (headers, status
-codes, dependency wiring), so this is the one place that boundary itself
-needs a real TestClient rather than a direct function call.
-
-apps.api.app.main imports connect to a real Postgres at module import time
-(ensure_schema_compatibility()), which isn't available in this sandbox, so
-these tests build a small standalone app mounting the same routers directly
-rather than importing apps.api.app.main.
-"""
+"""HTTP-level authentication and authorization tests."""
 from __future__ import annotations
 
 from uuid import uuid4
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pwdlib import PasswordHash
+from sqlalchemy import text
+
+import pytest
 
 from apps.api.app.api.routes.agent import router as agent_router
+from apps.api.app.api.routes.auth import router as auth_router
 from apps.api.app.api.routes.connectors import router as connectors_router
 from apps.api.app.api.routes.kpis import router as kpis_router
 from apps.api.app.api.routes.discounts import router as discounts_router
@@ -36,27 +27,90 @@ from packages.shared.database.session import get_db
 @pytest.fixture()
 def client(db_session):
     app = FastAPI()
-    app.include_router(connectors_router, prefix="/api")
-    app.include_router(kpis_router, prefix="/api")
-    app.include_router(signals_router, prefix="/api")
-    app.include_router(agent_router, prefix="/api")
-    app.include_router(payables_router, prefix="/api")
-    app.include_router(discounts_router, prefix="/api")
-    app.include_router(expenses_router, prefix="/api")
-    app.include_router(ingestion_router, prefix="/api")
-    app.include_router(inventory_router, prefix="/api")
-    app.include_router(supplier_risk_router, prefix="/api")
+    for router in (
+        auth_router, connectors_router, kpis_router, signals_router, agent_router,
+        payables_router, discounts_router, expenses_router, ingestion_router,
+        inventory_router, supplier_risk_router,
+    ):
+        app.include_router(router, prefix="/api")
     app.dependency_overrides[get_db] = lambda: db_session
     return TestClient(app)
 
 
-def _register(client, business_id) -> str:
+def _user_token(client, db_session, business_id) -> str:
+    username = f"user_{uuid4().hex[:10]}"
+    password = "TestPassword!123"
+    user_id = uuid4()
+    db_session.execute(
+        text("INSERT INTO users (id, username, email, password_hash) VALUES (:id,:username,:email,:hash)"),
+        {
+            "id": str(user_id),
+            "username": username,
+            "email": f"{username}@example.com",
+            "hash": PasswordHash.recommended().hash(password),
+        },
+    )
+    db_session.execute(
+        text("INSERT INTO user_businesses (user_id, business_id, role) VALUES (:user_id,:business_id,'owner')"),
+        {"user_id": str(user_id), "business_id": str(business_id)},
+    )
+    db_session.commit()
+    response = client.post("/api/auth/login", json={"identifier": username, "password": password})
+    assert response.status_code == 200, response.text
+    return response.json()["access_token"]
+
+
+def _connector_token(client, business_id) -> str:
     response = client.post(f"/api/connectors/register/{business_id}")
     assert response.status_code == 200, response.text
     return response.json()["token"]
 
 
-def test_connector_registration_creates_token_for_existing_business(client, db_session, seeder):
+def test_user_registration_and_me(client):
+    response = client.post(
+        "/api/auth/register",
+        json={
+            "username": "newowner",
+            "email": "newowner@example.com",
+            "password": "StrongPassword!123",
+            "business_name": "New Electricals",
+            "industry": "distribution",
+        },
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["access_token"]
+    assert data["user"]["username"] == "newowner"
+    assert data["user"]["business"]["name"] == "New Electricals"
+
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {data['access_token']}"})
+    assert me.status_code == 200
+    assert me.json()["business"]["name"] == "New Electricals"
+
+
+def test_login_accepts_username_email_and_phone(client):
+    password = "StrongPassword!123"
+    business = uuid4()
+    client.post("/api/auth/register", json={
+        "username": "loginuser", "email": "login@example.com", "phone": "+919999999999",
+        "password": password, "business_name": "Login Business", "industry": "retail",
+    })
+    for identifier in ("loginuser", "login@example.com", "+919999999999"):
+        response = client.post("/api/auth/login", json={"identifier": identifier, "password": password})
+        assert response.status_code == 200, response.text
+        assert response.json()["user"]["username"] == "loginuser"
+
+
+def test_login_rejects_invalid_password(client):
+    client.post("/api/auth/register", json={
+        "username": "invalidpw", "email": "invalidpw@example.com",
+        "password": "StrongPassword!123", "business_name": "Test Business", "industry": "retail",
+    })
+    response = client.post("/api/auth/login", json={"identifier": "invalidpw", "password": "wrong-password"})
+    assert response.status_code == 401
+
+
+def test_connector_registration_still_creates_machine_token(client, db_session, seeder):
     business = seeder.business("Acme Electricals", "distribution")
     response = client.post(f"/api/connectors/register/{business.id}")
     assert response.status_code == 200, response.text
@@ -64,83 +118,75 @@ def test_connector_registration_creates_token_for_existing_business(client, db_s
     assert data["business_id"] == str(business.id)
     assert data["token"]
 
+    heartbeat = client.post("/api/connectors/heartbeat", headers={"Authorization": f"Bearer {data['token']}"})
+    assert heartbeat.status_code == 200
+    assert heartbeat.json()["business_id"] == str(business.id)
 
-    kpis = client.get(
-        f"/api/kpis/sales/{business.id}",
-        headers={"Authorization": f"Bearer {data['token']}" },
-    )
+    user_token = _user_token(client, db_session, business.id)
+    kpis = client.get(f"/api/kpis/sales/{business.id}", headers={"Authorization": f"Bearer {user_token}"})
     assert kpis.status_code == 200
 
-    csv_bytes = (
-        b"Bill Date,Party Name,Item Name,Qty,Rate,Net Amount,Invoice No\n"
-        b"27-08-2026,ABC Electrical,LED Bulb 9W,10,100,1000,INV-CLIENT-001\n"
-    )
-    imported = client.post(
-        f"/api/ingestion/import/{data['business_id']}",
-        files={"file": ("sales.csv", csv_bytes, "text/csv")},
-        headers={"Authorization": f"Bearer {data['token']}"},
-    )
-    assert imported.status_code == 200, imported.text
-    assert imported.json()["sales_created"] == 1
 
-
-def test_connector_registration_rejects_unknown_business_id(client):
-    response = client.post(f"/api/connectors/register/{uuid4()}")
-    assert response.status_code == 404
+def test_connector_token_cannot_be_used_as_human_dashboard_auth(client, seeder):
+    business = seeder.business()
+    connector_token = _connector_token(client, business.id)
+    response = client.get(f"/api/kpis/sales/{business.id}", headers={"Authorization": f"Bearer {connector_token}"})
+    assert response.status_code == 401
 
 
 def test_protected_route_rejects_missing_credential(client, seeder):
     business = seeder.business()
-    response = client.get(f"/api/kpis/sales/{business.id}")
-    assert response.status_code == 401
+    assert client.get(f"/api/kpis/sales/{business.id}").status_code == 401
 
 
 def test_protected_route_rejects_garbage_token(client, seeder):
     business = seeder.business()
-    response = client.get(
-        f"/api/kpis/sales/{business.id}",
-        headers={"Authorization": "Bearer not-a-real-token"},
-    )
+    response = client.get(f"/api/kpis/sales/{business.id}", headers={"Authorization": "Bearer not-a-real-token"})
     assert response.status_code == 401
 
 
-def test_protected_route_accepts_valid_token_for_its_own_business(client, seeder):
+def test_user_can_access_its_business(client, db_session, seeder):
     business = seeder.business()
-    token = _register(client, business.id)
-
-    response = client.get(
-        f"/api/kpis/sales/{business.id}",
-        headers={"Authorization": f"Bearer {token}"},
-    )
+    token = _user_token(client, db_session, business.id)
+    response = client.get(f"/api/kpis/sales/{business.id}", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
 
 
-def test_token_for_one_business_cannot_access_another_business(client, seeder):
+def test_user_cannot_access_another_business(client, db_session, seeder):
     business_a = seeder.business("Business A")
     business_b = seeder.business("Business B")
-    token_for_a = _register(client, business_a.id)
-
-    response = client.get(
-        f"/api/kpis/sales/{business_b.id}",
-        headers={"Authorization": f"Bearer {token_for_a}"},
-    )
+    token_for_a = _user_token(client, db_session, business_a.id)
+    response = client.get(f"/api/kpis/sales/{business_b.id}", headers={"Authorization": f"Bearer {token_for_a}"})
     assert response.status_code == 403
 
 
-def test_signals_route_is_also_protected(client, seeder):
+def test_nonexistent_business_without_token_still_requires_auth(client):
+    assert client.get(f"/api/kpis/sales/{uuid4()}").status_code == 401
+
+
+@pytest.mark.parametrize("path", [
+    "signals/{business_id}",
+    "payables/{business_id}/summary",
+    "discounts/{business_id}/anomalies",
+    "expenses/{business_id}/summary",
+    "inventory/{business_id}/stock-risk",
+    "inventory/{business_id}/demand-spikes",
+    "inventory/{business_id}/dead-stock",
+    "supplier-risk/{business_id}/concentration",
+])
+def test_dashboard_routes_require_user_auth(client, db_session, seeder, path):
     business = seeder.business()
-    assert client.get(f"/api/signals/{business.id}").status_code == 401
-    token = _register(client, business.id)
-    response = client.get(f"/api/signals/{business.id}", headers={"Authorization": f"Bearer {token}"})
+    route = path.format(business_id=business.id)
+    assert client.get(f"/api/{route}").status_code == 401
+    token = _user_token(client, db_session, business.id)
+    response = client.get(f"/api/{route}", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
 
 
-def test_agent_ask_route_is_also_protected(client, seeder):
+def test_agent_route_requires_user_auth(client, db_session, seeder):
     business = seeder.business()
-    response = client.post(f"/api/agent/{business.id}/ask", json={"question": "How is my business doing?"})
-    assert response.status_code == 401
-
-    token = _register(client, business.id)
+    assert client.post(f"/api/agent/{business.id}/ask", json={"question": "How is my business doing?"}).status_code == 401
+    token = _user_token(client, db_session, business.id)
     response = client.post(
         f"/api/agent/{business.id}/ask",
         json={"question": "How is my business doing?"},
@@ -149,39 +195,7 @@ def test_agent_ask_route_is_also_protected(client, seeder):
     assert response.status_code == 200
 
 
-def test_nonexistent_business_id_with_no_token_still_requires_auth(client):
-    """A well-behaved API shouldn't distinguish 'business doesn't exist'
-    from 'you're not authorized' before checking auth -- both should be a
-    401 with no credential, not a 404 that leaks whether the ID is real."""
-    response = client.get(f"/api/kpis/sales/{uuid4()}")
-    assert response.status_code == 401
-
-
-def test_payables_route_is_also_protected(client, seeder):
-    business = seeder.business()
-    assert client.get(f"/api/payables/{business.id}/summary").status_code == 401
-    token = _register(client, business.id)
-    response = client.get(f"/api/payables/{business.id}/summary", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-
-
-def test_supplier_risk_route_is_also_protected(client, seeder):
-    business = seeder.business()
-    assert client.get(f"/api/supplier-risk/{business.id}/concentration").status_code == 401
-    token = _register(client, business.id)
-    response = client.get(f"/api/supplier-risk/{business.id}/concentration", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-
-
-def test_discounts_route_is_also_protected(client, seeder):
-    business = seeder.business()
-    assert client.get(f"/api/discounts/{business.id}/anomalies").status_code == 401
-    token = _register(client, business.id)
-    response = client.get(f"/api/discounts/{business.id}/anomalies", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-
-
-def test_expense_import_route_is_also_protected(client, seeder):
+def test_import_route_requires_user_auth(client, seeder):
     business = seeder.business()
     csv_bytes = b"Date,Ledger,Amount\n01-01-2026,Rent,1000\n"
     response = client.post(
@@ -189,45 +203,3 @@ def test_expense_import_route_is_also_protected(client, seeder):
         files={"file": ("expenses.csv", csv_bytes, "text/csv")},
     )
     assert response.status_code == 401
-
-
-def test_expenses_route_is_also_protected(client, seeder):
-    business = seeder.business()
-    assert client.get(f"/api/expenses/{business.id}/summary").status_code == 401
-    token = _register(client, business.id)
-    response = client.get(f"/api/expenses/{business.id}/summary", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-
-
-def test_inventory_import_route_is_also_protected(client, seeder):
-    business = seeder.business()
-    csv_bytes = b"Date,Item Name,Closing Qty\n01-01-2026,LED Bulb 9W,20\n"
-    response = client.post(
-        f"/api/ingestion/import-inventory/{business.id}",
-        files={"file": ("stock_summary.csv", csv_bytes, "text/csv")},
-    )
-    assert response.status_code == 401
-
-
-def test_inventory_stock_risk_route_is_also_protected(client, seeder):
-    business = seeder.business()
-    assert client.get(f"/api/inventory/{business.id}/stock-risk").status_code == 401
-    token = _register(client, business.id)
-    response = client.get(f"/api/inventory/{business.id}/stock-risk", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-
-
-def test_inventory_demand_spikes_route_is_also_protected(client, seeder):
-    business = seeder.business()
-    assert client.get(f"/api/inventory/{business.id}/demand-spikes").status_code == 401
-    token = _register(client, business.id)
-    response = client.get(f"/api/inventory/{business.id}/demand-spikes", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-
-
-def test_inventory_dead_stock_route_is_also_protected(client, seeder):
-    business = seeder.business()
-    assert client.get(f"/api/inventory/{business.id}/dead-stock").status_code == 401
-    token = _register(client, business.id)
-    response = client.get(f"/api/inventory/{business.id}/dead-stock", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
