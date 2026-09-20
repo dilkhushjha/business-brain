@@ -35,3 +35,4 @@ class BusinessContext:
     analyses: list[Any] = field(default_factory=list)
     priorities: list[Any] = field(default_factory=list)
     decision_actions: list[Any] = field(default_factory=list)
+    situation_history: list[Any] = field(default_factory=list)
