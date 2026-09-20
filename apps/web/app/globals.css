@@ -2874,3 +2874,5 @@ button:disabled {
 
 .topCustomers30Card { width: 100%; }
 .topCustomers30Card .topCustomerCards { width: 100%; }
+
+.topCustomers30Card { grid-column: 1 / -1; }
