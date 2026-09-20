@@ -6,6 +6,7 @@ import PerformanceTables from "../components/PerformanceTables";
 import MarginIntelligence from "../components/MarginIntelligence";
 import ReceivablesIntelligence from "../components/ReceivablesIntelligence";
 import InventoryIntelligence from "../components/InventoryIntelligence";
+import PurchaseIntelligence from "../components/PurchaseIntelligence";
 import BusinessInsights from "../components/BusinessInsights";
 import ConnectGate from "../components/ConnectGate";
 import DashboardReasoningOverlay from "../components/DashboardReasoningOverlay";
@@ -205,6 +206,7 @@ export default function Home() {
     { label: "OVERVIEW", items: [{ id: "overview", label: "Dashboard", icon: "sparkle" as IconName }] },
     { label: "PERFORMANCE", items: [
       { id: "sales", label: "Sales Performance", icon: "trend" as IconName },
+      { id: "purchases", label: "Purchases", icon: "receipt" as IconName },
       { id: "customers", label: "Customers", icon: "invoice" as IconName },
     ]},
     { label: "BUSINESS", items: [
@@ -236,6 +238,7 @@ export default function Home() {
     </>;
 
     if (activeSection === "sales") return <section className="contentSection"><SectionTitle title="SALES PERFORMANCE" subtitle="Revenue movement and commercial momentum" /><div className="salesPreview"><RevenueTrend /><PerformanceTables dataVersion={dataVersion} /></div></section>;
+    if (activeSection === "purchases") return <section className="contentSection"><SectionTitle title="PURCHASES" subtitle="Supplier spend, purchase volume and supplier obligations" /><PurchaseIntelligence /></section>;
     if (activeSection === "customers") return <section className="contentSection"><SectionTitle title="CUSTOMERS" subtitle="Customer contribution, activity and follow-up intelligence" /><PerformanceTables section="customers" dataVersion={dataVersion} /></section>;
     if (activeSection === "financials") return <section className="contentSection"><SectionTitle title="FINANCIALS" subtitle="Profitability, margins, cash position and receivables" /><div className="statGrid"><MarginIntelligence onExplain={setSelectedReasoning} /><ReceivablesIntelligence onExplain={setSelectedReasoning} /></div></section>;
     if (activeSection === "operations") return <section className="contentSection"><SectionTitle title="OPERATIONS" subtitle="Inventory health and operational intelligence" /><InventoryIntelligence onExplain={setSelectedReasoning} /></section>;
