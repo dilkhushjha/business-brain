@@ -33,3 +33,4 @@ class BusinessContext:
     state: Any | None = None
     situations: list[Any] = field(default_factory=list)
     analyses: list[Any] = field(default_factory=list)
+    priorities: list[Any] = field(default_factory=list)
