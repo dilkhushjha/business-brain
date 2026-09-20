@@ -1,6 +1,6 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 from packages.analytics.business_brain.metrics.inventory import dead_stock, demand_spikes, inventory_signals, slow_moving_products, stock_risk
 from apps.api.app.api.connector_auth import require_business_access
@@ -82,10 +82,10 @@ def product_flow(
             ProductModel.id,
             ProductModel.name,
             func.coalesce(func.sum(
-                func.case((InventoryMovementModel.movement_type == "purchase", InventoryMovementModel.quantity), else_=0)
+                case((InventoryMovementModel.movement_type == "purchase", InventoryMovementModel.quantity), else_=0)
             ), 0),
             func.coalesce(func.sum(
-                func.case((InventoryMovementModel.movement_type == "sale", InventoryMovementModel.quantity), else_=0)
+                case((InventoryMovementModel.movement_type == "sale", InventoryMovementModel.quantity), else_=0)
             ), 0),
         )
         .join(InventoryMovementModel, InventoryMovementModel.product_id == ProductModel.id)
