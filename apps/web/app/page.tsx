@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import RevenueTrend from "../components/RevenueTrend";
 import PerformanceTables from "../components/PerformanceTables";
 import MarginIntelligence from "../components/MarginIntelligence";
@@ -60,7 +60,7 @@ const money = (v: string | null | undefined) => {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
 };
 
-type IconName = "wallet" | "invoice" | "trend" | "receipt" | "alert" | "check" | "pulse" | "chat" | "sparkle" | "arrow";
+type IconName = "wallet" | "invoice" | "trend" | "receipt" | "alert" | "check" | "pulse" | "chat" | "sparkle" | "arrow" | "user";
 const ICON_PATHS: Record<IconName, string> = {
   wallet: "M3 7a2 2 0 012-2h13a1 1 0 011 1v3M3 7v10a2 2 0 002 2h15a1 1 0 001-1v-6a1 1 0 00-1-1h-4a2 2 0 100 4h5M3 7l3-4h9",
   invoice: "M7 3h10a1 1 0 011 1v16l-3-2-3 2-3-2-3 2V4a1 1 0 011-1zM9 8h6M9 12h6M9 16h3",
@@ -72,6 +72,7 @@ const ICON_PATHS: Record<IconName, string> = {
   chat: "M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z",
   sparkle: "M12 3l1.8 4.9L19 9.7l-4.9 1.8L12 16.4l-1.8-4.9L5 9.7l4.9-1.8L12 3zM19 15l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9.9-2.4z",
   arrow: "M5 12h14M13 6l6 6-6 6",
+  user: "M20 21a8 8 0 00-16 0M12 13a4 4 0 100-8 4 4 0 000 8z",
 };
 function Icon({ name, className }: { name: IconName; className?: string }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}><path d={ICON_PATHS[name]} /></svg>;
@@ -107,6 +108,7 @@ export default function Home() {
   const [connected, setConnected] = useState(false);
   const [checkedAuth, setCheckedAuth] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [selectedReasoning, setSelectedReasoning] = useState<ReasoningPayload | null>(null);
   const [activeSection, setActiveSection] = useState("overview");
@@ -117,6 +119,25 @@ export default function Home() {
     if (!hasToken()) { setConnected(false); setCheckedAuth(true); return; }
     getCurrentUser().then((current) => { setUser(current); setConnected(true); }).catch(() => { clearSession(); setConnected(false); }).finally(() => setCheckedAuth(true));
   }, []);
+
+  useEffect(() => {
+    function closeProfile(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) setProfileOpen(false);
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setProfileOpen(false);
+    }
+    document.addEventListener("mousedown", closeProfile);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeProfile);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!connected) setProfileOpen(false);
+  }, [connected]);
 
   useEffect(() => {
     if (!checkedAuth || !connected || !getBusinessId()) { setLoading(false); return; }
@@ -163,9 +184,9 @@ export default function Home() {
   }
 
   function ask(e: FormEvent) { e.preventDefault(); runQuestion(question); }
-  function logout() { clearSession(); setUser(null); setConnected(false); setAnswer(""); setQuestion(""); setError(""); }
+  function logout() { setProfileOpen(false); clearSession(); setUser(null); setConnected(false); setAnswer(""); setQuestion(""); setError(""); }
 
-  if (checkedAuth && !connected) return <main className="shell"><header className="header"><div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div></div></header><ConnectGate onConnected={() => setConnected(true)} /></main>;
+  if (checkedAuth && !connected) return <main className="shell"><header className="header"><div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div></div></header><ConnectGate onConnected={() => { setProfileOpen(false); setConnected(true); }} /></main>;
 
   const navGroups = [
     { label: "OVERVIEW", items: [{ id: "overview", label: "Dashboard", icon: "sparkle" as IconName }] },
@@ -221,7 +242,7 @@ export default function Home() {
     </aside>
 
     <div className="appMain">
-      <header className="header dashboardHeader"><div className="pageContext"><span className="pageContextEyebrow">{navGroups.flatMap((group) => group.items).find((item) => item.id === activeSection)?.label ?? "Dashboard"}</span><span className="pageContextSub">Business performance and decision support</span></div><div className="headerRight"><span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Updating…" : live ? "Live data" : "Demo mode"}</span><div className="profileWrap"><button type="button" className="profileButton" onClick={() => setProfileOpen(!profileOpen)} aria-expanded={profileOpen}><span className="avatar">{(user?.username || "U").charAt(0).toUpperCase()}</span><span className="profileName">{user?.username || "User"}</span><span className="profileChevron">⌄</span></button>{profileOpen && <div className="profileMenu"><div className="profileMenuHead"><strong>{user?.username || "User"}</strong><span>{businessName}</span></div><button type="button" className="profileLogout" onClick={logout}>Log out</button></div>}</div></div></header>
+      <header className="header dashboardHeader"><div className="pageContext"><span className="pageContextEyebrow">{navGroups.flatMap((group) => group.items).find((item) => item.id === activeSection)?.label ?? "Dashboard"}</span><span className="pageContextSub">Business performance and decision support</span></div><div className="headerRight"><span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Updating…" : live ? "Live data" : "Demo mode"}</span><div className="profileWrap" ref={profileRef}><button type="button" className={`profileButton ${profileOpen ? "open" : ""}`} onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}><span className="avatar"><Icon name="user" className="icon" /></span><span className="profileName">{user?.username || "User"}</span><span className="profileChevron">⌄</span></button>{profileOpen && <div className="profileMenu"><div className="profileMenuHead"><strong>{user?.username || "User"}</strong><span>{businessName}</span></div><button type="button" className="profileLogout" onClick={logout}>Log out</button></div>}</div></div></header>
       {!live && !loading && <div className="demoBanner"><strong>DEMO MODE</strong><span>Sample business data · safe for testing</span></div>}
       <div className="pageContent">{renderSection()}</div>
     </div>
