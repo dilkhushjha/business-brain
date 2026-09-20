@@ -27,9 +27,11 @@ export default function PerformanceTables({ section = "sales", dataVersion = 0 }
   const [productMomentum, setProductMomentum] = useState<ProductMomentum[]>([]);
 
   useEffect(() => {
+    setProducts([]);
+    setCustomers([]);
     Promise.all([
-      apiFetch(`/performance/${getBusinessId()}/products?days=30&limit=5`).then((r) => (r.ok ? r.json() : [])),
-      apiFetch(`/performance/${getBusinessId()}/customers?days=30&limit=5`).then((r) => (r.ok ? r.json() : [])),
+      apiFetch(`/performance/${getBusinessId()}/products?days=30&limit=5&_v=${dataVersion}`).then((r) => (r.ok ? r.json() : [])),
+      apiFetch(`/performance/${getBusinessId()}/customers?days=30&limit=5&_v=${dataVersion}`).then((r) => (r.ok ? r.json() : [])),
       apiFetch(`/customer-risk/${getBusinessId()}/concentration?top_n=5`).then((r) => (r.ok ? r.json() : null)),
       apiFetch(`/customer-risk/${getBusinessId()}/inactive?inactive_days=45&limit=5`).then((r) => (r.ok ? r.json() : [])),
       apiFetch(`/customer-risk/${getBusinessId()}/declining?days=30&threshold=25&limit=5`).then((r) => (r.ok ? r.json() : [])),
