@@ -2405,3 +2405,40 @@ button:disabled {
 .profileChevron {
   transition: transform .15s ease, color .15s ease;
 }
+
+.trendChartWrap {
+  position: relative;
+  padding-bottom: 22px;
+}
+.trendDates {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 18px;
+  pointer-events: none;
+}
+.trendDates span {
+  position: absolute;
+  transform: translateX(-50%);
+  color: var(--text-faint);
+  font-size: 9px;
+  white-space: nowrap;
+}
+.trendPointHit {
+  fill: transparent;
+  stroke: transparent;
+  cursor: crosshair;
+  pointer-events: all;
+}
+.trendPointHit:hover {
+  fill: var(--surface);
+  stroke: currentColor;
+  stroke-width: 2;
+}
+.trendHoverLine {
+  stroke: var(--primary);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: .35;
+}
