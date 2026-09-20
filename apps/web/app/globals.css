@@ -3085,3 +3085,19 @@ button:disabled {
     align-items: flex-start;
   }
 }
+
+.situationHistory{margin:20px 0;padding:20px;border:1px solid var(--border,#e5e7eb);border-radius:16px;background:var(--surface,#fff)}
+.situationHistoryHead{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+.situationHistoryHead h3{margin:4px 0}
+.situationHistoryHead p{margin:4px 0 0;color:var(--muted,#6b7280);font-size:13px}
+.historyList{display:grid;gap:10px}
+.historyItem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;padding:13px 0;border-top:1px solid var(--border,#e5e7eb)}
+.historyItem:first-child{border-top:0;padding-top:0}
+.historyTitle{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.historyTitle b{text-transform:none}
+.historyBadge{font-size:11px;padding:3px 7px;border-radius:999px;background:#f3f4f6}
+.historyBadge.active{background:#ecfdf3}
+.historyBadge.resolved{background:#f3f4f6}
+.historyTrend{font-size:12px;color:var(--muted,#6b7280)}
+.historyMeta{display:flex;gap:14px;align-items:center;justify-content:flex-end;flex-wrap:wrap;font-size:12px;color:var(--muted,#6b7280)}
+@media (max-width:720px){.historyItem{grid-template-columns:1fr}.historyMeta{justify-content:flex-start}}
