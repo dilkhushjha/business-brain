@@ -14,4 +14,4 @@ class AgentQuestion(BaseModel):
 @router.post("/{business_id}/ask")
 def ask(business_id:UUID,request:AgentQuestion,db:Session=Depends(get_db),_auth:dict=Depends(require_business_access)):
     result=answer(db,business_id,request.question,request.as_of or date.today())
-    return {"answer":result.answer,"intent":result.intent,"confidence":result.confidence,"confidence_label":confidence_label(result.confidence),"evidence":result.evidence,"evidence_summary":evidence_summary(result.evidence),"signals":result.signals,"recommendations":result.recommendations,"decision_actions":result.decision_actions}
+    return {"answer":result.answer,"intent":result.intent,"confidence":result.confidence,"confidence_label":confidence_label(result.confidence),"evidence":result.evidence,"evidence_summary":evidence_summary(result.evidence),"signals":result.signals,"recommendations":result.recommendations,"decision_actions":result.decision_actions,"situation_history":result.situation_history}
