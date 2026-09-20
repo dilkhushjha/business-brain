@@ -204,8 +204,15 @@ export default function Home() {
     if (!live) { setTimeout(() => { setAnswer(demoAnswer(q)); setAsking(false); }, 300); return; }
     try {
       const r = await apiFetch(`/agent/${getBusinessId()}/ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q }) });
-      if (!r.ok) throw Error(`Agent returned ${r.status}`);
-      setAnswer((await r.json()).answer);
+      if (!r.ok) {
+        if (r.status >= 500) throw Error("Business Brain is temporarily unavailable. Please try again.");
+        if (r.status === 429) throw Error("Business Brain is busy right now. Please wait a moment and try again.");
+        if (r.status === 400) throw Error("I couldn't process that question. Try asking about sales, revenue, customers, or business health.");
+        throw Error(`Business Brain couldn't answer right now (HTTP ${r.status}).`);
+      }
+      const payload = await r.json();
+      if (!payload?.answer) throw Error("Business Brain returned an empty response. Please try again.");
+      setAnswer(payload.answer);
     } catch (x) {
       if (x instanceof ApiAuthError) { clearSession(); setUser(null); setConnected(false); return; }
       setError(x instanceof Error ? x.message : "Unable to reach Business Brain");
@@ -277,7 +284,7 @@ export default function Home() {
     </div>
 
     <button className="chatLauncher" onClick={() => setChatOpen(true)} aria-label="Ask Business Brain"><Icon name="chat" className="icon" /><span>Ask Business Brain</span></button>
-    {chatOpen && <div className="chatOverlay" role="dialog" aria-modal="true"><div className="chatWindow"><div className="chatHeader"><div><span className="eyebrow">BUSINESS BRAIN</span><h3>Ask your business</h3><p>Ask a question and get an evidence-based answer.</p></div><button className="chatClose" onClick={() => setChatOpen(false)} aria-label="Close">×</button></div><div className="chatBody">{answer ? <div className="response chatResponse"><strong>Business Brain {live ? "· Live" : "· Demo"}</strong><p>{answer}</p></div> : <div className="chatEmpty"><span className="iconChip"><Icon name="sparkle" className="icon" /></span><b>What would you like to know?</b><p>Try asking about sales, revenue, customers or business health.</p></div>}{error && <div className="errorBox">{error}</div>}</div><form className="chatForm" onSubmit={ask}><input autoFocus value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Why did my sales fall?" disabled={asking} /><button disabled={asking || !question.trim()}>{asking ? "Thinking…" : "Ask"}</button></form></div></div>}
+    {chatOpen && <div className="chatOverlay" role="dialog" aria-modal="true"><div className="chatWindow"><div className="chatHeader"><div><span className="eyebrow">BUSINESS BRAIN</span><h3>Ask your business</h3><p>Ask a question and get an evidence-based answer.</p></div><button className="chatClose" onClick={() => setChatOpen(false)} aria-label="Close">×</button></div><div className="chatBody">{answer ? <div className="response chatResponse"><strong>Business Brain {live ? "· Live" : "· Demo"}</strong><p>{answer}</p></div> : <div className="chatEmpty"><span className="iconChip"><Icon name="sparkle" className="icon" /></span><b>What would you like to know?</b><p>Try asking about sales, revenue, customers or business health.</p></div>}{error && <div className="errorBox"><span>{error}</span><button type="button" className="chatRetry" onClick={() => runQuestion(question)} disabled={asking || !question.trim()}>Retry</button></div>}</div><form className="chatForm" onSubmit={ask}><input autoFocus value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Why did my sales fall?" disabled={asking} /><button disabled={asking || !question.trim()}>{asking ? "Thinking…" : "Ask"}</button></form></div></div>}
     <DashboardReasoningOverlay reasoning={selectedReasoning} onClose={() => setSelectedReasoning(null)} />
   </main>;
 }
