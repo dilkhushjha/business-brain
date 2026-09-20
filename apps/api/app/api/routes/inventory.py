@@ -108,3 +108,112 @@ def product_flow(
         }
         for row in rows
     ]
+
+
+@router.get("/{business_id}/integrity")
+def inventory_integrity(
+    business_id: UUID,
+    days: int = 3650,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    _auth: dict = Depends(require_business_access),
+):
+    """Reconcile purchase/sale documents against their inventory movements."""
+    from datetime import date, timedelta
+    end = date.today()
+    start = end - timedelta(days=max(1, days) - 1)
+
+    purchase_rows = db.execute(
+        select(
+            ProductModel.name,
+            func.coalesce(func.sum(InventoryMovementModel.quantity), 0),
+        )
+        .join(ProductModel, ProductModel.id == InventoryMovementModel.product_id)
+        .where(
+            InventoryMovementModel.business_id == business_id,
+            InventoryMovementModel.movement_type == "purchase",
+            InventoryMovementModel.movement_date.between(start, end),
+        )
+        .group_by(ProductModel.id, ProductModel.name)
+    ).all()
+
+    sale_rows = db.execute(
+        select(
+            ProductModel.name,
+            func.coalesce(func.sum(InventoryMovementModel.quantity), 0),
+        )
+        .join(ProductModel, ProductModel.id == InventoryMovementModel.product_id)
+        .where(
+            InventoryMovementModel.business_id == business_id,
+            InventoryMovementModel.movement_type == "sale",
+            InventoryMovementModel.movement_date.between(start, end),
+        )
+        .group_by(ProductModel.id, ProductModel.name)
+    ).all()
+
+    product_names = {r[0] for r in purchase_rows} | {r[0] for r in sale_rows}
+    movement_balance = {
+        name: {"purchased": 0.0, "sold": 0.0}
+        for name in product_names
+    }
+    for name, qty in purchase_rows:
+        movement_balance[name]["purchased"] = float(qty)
+    for name, qty in sale_rows:
+        movement_balance[name]["sold"] = float(qty)
+
+    purchase_docs = db.scalar(
+        select(func.count(PurchaseModel.id)).where(
+            PurchaseModel.business_id == business_id,
+            PurchaseModel.transaction_date.between(start, end),
+        )
+    ) or 0
+    sale_docs = db.scalar(
+        select(func.count(SaleModel.id)).where(
+            SaleModel.business_id == business_id,
+            SaleModel.transaction_date.between(start, end),
+        )
+    ) or 0
+
+    orphan_rows = db.execute(
+        select(InventoryMovementModel.reference, InventoryMovementModel.movement_type)
+        .where(
+            InventoryMovementModel.business_id == business_id,
+            InventoryMovementModel.movement_date.between(start, end),
+            InventoryMovementModel.movement_type.in_(["purchase", "sale"]),
+            InventoryMovementModel.reference.is_not(None),
+        )
+    ).all()
+
+    orphan_count = 0
+    for reference, movement_type in orphan_rows:
+        model = PurchaseModel if movement_type == "purchase" else SaleModel
+        exists = db.scalar(
+            select(func.count(model.id)).where(
+                model.business_id == business_id,
+                model.invoice_number == reference,
+            )
+        )
+        if not exists:
+            orphan_count += 1
+
+    negative_products = [
+        {"name": name, "movement_balance": round(v["purchased"] - v["sold"], 4)}
+        for name, v in movement_balance.items()
+        if v["purchased"] - v["sold"] < 0
+    ]
+    negative_products.sort(key=lambda x: x["movement_balance"])
+
+    return {
+        "status": "attention_required" if orphan_count or negative_products else "reconciled",
+        "period_days": days,
+        "purchase_documents": int(purchase_docs),
+        "sale_documents": int(sale_docs),
+        "movement_documents_checked": len(orphan_rows),
+        "orphan_movement_count": orphan_count,
+        "negative_movement_products": negative_products[:max(1, min(limit, 50))],
+        "product_flow": [
+            {"name": name, "purchased": round(v["purchased"], 4), "sold": round(v["sold"], 4),
+             "movement_balance": round(v["purchased"] - v["sold"], 4)}
+            for name, v in sorted(movement_balance.items())
+        ][:max(1, min(limit, 50))],
+    }
