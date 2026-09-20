@@ -4,7 +4,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 from packages.analytics.business_brain.metrics.inventory import dead_stock, demand_spikes, inventory_signals, slow_moving_products, stock_risk
 from apps.api.app.api.connector_auth import require_business_access
-from packages.shared.database.models import InventoryMovementModel, ProductModel
+from packages.shared.database.models import InventoryMovementModel, ProductModel, PurchaseModel, SaleModel
 from packages.shared.database.session import get_db
 router=APIRouter(prefix="/inventory",tags=["analytics"])
 @router.get("/{business_id}/signals")
