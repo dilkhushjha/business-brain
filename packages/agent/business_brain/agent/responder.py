@@ -16,24 +16,12 @@ def _signals_with_codes(signals: list[dict], codes: set[str]) -> list[dict]:
 
 
 def render_grounded_response(question: str, intent: str, context: dict) -> tuple[str, str]:
-    """Return (answer, confidence). confidence is "grounded" only when the
-    answer is actually backed by retrieved evidence, and "insufficient_evidence"
-    when we had to say we don't know yet -- the caller should never report
-    "grounded" for an answer that admits it has no evidence.
-
-    Each intent branch below either cites a real Evidence value from the
-    context (a metric the analytics layer actually computed) or cites real
-    Signal objects (things detect_signals() actually found) -- never both
-    absent. Signals cited for customer/product/root-cause questions are
-    framed as detected findings/candidate factors, not asserted as the
-    definitive single cause, since a signal is a DETECTION, not a proven
-    causal explanation (see docs/architecture/architecture.md's trust
-    model: FACT -> DETECTION -> ... -> HYPOTHESIS -> RECOMMENDATION).
-    """
+    """Return an evidence-first answer with explicit cause-vs-impact separation."""
     evidence = context.get("evidence", [])
     signals = context.get("signals", [])
     recommendations = context.get("recommendations", [])
     situations = context.get("situations", [])
+    analyses = context.get("analyses", [])
     grounded = False
 
     if intent == "business_health":
@@ -166,25 +154,33 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
             answer = "I don't have enough product-level evidence yet."
 
     elif intent == "root_cause":
-        if signals:
+        if analyses:
+            grounded = True
+            analysis = analyses[0]
+            causes = analysis.get("root_causes", [])
+            impacts = analysis.get("impacts", [])
+            if causes:
+                cause = causes[0]
+                answer = (
+                    "I can't call this a proven single cause, but Business Brain found an evidence-backed "
+                    f"contributing factor: {cause.get('title', 'a detected factor')}."
+                )
+                cause_evidence = cause.get("evidence", {})
+                if cause_evidence.get("products"):
+                    answer += f" Affected products: {', '.join(map(str, cause_evidence['products'][:5]))}."
+            else:
+                answer = "Business Brain found a related situation but does not yet have enough evidence to name a contributing factor."
+            if impacts:
+                impact = impacts[0]
+                description = impact.get("description")
+                if description:
+                    answer += f" Impact: {description}"
+        elif signals:
             grounded = True
             top = signals[0]
-            title = top.get("title", "a detected issue")
-            entity = None
-            for signal in signals:
-                signal_evidence = signal.get("evidence", {})
-                entity = (
-                    signal_evidence.get("customer")
-                    or signal_evidence.get("product")
-                    or signal_evidence.get("supplier")
-                    or signal_evidence.get("category")
-                )
-                if entity:
-                    break
-            detail = f" ({entity})" if entity else ""
             answer = (
-                f"I can't assign a single definitive cause, but {len(signals)} detected signal(s) are the most "
-                f"likely contributing factors -- most notably: {title}{detail}."
+                "I can't assign a single definitive cause, but the detected signals provide candidate factors -- "
+                f"most notably: {top.get('title', 'a detected issue')}."
             )
         else:
             answer = "I don't have any detected signals to point to a cause yet."
