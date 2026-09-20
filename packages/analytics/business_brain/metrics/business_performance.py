@@ -43,7 +43,7 @@ def top_customers(db: Session, business_id: UUID, days: int = 30, limit: int = 1
         select(CustomerModel.name, func.count(SaleModel.id).label("orders"),
                func.sum(SaleModel.total_amount).label("revenue"))
         .join(SaleModel, SaleModel.customer_id == CustomerModel.id)
-        .where(SaleModel.business_id == business_id, SaleModel.transaction_date.between(start, end))
+        .where(CustomerModel.business_id == business_id, SaleModel.business_id == business_id, SaleModel.transaction_date.between(start, end))
         .group_by(CustomerModel.id, CustomerModel.name)
         .order_by(func.sum(SaleModel.total_amount).desc())
         .limit(limit)
