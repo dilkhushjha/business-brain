@@ -2160,3 +2160,10 @@ button:disabled {
 .selectedFiles { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
 .selectedFile { padding:6px 9px; border:1px solid var(--border); border-radius:8px; background:var(--surface-muted); font-size:11px; color:var(--text-muted); }
 .fieldHint { display:block; margin-top:6px; font-size:11px; color:var(--text-muted); }
+
+.filePreviewList { display:grid; gap:12px; margin:18px 0; }
+.filePreview { padding:14px; border:1px solid var(--border); border-radius:10px; background:var(--surface-muted); }
+.filePreview > div:first-child { display:flex; justify-content:space-between; gap:16px; }
+.filePreview small { display:block; color:var(--text-muted); margin-top:4px; }
+.issues.compact { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
+.issues.compact span { font-size:11px; color:var(--text-muted); }
