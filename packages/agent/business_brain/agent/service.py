@@ -20,5 +20,6 @@ def answer(db: Session, business_id: UUID, question: str, as_of: date) -> AgentR
         signals=context.get("signals", []),
         recommendations=context.get("recommendations", []),
         decision_actions=context.get("decision_actions", []),
+        situation_history=context.get("situation_history", []),
         confidence=confidence,
     )
