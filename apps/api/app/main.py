@@ -34,6 +34,7 @@ from apps.api.app.api.routes.inventory import router as inventory_router
 from apps.api.app.api.routes.import_history import router as import_history_router
 from apps.api.app.api.routes.performance import router as performance_router
 from apps.api.app.api.routes.purchases import router as purchases_router
+from apps.api.app.api.routes.payments import router as payments_router
 from apps.api.app.core.config import settings
 from packages.shared.database.session import engine
 
@@ -128,5 +129,6 @@ for router in (
     import_history_router,
     performance_router,
     purchases_router,
+    payments_router,
 ):
     app.include_router(router, prefix="/api")
