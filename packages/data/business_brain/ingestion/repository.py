@@ -64,7 +64,7 @@ def _replace_sale_lines(
         )
 
 
-def persist_sales(db: Session, business_id: UUID, rows: list[dict]) -> int:
+def persist_sales(db: Session, business_id: UUID, rows: list[dict]) -> dict[str, int]:
     """Persist sales as invoice-level records and reconcile repeated exports.
 
     Tally sales registers commonly contain multiple rows for one invoice.
@@ -86,6 +86,7 @@ def persist_sales(db: Session, business_id: UUID, rows: list[dict]) -> int:
             grouped[invoice].append(row)
 
     created = 0
+    reconciled = 0
     for invoice, invoice_rows in grouped.items():
         header = invoice_rows[0]
         customer = _get_or_create_customer(
@@ -107,6 +108,7 @@ def persist_sales(db: Session, business_id: UUID, rows: list[dict]) -> int:
             existing.due_date = header["due_date"]
             existing.paid_amount = header["paid_amount"]
             _replace_sale_lines(db, existing, invoice_rows)
+            reconciled += 1
             continue
 
         sale = SaleModel(
@@ -125,4 +127,4 @@ def persist_sales(db: Session, business_id: UUID, rows: list[dict]) -> int:
         _replace_sale_lines(db, sale, invoice_rows)
         created += 1
 
-    return created
+    return {"created": created, "reconciled": reconciled}
