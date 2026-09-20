@@ -9,6 +9,7 @@ from packages.analytics.business_brain.metrics.expenses import expense_spikes
 from packages.analytics.business_brain.metrics.inventory import dead_stock, demand_spikes, slow_moving_products, stock_risk
 from packages.analytics.business_brain.metrics.margin import low_margin_products
 from packages.analytics.business_brain.metrics.payables import overdue_suppliers
+from packages.analytics.business_brain.metrics.purchase_risk import supplier_spend_risk
 from packages.analytics.business_brain.metrics.receivables import overdue_customers
 from packages.analytics.business_brain.metrics.supplier_risk import supplier_price_increases
 from packages.analytics.business_brain.service import monthly_sales_kpis
@@ -27,6 +28,7 @@ from packages.analytics.business_brain.signals.rules import (
     detect_slow_moving_product_signals,
     detect_stock_risk_signals,
     detect_supplier_price_signals,
+    detect_supplier_spend_signals,
 )
 
 
@@ -40,6 +42,7 @@ def detect_signals(db: Session, business_id: UUID, as_of: date) -> list[Signal]:
     signals.extend(detect_slow_moving_product_signals(slow_moving_products(db, business_id)))
     signals.extend(detect_payables_signals(overdue_suppliers(db, business_id)))
     signals.extend(detect_supplier_price_signals(supplier_price_increases(db, business_id)))
+    signals.extend(detect_supplier_spend_signals(supplier_spend_risk(db, business_id)))
     signals.extend(detect_discount_anomaly_signals(discount_anomalies(db, business_id)))
     signals.extend(detect_expense_spike_signals(expense_spikes(db, business_id)))
     signals.extend(detect_stock_risk_signals(stock_risk(db, business_id)))
