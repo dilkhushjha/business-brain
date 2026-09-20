@@ -167,6 +167,41 @@ def record_ingestion_run(
             Path(temp_path).unlink(missing_ok=True)
 
 
+@router.post("/preview-purchases/{business_id}")
+def preview_purchase_ingestion(
+    business_id: UUID,
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    _auth: dict = Depends(require_business_access),
+):
+    """Validate purchase-register files without committing any purchase data."""
+    batch = _prepare_upload_batch(files, business_id, db)
+    try:
+        previews = []
+        for result, prepared, _ in batch:
+            columns = list(prepared[0].values.keys()) if prepared else []
+            previews.append({
+                "source": result.source.name,
+                "checksum": result.source.checksum,
+                "columns": columns,
+                "mapping": [m.__dict__ for m in suggest_mapping(columns)],
+                "rows_read": result.rows_read,
+                "rows_accepted": result.rows_accepted,
+                "rows_rejected": result.rows_rejected,
+                "issues": [issue.__dict__ for issue in result.issues[:100]],
+            })
+        return {
+            "files": previews,
+            "file_count": len(previews),
+            "rows_read": sum(x["rows_read"] for x in previews),
+            "rows_accepted": sum(x["rows_accepted"] for x in previews),
+            "rows_rejected": sum(x["rows_rejected"] for x in previews),
+        }
+    finally:
+        for _, _, temp_path in batch:
+            Path(temp_path).unlink(missing_ok=True)
+
+
 @router.post("/import-purchases/{business_id}")
 def record_purchase_ingestion_run(
     business_id: UUID,
