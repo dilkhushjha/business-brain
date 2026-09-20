@@ -6,6 +6,7 @@ type InsightContext = {
   signals?: Array<Record<string, unknown>>;
   recommendations?: Array<Record<string, unknown>>;
   situations?: Array<Record<string, unknown>>;
+  priorities?: Array<Record<string, unknown>>;
 };
 
 type Anomaly = { name: string; change_pct: number; severity: string };
@@ -56,6 +57,14 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
   const positive = signals.filter((s) => severity(s.severity) === "positive").length;
   const attention = critical + warning;
   const recommendations = context?.recommendations || [];
+  const priorityByCode = new Map(
+    (context?.priorities || []).map((p) => [String(p.situation_code || ""), p])
+  );
+  const situations = [...(context?.situations || [])].sort((a, b) => {
+    const pa = Number(priorityByCode.get(String(a.code || ""))?.score ?? 0);
+    const pb = Number(priorityByCode.get(String(b.code || ""))?.score ?? 0);
+    return pb - pa;
+  });
 
   return (
     <section className="contentSection businessInsightsPage">
@@ -77,7 +86,7 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
           <span className="insightCount">{context?.situations?.length || 0}</span>
         </div>
         <div className="situationsGrid">
-          {(context?.situations || []).slice(0, 4).map((s, i) => {
+          {situations.slice(0, 4).map((s, i) => {
             const sev = severity(s.severity);
             const evidence = s.evidence && typeof s.evidence === "object" ? Object.entries(s.evidence as Record<string, unknown>).filter(([, v]) => v !== null && v !== undefined && v !== "").slice(0, 2).map(([k, v]) => k.replaceAll("_", " ") + ": " + (typeof v === "object" ? JSON.stringify(v) : String(v))).join(" · ") : "";
             return <article className={"situationCard situation-" + severityClass(sev)} key={String(s.code || i)}>
@@ -86,7 +95,12 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
               <p>{String(s.explanation || "Related business signals require review together.")}</p>
               {evidence && <div className="situationEvidence"><b>Evidence</b><span>{evidence}</span></div>}
               {s.recommended_next_step && <div className="situationAction"><b>Investigate</b><span>{String(s.recommended_next_step)}</span></div>}
-              {s.confidence !== undefined && <small>Confidence {Math.round(Number(s.confidence) * 100)}%</small>}
+              <div className="situationMeta">
+                {s.confidence !== undefined && <small>Confidence {Math.round(Number(s.confidence) * 100)}%</small>}
+                {priorityByCode.get(String(s.code || ""))?.level && (
+                  <small>Attention {String(priorityByCode.get(String(s.code || ""))?.level)}</small>
+                )}
+              </div>
             </article>;
           })}
         </div>
