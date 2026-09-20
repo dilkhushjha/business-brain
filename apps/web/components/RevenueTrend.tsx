@@ -29,7 +29,7 @@ export default function RevenueTrend() {
 
   const rawMax = Math.max(...points.map((p) => p.revenue), 1);
   const rawMin = Math.min(...points.map((p) => p.revenue), 0);
-  const width = 900, height = 210, padX = 18, padY = 18;
+  const width = 900, height = 210, padX = 2, padY = 18;
   const rawRange = Math.max(rawMax - rawMin, 1);
   const chartMin = Math.max(0, rawMin - rawRange * 0.08);
   const chartMax = rawMax + rawRange * 0.08;
