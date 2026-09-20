@@ -14,15 +14,20 @@ def persist_ingestion_run(db: Session, business_id: UUID, result: IngestionResul
     The caller commits after all business rows have been persisted so a failed
     import cannot leave an apparently completed run behind.
     """
-    source = SourceFileModel(
-        business_id=business_id,
-        name=result.source.name,
-        checksum=result.source.checksum,
-        size_bytes=result.source.size_bytes,
-        imported_at=result.source.imported_at.replace(tzinfo=None),
-    )
-    db.add(source)
-    db.flush()
+    source = db.query(SourceFileModel).filter(
+        SourceFileModel.business_id == business_id,
+        SourceFileModel.checksum == result.source.checksum,
+    ).one_or_none()
+    if source is None:
+        source = SourceFileModel(
+            business_id=business_id,
+            name=result.source.name,
+            checksum=result.source.checksum,
+            size_bytes=result.source.size_bytes,
+            imported_at=result.source.imported_at.replace(tzinfo=None),
+        )
+        db.add(source)
+        db.flush()
 
     run = IngestionRunModel(
         business_id=business_id,
