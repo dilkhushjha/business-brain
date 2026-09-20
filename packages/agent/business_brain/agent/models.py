@@ -17,4 +17,5 @@ class AgentResponse:
     signals: list[dict[str, Any]] = field(default_factory=list)
     recommendations: list[dict[str, Any]] = field(default_factory=list)
     decision_actions: list[dict[str, Any]] = field(default_factory=list)
+    situation_history: list[dict[str, Any]] = field(default_factory=list)
     confidence: str = "unknown"
