@@ -201,8 +201,8 @@ export default function Home() {
       <section className="dashboardSection"><div className="sectionHeading sectionHeadingLarge"><span>SALES PERFORMANCE</span><small>Revenue movement and commercial momentum</small></div><div className="salesPreview"><RevenueTrend /></div></section>
     </>;
 
-    if (activeSection === "sales") return <section className="contentSection"><SectionTitle title="SALES PERFORMANCE" subtitle="Revenue movement and commercial momentum" /><div className="salesPreview"><RevenueTrend /><PerformanceTables /></div></section>;
-    if (activeSection === "customers") return <section className="contentSection"><SectionTitle title="CUSTOMERS" subtitle="Customer contribution, activity and follow-up intelligence" /><PerformanceTables section="customers" /></section>;
+    if (activeSection === "sales") return <section className="contentSection"><SectionTitle title="SALES PERFORMANCE" subtitle="Revenue movement and commercial momentum" /><div className="salesPreview"><RevenueTrend /><PerformanceTables dataVersion={dataVersion} /></div></section>;
+    if (activeSection === "customers") return <section className="contentSection"><SectionTitle title="CUSTOMERS" subtitle="Customer contribution, activity and follow-up intelligence" /><PerformanceTables section="customers" dataVersion={dataVersion} /></section>;
     if (activeSection === "financials") return <section className="contentSection"><SectionTitle title="FINANCIALS" subtitle="Profitability, margins, cash position and receivables" /><div className="statGrid"><MarginIntelligence onExplain={setSelectedReasoning} /><ReceivablesIntelligence onExplain={setSelectedReasoning} /></div></section>;
     if (activeSection === "operations") return <section className="contentSection"><SectionTitle title="OPERATIONS" subtitle="Inventory health and operational intelligence" /><InventoryIntelligence onExplain={setSelectedReasoning} /></section>;
     if (activeSection === "insights") return <section className="contentSection"><SectionTitle title="BUSINESS INSIGHTS" subtitle="Signals, anomalies and recommended actions" /><div className="insightColumns">
