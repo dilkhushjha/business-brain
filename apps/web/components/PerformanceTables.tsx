@@ -63,15 +63,15 @@ export default function PerformanceTables({ section = "sales", dataVersion = 0 }
             </div>
           )) : <p className="emptyInsight">No product sales found.</p>}
         </div>}
-        {section === "customers" && <div className="card">
+        {section === "customers" && <div className="card topCustomers30Card">
           <div className="cardTitle"><span><Icon name="users" className="icon" /></span><h3>Top customers</h3><small>Last 30 days</small></div>
-          {customers.length ? customers.map((c, i) => (
-            <div className="performanceRow" key={c.name}>
-              <span className="rank">{i + 1}</span>
-              <div><b>{c.name}</b><small>{c.orders} orders</small></div>
+          {customers.length ? <div className="topCustomerCards">{customers.map((c, i) => (
+            <div className="topCustomerCard" key={c.name}>
+              <div className="topCustomerRank">{i + 1}</div>
+              <div className="topCustomerBody"><b>{c.name}</b><span>{c.orders} orders</span></div>
               <strong>{money(c.revenue)}</strong>
             </div>
-          )) : <p className="emptyInsight">No customer sales found.</p>}
+          ))}</div> : <p className="emptyInsight">No customer sales found.</p>}
         </div>}
       </section>
 
@@ -133,7 +133,7 @@ export default function PerformanceTables({ section = "sales", dataVersion = 0 }
           </div>
           <div className="customerCommandGrid">
             {concentration && <section className="customerLeadersSection"><div className="customerCommandHead"><div><span className="eyebrow">REVENUE LEADERS</span><h4>Top customers</h4></div><span>Revenue dependency</span></div>{concentration.top_customers.map((c,i) => <div className="customerLeaderRow" key={c.name}><span>{i+1}</span><div><b>{c.name}</b><small>{c.share_pct.toFixed(0)}% of total revenue</small></div><strong>{money(c.revenue)}</strong></div>)}</section>}
-            <section className="customerTop30Section"><div className="customerCommandHead"><div><span className="eyebrow">CUSTOMER PERFORMANCE</span><h4>Top customers · Last 30 days</h4></div><span>Recent revenue</span></div><div className="topCustomerCards">{customers.length ? customers.map((c,i) => <div className="topCustomerCard" key={c.name}><div className="topCustomerRank">{i+1}</div><div className="topCustomerBody"><b>{c.name}</b><span>{c.orders} orders</span></div><strong>{money(c.revenue)}</strong></div>) : <div className="customerCommandEmpty">No customer sales found in the last 30 days.</div>}</div></section>
+
             <section className="customerCommandCard"><div className="customerCommandHead"><div><span className="eyebrow">RETENTION SIGNAL</span><h4>Customers losing momentum</h4></div><span>{declining.length}</span></div>{declining.length ? declining.map(c => <div className="customerSignalRow" key={c.name}><div><b>{c.name}</b><small>{money(c.previous_revenue)} → {money(c.current_revenue)}</small></div><strong className="negative">{pct(c.change_pct)}</strong></div>) : <div className="customerCommandEmpty">No customers have crossed the current decline threshold.</div>}</section>
             <section className="customerCommandCard"><div className="customerCommandHead"><div><span className="eyebrow">RETENTION SIGNAL</span><h4>Follow-up queue</h4></div><span>{inactive.length}</span></div>{inactive.length ? inactive.map(c => <div className="customerSignalRow" key={c.name}><div><b>{c.name}</b><small>Last order {c.last_order || "unknown"} · {c.inactive_days ?? "—"} days inactive</small></div><strong>{money(c.lifetime_revenue)}</strong></div>) : <div className="customerCommandEmpty">No inactive customers detected.</div>}</section>
             {concentration && <section className="customerCommandCard customerActionCard"><div className="customerCommandHead"><div><span className="eyebrow">RECOMMENDED REVIEW</span><h4>Customer dependency</h4></div></div><div className="customerAction"><Icon name="users" className="icon" /><p>{concentration.risk === "high" ? "A small group of customers contributes a large share of revenue. Protect these relationships while reducing dependency over time." : concentration.risk === "medium" ? "Leading customers have meaningful revenue influence. Monitor retention and avoid over-reliance on a small group." : "Revenue is reasonably distributed across customers. Continue monitoring concentration as the mix changes."}</p></div></section>}
