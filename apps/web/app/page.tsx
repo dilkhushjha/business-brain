@@ -220,7 +220,7 @@ export default function Home() {
     </aside>
 
     <div className="appMain">
-      <header className="header dashboardHeader"><div className="headerSpacer" /><div className="headerRight"><span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Updating…" : live ? "Live data" : "Demo mode"}</span><div className="profileWrap"><button type="button" className="profileButton" onClick={() => setProfileOpen(!profileOpen)} aria-expanded={profileOpen}><span className="avatar">{(user?.username || "U").charAt(0).toUpperCase()}</span><span className="profileName">{user?.username || "User"}</span><span className="profileChevron">⌄</span></button>{profileOpen && <div className="profileMenu"><div className="profileMenuHead"><strong>{user?.username || "User"}</strong><span>{businessName}</span></div><button type="button" className="profileLogout" onClick={logout}>Log out</button></div>}</div></div></header>
+      <header className="header dashboardHeader"><div className="pageContext"><span className="pageContextEyebrow">{navGroups.flatMap((group) => group.items).find((item) => item.id === activeSection)?.label ?? "Dashboard"}</span><span className="pageContextSub">Business performance and decision support</span></div><div className="headerRight"><span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Updating…" : live ? "Live data" : "Demo mode"}</span><div className="profileWrap"><button type="button" className="profileButton" onClick={() => setProfileOpen(!profileOpen)} aria-expanded={profileOpen}><span className="avatar">{(user?.username || "U").charAt(0).toUpperCase()}</span><span className="profileName">{user?.username || "User"}</span><span className="profileChevron">⌄</span></button>{profileOpen && <div className="profileMenu"><div className="profileMenuHead"><strong>{user?.username || "User"}</strong><span>{businessName}</span></div><button type="button" className="profileLogout" onClick={logout}>Log out</button></div>}</div></div></header>
       {!live && !loading && <div className="demoBanner"><strong>DEMO MODE</strong><span>Sample business data · safe for testing</span></div>}
       <div className="pageContent">{renderSection()}</div>
     </div>
@@ -233,17 +233,17 @@ export default function Home() {
 
 
 function ImportWorkspace({ businessName }: { businessName: string }) {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [preview, setPreview] = useState<any | null>(null);
   const [result, setResult] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   function chooseFile(event: ChangeEvent<HTMLInputElement>) {
-    setFile(event.target.files?.[0] || null); setPreview(null); setResult(null); setError("");
+    setFiles(Array.from(event.target.files || [])); setPreview(null); setResult(null); setError("");
   }
   async function send(path: "preview" | "record-run") {
-    if (!file) throw new Error("Choose a CSV or Excel file first.");
+    if (!files.length) throw new Error("Choose at least one CSV or Excel file first.");
     const businessId = getBusinessId();
     if (!businessId) throw new Error("Your business session is missing. Please sign in again.");
     const form = new FormData(); form.append("file", file);
@@ -263,9 +263,9 @@ function ImportWorkspace({ businessName }: { businessName: string }) {
   return <div className="importWorkspace">
     <section className="card importCard">
       <div className="importCardHead"><div><span className="eyebrow">BUSINESS DATA</span><h3>Import sales data</h3><p>Upload a Tally CSV or Excel export, validate it, then explicitly commit accepted rows.</p></div><span className="status">Workspace · {businessName}</span></div>
-      <div className="field"><label>Source file</label><input type="file" accept=".csv,.xlsx,.xls" onChange={chooseFile} /></div>
-      {file && <p className="muted fileName">Selected: <strong>{file.name}</strong> · {(file.size / 1024).toFixed(1)} KB</p>}
-      <div className="actions"><button onClick={previewFile} disabled={busy || !file}>{busy ? "Checking…" : "Preview & Validate"}</button></div>
+      <div className="field"><label>Source files</label><input type="file" multiple accept=".csv,.xlsx,.xls" onChange={chooseFile} /><small className="fieldHint">Select one or multiple CSV/Excel files. All selected files will be validated together.</small></div>
+      {files.length > 0 && <div className="selectedFiles">{files.map((selectedFile) => <span className="selectedFile" key={`${selectedFile.name}-${selectedFile.size}`}>{selectedFile.name} · {(selectedFile.size / 1024).toFixed(1)} KB</span>)}</div>}
+      <div className="actions"><button onClick={previewFile} disabled={busy || files.length === 0}>{busy ? "Checking…" : "Preview & Validate"}</button></div>
     </section>
     {error && <div className="errorBox">{error}</div>}
     {preview && !result && <section className="card resultCard"><span className="eyebrow">VALIDATION PREVIEW</span><h3>{preview.source}</h3><div className="metrics"><Metric label="Rows read" value={String(preview.rows_read)} change="" note="" icon="invoice" /><Metric label="Accepted" value={String(preview.rows_accepted)} change="" note="" icon="check" tone="success" /><Metric label="Rejected" value={String(preview.rows_rejected)} change="" note="" icon="alert" tone="danger" /></div>{preview.mapping?.length > 0 && <div className="issues"><b>Detected columns</b>{preview.mapping.map((m: any, i: number) => <p key={i}><strong>{m.canonical}</strong> ← {m.source} · {Math.round(m.confidence * 100)}%</p>)}</div>}{preview.issues?.length > 0 && <div className="issues"><b>Validation issues</b>{preview.issues.slice(0, 20).map((x: any, i: number) => <p key={i}>Row {x.row ?? "—"} · {x.column ?? "file"}: {x.message ?? "Validation issue"}</p>)}</div>}<button onClick={importFile} disabled={busy || preview.rows_accepted === 0}>{busy ? "Importing…" : "Import accepted rows →"}</button></section>}
