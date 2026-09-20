@@ -279,12 +279,24 @@ export default function Home() {
 }
 
 function ImportWorkspace({ businessName, onImported, onDone }: { businessName: string; onImported: () => void; onDone: () => void }) {
+  const [mode, setMode] = useState<"sales" | "purchases">("sales");
   const [files, setFiles] = useState<File[]>([]);
   const [preview, setPreview] = useState<any | null>(null);
   const [result, setResult] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
+
+  const isPurchase = mode === "purchases";
+
+  function resetImport(nextMode = mode) {
+    setMode(nextMode);
+    setFiles([]);
+    setPreview(null);
+    setResult(null);
+    setError("");
+    setDragging(false);
+  }
 
   function applyFiles(selected: File[]) {
     const accepted = selected.filter((file) => /\.(csv|xlsx?|xls)$/i.test(file.name));
@@ -305,42 +317,124 @@ function ImportWorkspace({ businessName, onImported, onDone }: { businessName: s
     applyFiles(Array.from(event.dataTransfer.files || []));
   }
 
-  async function send(path: "preview" | "record-run") {
-    if (!files.length) throw new Error("Choose at least one CSV or Excel file first.");
+  async function send(action: "preview" | "import") {
+    if (!files.length) throw new Error(`Choose at least one ${isPurchase ? "purchase" : "sales"} CSV or Excel file first.`);
     const businessId = getBusinessId();
     if (!businessId) throw new Error("Your business session is missing. Please sign in again.");
-    const form = new FormData(); files.forEach((selectedFile) => form.append("files", selectedFile));
-    const response = await apiFetch(`/ingestion/${path}/${businessId}`, { method: "POST", body: form });
+
+    const endpoint = isPurchase
+      ? action === "preview" ? "preview-purchases" : "import-purchases"
+      : action === "preview" ? "preview" : "record-run";
+
+    const form = new FormData();
+    files.forEach((selectedFile) => form.append("files", selectedFile));
+    const response = await apiFetch(`/ingestion/${endpoint}/${businessId}`, { method: "POST", body: form });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.detail || `Import service returned ${response.status}`);
     return data;
   }
+
   async function previewFile() {
-    setBusy(true); setError(""); setResult(null);
-    try { setPreview(await send("preview")); } catch (e) { setError(e instanceof ApiAuthError ? "Your session has expired. Please sign in again." : e instanceof Error ? e.message : "Unable to preview files"); } finally { setBusy(false); }
+    setBusy(true);
+    setError("");
+    setResult(null);
+    try {
+      setPreview(await send("preview"));
+    } catch (e) {
+      setError(e instanceof ApiAuthError ? "Your session has expired. Please sign in again." : e instanceof Error ? e.message : "Unable to preview files");
+    } finally {
+      setBusy(false);
+    }
   }
+
   async function importFile() {
-    setBusy(true); setError("");
-    try { const imported = await send("record-run"); setResult(imported); onImported(); } catch (e) { setError(e instanceof ApiAuthError ? "Your session has expired. Please sign in again." : e instanceof Error ? e.message : "Unable to import files"); } finally { setBusy(false); }
+    setBusy(true);
+    setError("");
+    try {
+      const imported = await send("import");
+      setResult(imported);
+      onImported();
+    } catch (e) {
+      setError(e instanceof ApiAuthError ? "Your session has expired. Please sign in again." : e instanceof Error ? e.message : "Unable to import files");
+    } finally {
+      setBusy(false);
+    }
   }
+
   return <div className="importWorkspace">
     <section className="card importCard">
-      <div className="importCardHead"><div><span className="eyebrow">DATA & IMPORTS</span><h3>Bring your sales data into Business Brain</h3><p>Upload one or more Tally CSV or Excel exports. We’ll validate everything before anything is committed.</p></div><span className="status">Workspace · {businessName}</span></div>
-      <div className={`uploadZone ${dragging ? "dragging" : ""}`} onClick={() => document.getElementById("businessBrainFileInput")?.click()} onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); setDragging(true); }} onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); setDragging(true); }} onDragLeave={(event) => { event.preventDefault(); event.stopPropagation(); if (event.currentTarget === event.target) setDragging(false); }} onDrop={handleDrop} role="button" tabIndex={0} aria-label="Upload sales files">
+      <div className="importCardHead">
+        <div>
+          <span className="eyebrow">DATA & IMPORTS</span>
+          <h3>{isPurchase ? "Bring your purchase data into Business Brain" : "Bring your sales data into Business Brain"}</h3>
+          <p>{isPurchase ? "Upload purchase-register CSV or Excel exports. Purchases are kept separate from sales and flow into supplier, inventory and cost intelligence." : "Upload sales-register CSV or Excel exports. Sales flow into revenue, customer, inventory and commercial intelligence."}</p>
+        </div>
+        <span className="status">Workspace · {businessName}</span>
+      </div>
+
+      <div className="importTypeSwitch" role="tablist" aria-label="Import data type">
+        <button type="button" className={mode === "sales" ? "active" : ""} onClick={() => resetImport("sales")}>Sales data</button>
+        <button type="button" className={mode === "purchases" ? "active" : ""} onClick={() => resetImport("purchases")}>Purchase data</button>
+      </div>
+
+      <div className={`uploadZone ${dragging ? "dragging" : ""}`} onClick={() => document.getElementById("businessBrainFileInput")?.click()} onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); setDragging(true); }} onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); setDragging(true); }} onDragLeave={(event) => { event.preventDefault(); event.stopPropagation(); if (event.currentTarget === event.target) setDragging(false); }} onDrop={handleDrop} role="button" tabIndex={0} aria-label={`Upload ${isPurchase ? "purchase" : "sales"} files`}>
         <input id="businessBrainFileInput" className="uploadInput" type="file" multiple accept=".csv,.xlsx,.xls" onClick={(event) => { event.stopPropagation(); event.currentTarget.value = ""; }} onChange={chooseFile} />
         <div className="uploadIcon"><Icon name="arrow" className="icon" /></div>
-        <div className="uploadCopy"><strong>{dragging ? "Release to add your sales files" : "Drop your sales files here"}</strong><span>or click to browse from your computer</span><small>CSV, XLSX or XLS · Multiple files supported</small></div>
+        <div className="uploadCopy"><strong>{dragging ? `Release to add your ${isPurchase ? "purchase" : "sales"} files` : `Drop your ${isPurchase ? "purchase" : "sales"} files here`}</strong><span>or click to browse from your computer</span><small>CSV, XLSX or XLS · Multiple files supported</small></div>
         <span className="uploadBrowse">Choose files</span>
       </div>
-      {files.length > 0 && <div className="selectedFiles"><div className="selectedFilesHeader"><b>{files.length} file{files.length === 1 ? "" : "s"} selected</b><button type="button" className="clearFilesButton" onClick={() => { setFiles([]); setPreview(null); setResult(null); setError(""); }}>Clear selection</button></div>{files.map((selectedFile, index) => <div className="selectedFile" key={`${selectedFile.name}-${selectedFile.size}-${index}`}><span>{selectedFile.name} · {(selectedFile.size / 1024).toFixed(1)} KB</span><button type="button" className="removeFileButton" aria-label={`Remove ${selectedFile.name}`} onClick={() => { const next = files.filter((_, fileIndex) => fileIndex !== index); setFiles(next); setPreview(null); setResult(null); setError(""); }}>×</button></div>)}</div>}
-      <div className="actions"><button onClick={previewFile} disabled={busy || files.length === 0}>{busy ? "Checking…" : "Preview & Validate"}</button></div>
+
+      {files.length > 0 && <div className="selectedFiles">
+        <div className="selectedFilesHeader">
+          <b>{files.length} file{files.length === 1 ? "" : "s"} selected</b>
+          <button type="button" className="clearFilesButton" onClick={() => resetImport(mode)}>Clear selection</button>
+        </div>
+        {files.map((selectedFile, index) => <div className="selectedFile" key={`${selectedFile.name}-${selectedFile.size}-${index}`}>
+          <span>{selectedFile.name} · {(selectedFile.size / 1024).toFixed(1)} KB</span>
+          <button type="button" className="removeFileButton" aria-label={`Remove ${selectedFile.name}`} onClick={() => { const next = files.filter((_, fileIndex) => fileIndex !== index); setFiles(next); setPreview(null); setResult(null); setError(""); }}>×</button>
+        </div>)}
+      </div>}
+
+      <div className="actions">
+        <button onClick={previewFile} disabled={busy || files.length === 0}>{busy ? "Checking…" : "Preview & Validate"}</button>
+      </div>
     </section>
+
     {error && <div className="errorBox">{error}</div>}
-    {preview && !result && <section className="card resultCard"><span className="eyebrow">VALIDATION PREVIEW</span><h3>{preview.file_count} file{preview.file_count === 1 ? "" : "s"} ready to import</h3><div className="metrics"><Metric label="Rows read" value={String(preview.rows_read)} change="" note="" icon="invoice" /><Metric label="Accepted" value={String(preview.rows_accepted)} change="" note="" icon="check" /><Metric label="Rejected" value={String(preview.rows_rejected)} change="" note="" icon="alert" tone="danger" /></div><div className="filePreviewList">{preview.files?.map((filePreview: any, i: number) => <div className="filePreview" key={`${filePreview.source}-${i}`}><div><strong>{filePreview.source}</strong><small>{filePreview.rows_read} rows · {filePreview.rows_accepted} accepted · {filePreview.rows_rejected} rejected</small></div>{filePreview.mapping?.length > 0 && <div className="issues compact"><b>Detected columns</b>{filePreview.mapping.map((m: any, j: number) => <span key={j}><strong>{m.canonical}</strong> ← {m.source} · {Math.round(m.confidence * 100)}%</span>)}</div>}{filePreview.issues?.length > 0 && <div className="issues"><b>Validation issues</b>{filePreview.issues.slice(0, 20).map((issue: any, j: number) => <p key={j}>Row {issue.row ?? "—"} · {issue.column ?? "file"}: {issue.message ?? "Validation issue"}</p>)}</div>}</div>)}</div><button onClick={importFile} disabled={busy || preview.rows_accepted === 0}>{busy ? "Importing…" : "Import accepted rows →"}</button></section>}
-    {result && <section className="card resultCard success"><span className="eyebrow">IMPORT COMPLETE</span><h3>Data committed successfully.</h3><div className="importSummary"><span className="importSummaryItem"><strong>{result.file_count || 0}</strong><small>file{result.file_count === 1 ? "" : "s"} imported</small></span><span className="importSummaryItem"><strong>{result.sales_created?.toLocaleString?.() || 0}</strong><small>new records</small></span><span className="importSummaryItem"><strong>{result.sales_reconciled?.toLocaleString?.() || 0}</strong><small>updated</small></span><span className="importSummaryItem"><strong>{result.rows_rejected || 0}</strong><small>rejected</small></span></div><div className="importVerification"><span className="importStat"><small>Revenue after import</small><strong>{money(result.total_revenue_after_import)}</strong></span><span className="importStat"><small>Invoices after import</small><strong>{result.total_invoice_count_after_import ?? "—"}</strong></span></div><button className="dashboardReturnButton" onClick={onDone}>← Back to Dashboard</button></section>}
+
+    {preview && !result && <section className="card resultCard">
+      <span className="eyebrow">VALIDATION PREVIEW · {isPurchase ? "PURCHASES" : "SALES"}</span>
+      <h3>{preview.file_count} file{preview.file_count === 1 ? "" : "s"} ready to import</h3>
+      <div className="metrics">
+        <Metric label="Rows read" value={String(preview.rows_read)} change="" note="" icon="invoice" />
+        <Metric label="Accepted" value={String(preview.rows_accepted)} change="" note="" icon="check" />
+        <Metric label="Rejected" value={String(preview.rows_rejected)} change="" note="" icon="alert" tone="danger" />
+      </div>
+      <div className="filePreviewList">{preview.files?.map((filePreview: any, i: number) => <div className="filePreview" key={`${filePreview.source}-${i}`}>
+        <div><strong>{filePreview.source}</strong><small>{filePreview.rows_read} rows · {filePreview.rows_accepted} accepted · {filePreview.rows_rejected} rejected</small></div>
+        {filePreview.mapping?.length > 0 && <div className="issues compact"><b>Detected columns</b>{filePreview.mapping.map((m: any, j: number) => <span key={j}><strong>{m.canonical}</strong> ← {m.source} · {Math.round(m.confidence * 100)}%</span>)}</div>}
+        {filePreview.issues?.length > 0 && <div className="issues"><b>Validation issues</b>{filePreview.issues.slice(0, 20).map((issue: any, j: number) => <p key={j}>Row {issue.row ?? "—"} · {issue.column ?? "file"}: {issue.message ?? "Validation issue"}</p>)}</div>}
+      </div>)}</div>
+      <button onClick={importFile} disabled={busy || preview.rows_accepted === 0}>{busy ? "Importing…" : `Import ${isPurchase ? "purchase" : "sales"} data →`}</button>
+    </section>}
+
+    {result && <section className="card resultCard success">
+      <span className="eyebrow">IMPORT COMPLETE · {isPurchase ? "PURCHASES" : "SALES"}</span>
+      <h3>Data committed successfully.</h3>
+      <div className="importSummary">
+        <span className="importSummaryItem"><strong>{result.file_count || 0}</strong><small>file{result.file_count === 1 ? "" : "s"} imported</small></span>
+        <span className="importSummaryItem"><strong>{isPurchase ? (result.purchases_created?.toLocaleString?.() || 0) : (result.sales_created?.toLocaleString?.() || 0)}</strong><small>new invoices</small></span>
+        <span className="importSummaryItem"><strong>{isPurchase ? (result.purchases_reconciled?.toLocaleString?.() || 0) : (result.sales_reconciled?.toLocaleString?.() || 0)}</strong><small>updated</small></span>
+        <span className="importSummaryItem"><strong>{result.rows_rejected || 0}</strong><small>rejected</small></span>
+      </div>
+      <div className="importVerification">
+        <span className="importStat"><small>{isPurchase ? "Purchase value after import" : "Revenue after import"}</small><strong>{money(isPurchase ? result.total_purchase_amount_after_import : result.total_revenue_after_import)}</strong></span>
+        <span className="importStat"><small>{isPurchase ? "Purchase invoices after import" : "Sales invoices after import"}</small><strong>{isPurchase ? (result.total_purchase_invoice_count_after_import ?? "—") : (result.total_invoice_count_after_import ?? "—")}</strong></span>
+      </div>
+      <button className="dashboardReturnButton" onClick={onDone}>← Back to Dashboard</button>
+    </section>}
   </div>;
 }
-
 function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
   return <div className="sectionHeading sectionHeadingLarge contentTitle"><span>{title}</span><small>{subtitle}</small></div>;
 }
