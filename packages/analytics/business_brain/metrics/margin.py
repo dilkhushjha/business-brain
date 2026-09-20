@@ -74,10 +74,13 @@ def _weighted_average_cost(
 
 def low_margin_products(db: Session, business_id: UUID, days: int = 30, threshold: float = 10, limit: int = 10) -> list[dict[str, Any]]:
     end=date.today(); start=end-timedelta(days=days-1)
-    rows=db.execute(select(ProductModel.name, SaleLineModel.quantity, SaleLineModel.unit_price, SaleLineModel.cost_price).join(SaleLineModel, SaleLineModel.product_id==ProductModel.id).join(SaleModel, SaleModel.id==SaleLineModel.sale_id).where(ProductModel.business_id==business_id,SaleModel.business_id==business_id,SaleModel.transaction_date.between(start,end),SaleLineModel.cost_price.is_not(None))).all()
+    rows=db.execute(select(ProductModel.name, SaleLineModel.product_id, SaleLineModel.sale_id, SaleLineModel.quantity, SaleLineModel.unit_price, SaleLineModel.cost_price).join(SaleLineModel, SaleLineModel.product_id==ProductModel.id).join(SaleModel, SaleModel.id==SaleLineModel.sale_id).where(ProductModel.business_id==business_id,SaleModel.business_id==business_id,SaleModel.transaction_date.between(start,end))).all()
     agg={}
-    for name,q,p,c in rows:
-        rev=float(Decimal(q)*Decimal(p)); cost=float(Decimal(q)*Decimal(c)); x=agg.setdefault(name,[0.0,0.0]); x[0]+=rev; x[1]+=cost
+    for name,product_id,sale_id,q,p,recorded_cost in rows:
+        effective_cost = Decimal(recorded_cost) if recorded_cost is not None else _weighted_average_cost(db, business_id, product_id, sale_id)
+        if effective_cost is None:
+            continue
+        rev=float(Decimal(q)*Decimal(p)); cost=float(Decimal(q)*effective_cost); x=agg.setdefault(name,[0.0,0.0]); x[0]+=rev; x[1]+=cost
     out=[]
     for name,(rev,cost) in agg.items():
         margin=(rev-cost)/rev*100 if rev else 0
