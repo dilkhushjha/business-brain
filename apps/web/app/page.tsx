@@ -258,7 +258,7 @@ function ImportWorkspace({ businessName }: { businessName: string }) {
   }
   async function importFile() {
     setBusy(true); setError("");
-    try { setResult(await send("record-run")); } catch (e) { setError(e instanceof ApiAuthError ? "Your session has expired. Please sign in again." : e instanceof Error ? e.message : "Unable to import files"); } finally { setBusy(false); }
+    try { setResult(await send("record-run")); window.location.reload(); } catch (e) { setError(e instanceof ApiAuthError ? "Your session has expired. Please sign in again." : e instanceof Error ? e.message : "Unable to import files"); } finally { setBusy(false); }
   }
   return <div className="importWorkspace">
     <section className="card importCard">
