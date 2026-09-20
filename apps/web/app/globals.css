@@ -2444,11 +2444,11 @@ button:disabled {
 }
 
 .trendChartWrap {
-  width: calc(100% + 52px);
-  margin-left: -26px;
-  margin-right: -26px;
+  position: relative;
+  width: 100%;
+  margin: 0;
   padding: 0 0 22px;
-  overflow: visible;
+  overflow: hidden;
 }
 .trendChart {
   width: 100%;
