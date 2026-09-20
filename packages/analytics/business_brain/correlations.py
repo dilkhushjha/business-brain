@@ -139,6 +139,8 @@ def correlate_signals(signals: list[Any], state: Any | None = None) -> list[Busi
                 evidence["receivables_outstanding"] = str(state.receivables_outstanding)
             if getattr(state, "payables_outstanding", None) is not None:
                 evidence["payables_outstanding"] = str(state.payables_outstanding)
+            if getattr(state, "net_working_capital", None) is not None:
+                evidence["net_working_capital"] = str(state.net_working_capital)
 
         situations.append(BusinessSituation(
             code="WORKING_CAPITAL_PRESSURE",
@@ -149,6 +151,62 @@ def correlate_signals(signals: list[Any], state: Any | None = None) -> list[Busi
             evidence=evidence,
             explanation="The business has overdue customer receivables while supplier obligations are also overdue.",
             recommended_next_step="Review near-term collections and supplier payment priorities together.",
+        ))
+
+    # Economic-state correlation: a margin/expense deterioration pattern is
+    # stronger than either signal in isolation. The state is supporting
+    # evidence; the signals establish that a real change needs attention.
+    margin_signals = by_code.get("PRODUCT_MARGIN_DETERIORATION", [])
+    expense_spikes = by_code.get("EXPENSE_SPIKE", [])
+    revenue_declines = by_code.get("REVENUE_DECLINE", [])
+    if margin_signals and expense_spikes:
+        related = margin_signals + expense_spikes
+        evidence = {
+            "margin_signals": len(margin_signals),
+            "expense_spikes": len(expense_spikes),
+        }
+        if state is not None:
+            if getattr(state, "gross_profit", None) is not None:
+                evidence["gross_profit"] = str(state.gross_profit)
+            if getattr(state, "total_expenses", None) is not None:
+                evidence["total_expenses"] = str(state.total_expenses)
+            if getattr(state, "operating_surplus", None) is not None:
+                evidence["operating_surplus"] = str(state.operating_surplus)
+
+        situations.append(BusinessSituation(
+            code="PROFITABILITY_PRESSURE",
+            title="Margin weakness and rising expenses are pressuring profitability",
+            severity="critical" if any(s.severity == "critical" for s in related) else "warning",
+            confidence=Decimal("0.84"),
+            signal_codes=_unique_codes(related),
+            evidence=evidence,
+            explanation="Thin product margins coincide with an expense category spending increase, putting pressure on the operating result.",
+            recommended_next_step="Review the affected product margins and the expense categories that increased before taking corrective action.",
+        ))
+
+    if revenue_declines and expense_spikes:
+        related = revenue_declines + expense_spikes
+        evidence = {
+            "revenue_decline_signals": len(revenue_declines),
+            "expense_spike_signals": len(expense_spikes),
+        }
+        if state is not None:
+            if getattr(state, "revenue", None) is not None:
+                evidence["revenue"] = str(state.revenue)
+            if getattr(state, "revenue_change_pct", None) is not None:
+                evidence["revenue_change_pct"] = str(state.revenue_change_pct)
+            if getattr(state, "expense_to_revenue_pct", None) is not None:
+                evidence["expense_to_revenue_pct"] = str(state.expense_to_revenue_pct)
+
+        situations.append(BusinessSituation(
+            code="REVENUE_COST_SQUEEZE",
+            title="Revenue is declining while expenses are increasing",
+            severity="critical" if any(s.severity == "critical" for s in related) else "warning",
+            confidence=Decimal("0.88"),
+            signal_codes=_unique_codes(related),
+            evidence=evidence,
+            explanation="A revenue decline is occurring alongside higher operating expense activity.",
+            recommended_next_step="Review the revenue drivers and the expense categories increasing at the same time.",
         ))
 
     return situations
