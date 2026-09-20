@@ -54,63 +54,91 @@ def _prepare_upload(file: UploadFile, business_id: UUID, db: Session, prepare_fn
         raise
 
 
+def _prepare_upload_batch(files: list[UploadFile], business_id: UUID, db: Session, prepare_fn=prepare_file):
+    if not files:
+        raise HTTPException(400, "At least one source file is required")
+    prepared_batch = []
+    try:
+        for file in files:
+            result, prepared, temp_path = _prepare_upload(file, business_id, db, prepare_fn=prepare_fn)
+            prepared_batch.append((result, prepared, temp_path))
+        return prepared_batch
+    except Exception:
+        for _, _, temp_path in prepared_batch:
+            Path(temp_path).unlink(missing_ok=True)
+        raise
+
+
 @router.post("/preview/{business_id}")
 def preview_ingestion(
     business_id: UUID,
-    file: UploadFile = File(...),
+    files: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
     _auth: dict = Depends(require_business_access),
 ):
-    result, prepared, temp_path = _prepare_upload(file, business_id, db)
+    batch = _prepare_upload_batch(files, business_id, db)
     try:
-        columns = list(prepared[0].values.keys()) if prepared else []
+        previews = []
+        for result, prepared, _ in batch:
+            columns = list(prepared[0].values.keys()) if prepared else []
+            previews.append({
+                "source": result.source.name,
+                "checksum": result.source.checksum,
+                "columns": columns,
+                "mapping": [m.__dict__ for m in suggest_mapping(columns)],
+                "rows_read": result.rows_read,
+                "rows_accepted": result.rows_accepted,
+                "rows_rejected": result.rows_rejected,
+                "issues": [issue.__dict__ for issue in result.issues[:100]],
+            })
         return {
-            "source": result.source.name,
-            "checksum": result.source.checksum,
-            "columns": columns,
-            "mapping": [m.__dict__ for m in suggest_mapping(columns)],
-            "rows_read": result.rows_read,
-            "rows_accepted": result.rows_accepted,
-            "rows_rejected": result.rows_rejected,
-            "issues": [issue.__dict__ for issue in result.issues[:100]],
+            "files": previews,
+            "file_count": len(previews),
+            "rows_read": sum(x["rows_read"] for x in previews),
+            "rows_accepted": sum(x["rows_accepted"] for x in previews),
+            "rows_rejected": sum(x["rows_rejected"] for x in previews),
         }
     finally:
-        Path(temp_path).unlink(missing_ok=True)
+        for _, _, temp_path in batch:
+            Path(temp_path).unlink(missing_ok=True)
 
 
 @router.post("/import/{business_id}")
 @router.post("/record-run/{business_id}")
 def record_ingestion_run(
     business_id: UUID,
-    file: UploadFile = File(...),
+    files: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
     _auth: dict = Depends(require_business_access),
 ):
     request_id = str(uuid4())
-    result, prepared, temp_path = _prepare_upload(file, business_id, db)
+    batch = _prepare_upload_batch(files, business_id, db)
     try:
-        if result.rows_rejected:
-            raise HTTPException(
-                422,
-                detail=f"Import blocked: {result.rows_rejected} row(s) failed validation",
-            )
+        rejected = sum(result.rows_rejected for result, _, _ in batch)
+        if rejected:
+            raise HTTPException(422, detail=f"Import blocked: {rejected} row(s) failed validation across the selected files")
 
-        logger.info(
-            "Starting ingestion request=%s business=%s source=%s rows=%s",
-            request_id, business_id, result.source.name, result.rows_accepted,
-        )
-        run = persist_ingestion_run(db, business_id, result)
-        created_sales = persist_sales(db, business_id, [row.values for row in prepared])
+        logger.info("Starting ingestion batch request=%s business=%s files=%s rows=%s",
+                    request_id, business_id, len(batch), sum(result.rows_accepted for result, _, _ in batch))
+
+        runs = []
+        created_sales = 0
+        for result, prepared, _ in batch:
+            run = persist_ingestion_run(db, business_id, result)
+            created_sales += persist_sales(db, business_id, [row.values for row in prepared])
+            runs.append(run)
         db.commit()
-        db.refresh(run)
+        for run in runs:
+            db.refresh(run)
+
         return {
-            "run_id": str(run.id),
-            "status": run.status,
-            "source": result.source.name,
-            "checksum": result.source.checksum,
-            "rows_read": result.rows_read,
-            "rows_accepted": result.rows_accepted,
-            "rows_rejected": result.rows_rejected,
+            "status": "completed",
+            "run_ids": [str(run.id) for run in runs],
+            "file_count": len(runs),
+            "sources": [result.source.name for result, _, _ in batch],
+            "rows_read": sum(result.rows_read for result, _, _ in batch),
+            "rows_accepted": sum(result.rows_accepted for result, _, _ in batch),
+            "rows_rejected": rejected,
             "sales_created": created_sales,
             "request_id": request_id,
         }
@@ -119,21 +147,16 @@ def record_ingestion_run(
         raise
     except IntegrityError as exc:
         db.rollback()
-        logger.exception("Ingestion integrity failure request=%s business=%s", request_id, business_id)
-        raise HTTPException(
-            409,
-            detail=f"Import could not be saved because the source or one of its business records already exists. No partial data was committed. Request: {request_id}",
-        ) from exc
+        logger.exception("Batch ingestion integrity failure request=%s business=%s", request_id, business_id)
+        raise HTTPException(409, detail=f"Import could not be saved. No partial data was committed. Request: {request_id}") from exc
     except Exception as exc:
         db.rollback()
-        logger.exception("Ingestion failure request=%s business=%s", request_id, business_id)
+        logger.exception("Batch ingestion failure request=%s business=%s", request_id, business_id)
         detail = str(exc).strip() or "The database operation returned no diagnostic message. Check the backend traceback."
-        raise HTTPException(
-            500,
-            detail=f"Import failed; no partial data was committed. {type(exc).__name__}: {detail} Request: {request_id}",
-        ) from exc
+        raise HTTPException(500, detail=f"Import failed; no partial data was committed. {type(exc).__name__}: {detail} Request: {request_id}") from exc
     finally:
-        Path(temp_path).unlink(missing_ok=True)
+        for _, _, temp_path in batch:
+            Path(temp_path).unlink(missing_ok=True)
 
 
 @router.post("/import-purchases/{business_id}")
