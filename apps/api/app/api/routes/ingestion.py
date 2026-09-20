@@ -202,7 +202,8 @@ def record_purchase_ingestion_run(
         for result, prepared, _ in batch:
             run = persist_ingestion_run(db, business_id, result)
             before = created_purchases
-            created = persist_purchases(db, business_id, [row.values for row in prepared])
+            purchase_result = persist_purchases(db, business_id, [row.values for row in prepared])
+            created = purchase_result["created"]
             created_purchases += created
             # The repository returns only newly-created invoices. Accepted
             # rows grouped into invoices minus new invoices are reconciliations.
@@ -211,7 +212,7 @@ def record_purchase_ingestion_run(
                 for row in prepared
                 if row.values.get("invoice_number")
             }
-            reconciled_purchases += max(0, len(invoice_numbers) - (created_purchases - before))
+            reconciled_purchases += purchase_result["reconciled"]
             runs.append(run)
 
         db.commit()
