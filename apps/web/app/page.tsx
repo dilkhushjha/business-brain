@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import RevenueTrend from "../components/RevenueTrend";
 import PerformanceTables from "../components/PerformanceTables";
 import MarginIntelligence from "../components/MarginIntelligence";
@@ -231,7 +231,7 @@ export default function Home() {
       <section className="card"><div className="cardTitle"><b>Management attention</b><small>Highest-priority signals</small></div>{context?.signals?.slice(0, 5).map((s, i) => { const sev = severityIcon(s.severity as string | undefined); return <div className="signal" key={i}><span className={`iconChip sm tone-${sev.tone}`}><Icon name={sev.icon} className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{String(s.title || s.name || "Business signal")}</b><span className={`tag ${["critical", "warning", "high"].includes(String(s.severity).toLowerCase()) ? "danger" : ["positive", "info"].includes(String(s.severity).toLowerCase()) ? "good" : "warning"}`}>{String(s.severity || "REVIEW").toUpperCase()}</span></div><p>{String(s.message || s.description || "Review this signal.")}</p></div></div>; })}</section>
       <section className="card"><div className="cardTitle"><b>Recommended actions</b><small>What to consider next</small></div>{context?.recommendations?.map((r, i) => <div className="signal" key={i}><div className="actionNo">{i + 1}</div><div className="signalBody"><b>{String(r.title || r.name || "Recommendation")}</b><p>{String(r.description || r.message || "Evidence-backed action available.")}</p></div></div>)}</section>
     </div>{anomalies.length > 0 && <section className="card anomalyCard"><div className="cardTitle"><b>Exceptions</b><small>Unusual movements worth investigating</small></div>{anomalies.map((a, i) => <div className="anomaly" key={i}><span className={`iconChip sm tone-${a.severity === "high" ? "danger" : "amber"}`}><Icon name="alert" className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{a.name}</b><span className={`tag ${a.severity === "high" ? "danger" : "warning"}`}>{a.severity.toUpperCase()}</span></div><p>Revenue {a.change_pct >= 0 ? "increased" : "decreased"} <strong>{Math.abs(a.change_pct).toFixed(0)}%</strong> versus the prior period.</p></div></div>)}</section>}</section>;
-    if (activeSection === "reports") return <section className="contentSection"><SectionTitle title="REPORTS" subtitle="Reporting and analysis workspace" /><div className="card reportCard"><Icon name="trend" className="reportIcon" /><div><b>Detailed reporting</b><p>Review the business data and performance views. Report exports can be added here as the reporting layer grows.</p></div></section></section>;
+    if (activeSection === "reports") return <section className="contentSection"><SectionTitle title="REPORTS" subtitle="Reporting and analysis workspace" /><div className="card reportCard"><Icon name="trend" className="reportIcon" /><div><b>Detailed reporting</b><p>Review the business data and performance views. Report exports can be added here as the reporting layer grows.</p></div></section>;
     return <section className="contentSection"><SectionTitle title="DATA & IMPORTS" subtitle="Upload, validate and commit business data without leaving the dashboard" /><ImportWorkspace businessName={businessName} onImported={() => setDataVersion((v) => v + 1)} onDone={() => setActiveSection("overview")} /></section>;
   }
 
@@ -274,7 +274,7 @@ function ImportWorkspace({ businessName, onImported, onDone }: { businessName: s
     applyFiles(Array.from(event.target.files || []));
   }
 
-  function handleDrop(event: React.DragEvent<HTMLDivElement>) {
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     event.stopPropagation();
     setDragging(false);
