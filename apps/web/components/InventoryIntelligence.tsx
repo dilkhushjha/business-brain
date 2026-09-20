@@ -4,68 +4,38 @@ import Icon from "./Icons";
 import { apiFetch, getBusinessId } from "../lib/api";
 import type { ReasoningPayload } from "../lib/reasoning";
 
-const money = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
-type VelocityRow = { name: string; units_sold: number; revenue: number; avg_daily_units: number; signal: string; recommended_review?: string | null };
+const money = (n: number) => { if (Math.abs(n) >= 100000) return "₹" + (n / 100000).toFixed(1) + "L"; if (Math.abs(n) >= 1000) return "₹" + (n / 1000).toFixed(1) + "K"; return "₹" + Math.round(n).toLocaleString("en-IN"); };
+type VelocityRow = { name: string; units_sold: number; revenue: number; avg_daily_units: number; signal: string };
 type StockRiskRow = { name: string; quantity_on_hand: number; avg_daily_units: number; days_of_cover: number; snapshot_date: string; severity: string };
 type StockRisk = { stockout_risk: StockRiskRow[]; excess_inventory: StockRiskRow[] };
 
 export default function InventoryIntelligence({ onExplain }: { onExplain?: (reasoning: ReasoningPayload) => void }) {
   const [velocity, setVelocity] = useState<VelocityRow[]>([]);
   const [stockRisk, setStockRisk] = useState<StockRisk | null>(null);
-
-  useEffect(() => {
-    apiFetch(`/inventory/${getBusinessId()}/signals?days=30&limit=5`).then((x) => (x.ok ? x.json() : [])).then(setVelocity).catch(() => {});
-    apiFetch(`/inventory/${getBusinessId()}/stock-risk?limit=5`).then((x) => (x.ok ? x.json() : null)).then(setStockRisk).catch(() => {});
-  }, []);
-
-  const hasStockRisk = !!stockRisk && (stockRisk.stockout_risk.length > 0 || stockRisk.excess_inventory.length > 0);
-  if (!velocity.length && !hasStockRisk) return null;
-
-  if (hasStockRisk && stockRisk) {
-    const { stockout_risk, excess_inventory } = stockRisk;
-    const reasoning: ReasoningPayload = {
-      title: "Inventory signals",
-      value: `${stockout_risk.length} at risk of stockout`,
-      change: `${excess_inventory.length} with excess stock`,
-      context: "Based on your actual stock-on-hand levels compared to recent sales velocity, not just a sales-volume proxy.",
-      why: "Days of cover = current stock / average daily units sold. Low days of cover risks running out; very high days of cover ties up capital in stock that isn't moving.",
-      implication: stockout_risk.length
-        ? `${stockout_risk[0].name} has only about ${stockout_risk[0].days_of_cover.toFixed(0)} day(s) of cover left at current sales pace.`
-        : excess_inventory.length
-        ? `${excess_inventory[0].name} has roughly ${excess_inventory[0].days_of_cover.toFixed(0)} days of cover -- far more than it's currently selling through.`
-        : "Stock levels look healthy relative to recent sales velocity.",
-      evidence: [
-        ...stockout_risk.map((x) => ({ label: x.name, value: `${x.days_of_cover.toFixed(0)}d cover`, detail: `${x.quantity_on_hand} on hand · ${x.avg_daily_units}/day · stockout risk` })),
-        ...excess_inventory.map((x) => ({ label: x.name, value: `${x.days_of_cover.toFixed(0)}d cover`, detail: `${x.quantity_on_hand} on hand · ${x.avg_daily_units}/day · excess stock` })),
-      ],
-    };
-    const explain = () => onExplain?.(reasoning);
-    return (
-      <section className={`card ${onExplain ? "reasoningClickable" : ""}`} onClick={onExplain ? explain : undefined} onKeyDown={onExplain ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); explain(); } } : undefined} role={onExplain ? "button" : undefined} tabIndex={onExplain ? 0 : undefined}>
-        <div className="cardTitle"><span><Icon name="box" className="icon" /></span><h3>Inventory signals</h3><small>Based on actual stock levels</small></div>
-        <div className="marginAlerts">
-          {stockout_risk.map((x) => <div className="marginRow" key={`out-${x.name}`}><span>{x.name}</span><b>{x.days_of_cover.toFixed(0)}d cover</b><em><span className="tag danger">STOCKOUT RISK</span> · {x.quantity_on_hand} on hand</em></div>)}
-          {excess_inventory.map((x) => <div className="marginRow" key={`excess-${x.name}`}><span>{x.name}</span><b>{x.days_of_cover.toFixed(0)}d cover</b><em><span className="tag warning">EXCESS STOCK</span> · {x.quantity_on_hand} on hand</em></div>)}
-        </div>
+  useEffect(() => { Promise.all([apiFetch(`/inventory/${getBusinessId()}/signals?days=30&limit=8`).then(r => r.ok ? r.json() : []), apiFetch(`/inventory/${getBusinessId()}/stock-risk?limit=8`).then(r => r.ok ? r.json() : null)]).then(([v,s]) => { setVelocity(v); setStockRisk(s); }).catch(() => {}); }, []);
+  const stockouts = stockRisk?.stockout_risk || [];
+  const excess = stockRisk?.excess_inventory || [];
+  const hasStockData = !!stockRisk && (stockouts.length > 0 || excess.length > 0);
+  const fastMovers = velocity.filter(x => x.signal === "fast_mover");
+  const topVelocity = [...velocity].sort((a,b) => b.avg_daily_units - a.avg_daily_units).slice(0,5);
+  const riskCount = stockouts.length + excess.length;
+  if (!velocity.length && !hasStockData) return <div className="operationsEmpty"><Icon name="pulse" className="icon" /><div><b>No operational signals yet</b><p>Import sales or stock data to see inventory movement and operational risk.</p></div></div>;
+  const reasoning: ReasoningPayload = { title: "Operations & inventory", value: hasStockData ? `${riskCount} inventory risks` : `${fastMovers.length} fast movers`, change: hasStockData ? `${excess.length} excess stock` : "Last 30 days", context: hasStockData ? "Based on stock-on-hand and recent sales velocity." : "Based on recent sales velocity; stock-on-hand data is not currently available.", why: "Days of cover compares stock on hand with average daily sales. Fast movers indicate demand pressure, but do not prove low stock.", implication: stockouts.length ? `Review replenishment for ${stockouts[0].name}.` : excess.length ? `Review purchasing for ${excess[0].name}.` : fastMovers.length ? "Review stock availability for fast-moving products." : "Continue monitoring operations.", evidence: topVelocity.map(x => ({ label: x.name, value: `${x.avg_daily_units.toFixed(1)}/day`, detail: `${x.units_sold} units · ${money(x.revenue)}` })) };
+  return <div className="operationsDashboard">
+    <div className="operationsSummary">
+      <div className="operationsSummaryCard"><span className="eyebrow">OPERATIONAL STATUS</span><strong>{riskCount ? "Needs review" : "Monitoring"}</strong><p>{hasStockData ? `${riskCount} inventory risk signal${riskCount === 1 ? "" : "s"} detected.` : "Demand and inventory movement are being monitored."}</p></div>
+      <div className="operationsStat"><span>Stockout risk</span><b>{stockouts.length}</b><small>{stockouts.length ? "items flagged" : "No items flagged"}</small></div>
+      <div className="operationsStat"><span>Excess stock</span><b>{excess.length}</b><small>{excess.length ? "items flagged" : "No items flagged"}</small></div>
+      <div className="operationsStat"><span>Fast movers</span><b>{fastMovers.length}</b><small>last 30 days</small></div>
+    </div>
+    <div className="operationsGrid">
+      <section className="operationsCard"><div className="operationsCardHead"><div><span className="eyebrow">INVENTORY POSITION</span><h3>{hasStockData ? "Stock coverage" : "Sales velocity"}</h3></div><span className="operationsPeriod">{hasStockData ? "Actual stock levels" : "Last 30 days"}</span></div>
+        {hasStockData ? <div className="stockRows">{[...stockouts.map(x => ({...x, kind:"stockout"})), ...excess.map(x => ({...x, kind:"excess"}))].map(x => <div className="stockRow" key={x.kind + x.name}><div className="stockRowTop"><div><b>{x.name}</b><span>{x.quantity_on_hand} on hand · {x.avg_daily_units.toFixed(1)}/day</span></div><strong>{x.days_of_cover.toFixed(0)}d</strong></div><div className="stockBar"><span style={{width: Math.min(100, Math.max(4, x.days_of_cover / 30 * 100)) + "%"}} /></div><div className="stockRowMeta"><span className={"operationsTag " + x.kind}>{x.kind === "stockout" ? "STOCKOUT RISK" : "EXCESS STOCK"}</span><span>{x.days_of_cover.toFixed(0)} days of cover</span></div></div>)}</div>
+        : <div className="velocityList">{topVelocity.map(x => <div className="velocityRow" key={x.name}><div><b>{x.name}</b><span>{x.units_sold} units · {money(x.revenue)}</span></div><strong>{x.avg_daily_units.toFixed(1)}<small>/day</small></strong><span className={"operationsTag " + (x.signal === "fast_mover" ? "fast" : "normal")}>{x.signal === "fast_mover" ? "FAST MOVER" : "NORMAL"}</span></div>)}</div>}
       </section>
-    );
-  }
-
-  const fast = velocity.filter((x) => x.signal === "fast_mover");
-  const reasoning: ReasoningPayload = {
-    title: "Inventory signals",
-    value: `${fast.length} fast mover${fast.length === 1 ? "" : "s"}`,
-    change: "Last 30 days",
-    context: "This view currently uses recent sales velocity, not a real-time stock-on-hand balance -- import a stock summary to see actual stockout/excess risk instead.",
-    why: "Products with sustained sales velocity may need closer stock review. This is a demand signal rather than proof that inventory is low.",
-    implication: fast.length ? `${fast.length} product${fast.length === 1 ? " is" : "s are"} moving faster than the normal threshold and may deserve a stock check.` : "Sales velocity provides an early indicator for where inventory deserves attention.",
-    evidence: velocity.map((x) => ({ label: x.name, value: `${x.avg_daily_units.toFixed(1)}/day`, detail: `${x.units_sold} units sold · ${money(x.revenue)} revenue · ${x.signal.replaceAll("_", " ")}` })),
-  };
-  const explain = () => onExplain?.(reasoning);
-  return (
-    <section className={`card ${onExplain ? "reasoningClickable" : ""}`} onClick={onExplain ? explain : undefined} onKeyDown={onExplain ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); explain(); } } : undefined} role={onExplain ? "button" : undefined} tabIndex={onExplain ? 0 : undefined}>
-      <div className="cardTitle"><span><Icon name="box" className="icon" /></span><h3>Inventory signals</h3><small>Based on recent sales velocity</small></div>
-      <div className="marginAlerts">{velocity.map((x) => <div className="marginRow" key={x.name}><span>{x.name}</span><b>{x.avg_daily_units.toFixed(1)}/day</b><em>{x.signal === "fast_mover" ? <span className="tag good">FAST MOVER</span> : <span className="tag">NORMAL</span>} · {money(x.revenue)}</em></div>)}</div>
-    </section>
-  );
+      <aside className="operationsSide"><section className="operationsCard"><div className="operationsCardHead"><div><span className="eyebrow">DEMAND SIGNAL</span><h3>Fast movers</h3></div><span className="operationsCount">{fastMovers.length}</span></div>{fastMovers.length ? fastMovers.slice(0,5).map(x => <div className="fastMover" key={x.name}><div><b>{x.name}</b><span>{money(x.revenue)} revenue</span></div><strong>{x.avg_daily_units.toFixed(1)}<small>/day</small></strong></div>) : <div className="operationsMuted">No fast movers detected.</div>}</section>
+      <section className="operationsCard operationsAction"><div className="operationsCardHead"><div><span className="eyebrow">NEXT REVIEW</span><h3>What to check</h3></div></div><div className="operationsGuidance"><Icon name={riskCount ? "alert" : "pulse"} className="icon" /><p>{stockouts.length ? `Review replenishment for ${stockouts[0].name} first.` : excess.length ? `Review purchasing for ${excess[0].name}.` : fastMovers.length ? "Check stock availability for your fastest-moving products." : "Continue monitoring operational movement."}</p></div></section></aside>
+    </div>
+    {onExplain && <button className="operationsExplain" onClick={() => onExplain(reasoning)}><Icon name="sparkle" className="icon" /> Explain these operational signals</button>}
+  </div>;
 }
