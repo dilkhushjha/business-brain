@@ -139,7 +139,8 @@ def record_situation_history(
             evidence=dict(row.last_evidence or {}),
         ))
 
-    db.flush()
+    # Situation history is an intentional durable side effect of refreshing Business Brain.
+    db.commit()
     return sorted(results, key=lambda item: (-item.priority_score, item.situation_code))
 
 
