@@ -25,6 +25,25 @@ class BusinessModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+class UserModel(Base):
+    __tablename__ = "users"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    username: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True)
+    phone: Mapped[str | None] = mapped_column(String(32), unique=True)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class UserBusinessModel(Base):
+    __tablename__ = "user_businesses"
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    business_id: Mapped[UUID] = mapped_column(ForeignKey("businesses.id", ondelete="CASCADE"), primary_key=True)
+    role: Mapped[str] = mapped_column(String(32), default="owner", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class CustomerModel(Base):
     __tablename__ = "customers"
     __table_args__ = (
