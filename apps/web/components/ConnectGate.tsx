@@ -1,42 +1,43 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { getBusinessId, registerAndConnect, setBusinessId, setToken } from "../lib/api";
+import { login, register } from "../lib/api";
 
 export default function ConnectGate({ onConnected }: { onConnected: () => void }) {
-  const [businessIdInput, setBusinessIdInput] = useState(getBusinessId());
-  const [registrationKey, setRegistrationKey] = useState("");
-  const [existingToken, setExistingToken] = useState("");
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [identifier, setIdentifier] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [industry, setIndustry] = useState("distribution");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function handleRegister(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!businessIdInput.trim()) {
-      setError("Business ID is required.");
-      return;
-    }
     setBusy(true);
     setError("");
     try {
-      await registerAndConnect(businessIdInput.trim(), registrationKey.trim() || undefined);
+      if (mode === "login") {
+        await login(identifier.trim(), password);
+      } else {
+        await register({
+          username: username.trim(),
+          email: email.trim() || undefined,
+          phone: phone.trim() || undefined,
+          password,
+          business_name: businessName.trim(),
+          industry: industry.trim(),
+        });
+      }
       onConnected();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed.");
+      setError(err instanceof Error ? err.message : "Unable to authenticate.");
     } finally {
       setBusy(false);
     }
-  }
-
-  function handleUseExisting(e: FormEvent) {
-    e.preventDefault();
-    if (!businessIdInput.trim() || !existingToken.trim()) {
-      setError("Business ID and token are both required.");
-      return;
-    }
-    setBusinessId(businessIdInput.trim());
-    setToken(businessIdInput.trim(), existingToken.trim());
-    onConnected();
   }
 
   return (
@@ -46,41 +47,79 @@ export default function ConnectGate({ onConnected }: { onConnected: () => void }
           <span className="brandMark"><span>✦</span></span>
           <div>
             <span className="eyebrow">BUSINESS BRAIN</span>
-            <h2>Welcome back.</h2>
+            <h2>{mode === "login" ? "Welcome back." : "Create your workspace."}</h2>
           </div>
         </div>
-        <p className="connectLead">Connect your business workspace to unlock evidence-backed intelligence, metrics and recommendations.</p>
 
-        <form onSubmit={handleRegister} className="connectForm">
+        <p className="connectLead">
+          {mode === "login"
+            ? "Sign in to your Business Brain workspace. Your business connection is handled automatically."
+            : "Create a Business Brain account and your private business workspace."}
+        </p>
+
+        <form onSubmit={submit} className="connectForm">
           <div className="connectSection">
-            <div className="connectSectionTitle"><span>01</span><div><b>Business workspace</b><small>Identify the business you want to access.</small></div></div>
-            <label className="connectField">
-              <span>Business ID</span>
-              <input value={businessIdInput} onChange={(e) => setBusinessIdInput(e.target.value)} placeholder="Enter business UUID" autoComplete="organization" />
-            </label>
-            <label className="connectField">
-              <span>Registration key <em>optional for local development</em></span>
-              <input value={registrationKey} onChange={(e) => setRegistrationKey(e.target.value)} placeholder="Enter registration key" type="password" autoComplete="off" />
-            </label>
-            <button className="connectPrimary" disabled={busy}>{busy ? "Connecting…" : "Connect to Business Brain →"}</button>
-          </div>
-        </form>
-
-        <div className="connectDivider"><span>or</span></div>
-
-        <form onSubmit={handleUseExisting} className="connectForm">
-          <div className="connectSection secondary">
-            <div className="connectSectionTitle"><span>02</span><div><b>Existing access</b><small>Use an API token you already received.</small></div></div>
-            <label className="connectField">
-              <span>API access token</span>
-              <input value={existingToken} onChange={(e) => setExistingToken(e.target.value)} placeholder="Paste your token" type="password" autoComplete="current-password" />
-            </label>
-            <button className="connectSecondary" type="submit">Use existing token</button>
+            {mode === "login" ? (
+              <>
+                <label className="connectField">
+                  <span>Email, username or phone</span>
+                  <input value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="you@example.com" autoComplete="username" autoFocus />
+                </label>
+                <label className="connectField">
+                  <span>Password</span>
+                  <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" type="password" autoComplete="current-password" />
+                </label>
+                <button className="connectPrimary" disabled={busy}>
+                  {busy ? "Signing in…" : "Sign in →"}
+                </button>
+              </>
+            ) : (
+              <>
+                <label className="connectField">
+                  <span>Username</span>
+                  <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="yourname" autoComplete="username" autoFocus />
+                </label>
+                <label className="connectField">
+                  <span>Email <em>or phone below</em></span>
+                  <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" />
+                </label>
+                <label className="connectField">
+                  <span>Phone <em>optional if email is provided</em></span>
+                  <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91..." autoComplete="tel" />
+                </label>
+                <label className="connectField">
+                  <span>Password</span>
+                  <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" type="password" autoComplete="new-password" />
+                </label>
+                <label className="connectField">
+                  <span>Business name</span>
+                  <input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="ABC Electricals" autoComplete="organization" />
+                </label>
+                <label className="connectField">
+                  <span>Industry</span>
+                  <input value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="distribution" />
+                </label>
+                <button className="connectPrimary" disabled={busy}>
+                  {busy ? "Creating…" : "Create account →"}
+                </button>
+              </>
+            )}
           </div>
         </form>
 
         {error && <div className="connectError">{error}</div>}
-        <p className="connectFootnote">Your access token is stored locally in this browser and attached to Business Brain API requests.</p>
+
+        <button
+          type="button"
+          className="authModeSwitch"
+          onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}
+        >
+          {mode === "login" ? "New to Business Brain? Create an account" : "Already have an account? Sign in"}
+        </button>
+
+        <p className="connectFootnote">
+          Business IDs, connector credentials and API keys are infrastructure details and are never required here.
+        </p>
       </div>
     </section>
   );

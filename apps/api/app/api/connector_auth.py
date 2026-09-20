@@ -10,6 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from packages.shared.database.session import get_db
+from apps.api.app.api.routes.auth import get_current_user
 
 
 def hash_token(token: str) -> str:
@@ -81,15 +82,13 @@ def require_connector(
 
 def require_business_access(
     business_id: UUID,
-    authorization: str | None = Header(default=None),
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ) -> dict:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(401, "An API bearer token is required")
-    token = authorization.removeprefix("Bearer ").strip()
-    if not token:
-        raise HTTPException(401, "An API bearer token is required")
-    return authenticate_connector(db, token, business_id=business_id)
+    """Authorize a human user for a business without exposing connector credentials."""
+    if str(user["business_id"]) != str(business_id):
+        raise HTTPException(403, "You do not have access to this business")
+    return user
 
 
 def mark_connector_sync(db: Session, connector_id: UUID, success: bool, error: str | None = None) -> None:

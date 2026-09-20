@@ -1481,3 +1481,17 @@ button:disabled {
     padding: 10px 12px;
   }
 }
+
+.authModeSwitch {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: transparent;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+.authModeSwitch:hover {
+  background: var(--primary-tint);
+}

@@ -9,7 +9,7 @@ import InventoryIntelligence from "../components/InventoryIntelligence";
 import DataFreshness from "../components/DataFreshness";
 import ConnectGate from "../components/ConnectGate";
 import DashboardReasoningOverlay from "../components/DashboardReasoningOverlay";
-import { ApiAuthError, apiFetch, clearToken, getBusinessId, hasToken } from "../lib/api";
+import { ApiAuthError, apiFetch, clearSession, getBusinessId, getCurrentUser, hasToken, type SessionUser } from "../lib/api";
 import { buildHealthReasoning, buildMetricReasoning, type ReasoningPayload } from "../lib/reasoning";
 
 type Evidence = { metric?: string; value?: string; metadata?: { change?: number } };
@@ -107,24 +107,28 @@ export default function Home() {
   const [error, setError] = useState("");
   const [connected, setConnected] = useState(false);
   const [checkedAuth, setCheckedAuth] = useState(false);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [selectedReasoning, setSelectedReasoning] = useState<ReasoningPayload | null>(null);
 
-  useEffect(() => { setConnected(hasToken()); setCheckedAuth(true); }, []);
   useEffect(() => {
-    if (!checkedAuth || !connected) { setLoading(false); return; }
+    if (!hasToken()) { setConnected(false); setCheckedAuth(true); return; }
+    getCurrentUser().then((current) => { setUser(current); setConnected(true); }).catch(() => { clearSession(); setConnected(false); }).finally(() => setCheckedAuth(true));
+  }, []);
+  useEffect(() => {
+    if (!checkedAuth || !connected || !getBusinessId()) { setLoading(false); return; }
     setLoading(true);
     Promise.all([
       apiFetch(`/context/${getBusinessId()}`).then((r) => { if (!r.ok) throw Error(); return r.json(); }),
       apiFetch(`/kpis/sales/${getBusinessId()}`).then((r) => { if (!r.ok) throw Error(); return r.json(); }),
       apiFetch(`/anomalies/${getBusinessId()}?days=30&limit=5`).then((r) => (r.ok ? r.json() : [])),
     ]).then(([a, b, c]) => { setContext(a); setKpis(b); setAnomalies(c); setLive(true); }).catch((err) => {
-      if (err instanceof ApiAuthError) { clearToken(); setConnected(false); return; }
+      if (err instanceof ApiAuthError) { clearSession(); setUser(null); setConnected(false); return; }
       setContext(DEMO_CONTEXT); setLive(false);
     }).finally(() => setLoading(false));
   }, [checkedAuth, connected]);
 
   const revenue = useMemo(() => context?.evidence?.find((e) => e.metric === "revenue"), [context]);
-  const businessName = useMemo(() => context?.entities?.find((entity) => entity.entity_type?.toLowerCase() === "business")?.label || "Business workspace", [context]);
+  const businessName = useMemo(() => user?.business?.name || context?.entities?.find((entity) => entity.entity_type?.toLowerCase() === "business")?.label || "Business workspace", [user, context]);
   const find = (...n: string[]) => kpis.find((k) => n.some((x) => k.name.toLowerCase().includes(x)) && k.period !== "all_time");
   const totalRevenue = kpis.find((k) => k.name === "total_revenue");
   const totalInvoices = kpis.find((k) => k.name === "total_invoice_count");
@@ -149,17 +153,17 @@ export default function Home() {
       if (!r.ok) throw Error(`Agent returned ${r.status}`);
       setAnswer((await r.json()).answer);
     } catch (x) {
-      if (x instanceof ApiAuthError) { clearToken(); setConnected(false); return; }
+      if (x instanceof ApiAuthError) { clearSession(); setUser(null); setConnected(false); return; }
       setError(x instanceof Error ? x.message : "Unable to reach Business Brain");
     } finally { setAsking(false); }
   }
   function ask(e: FormEvent) { e.preventDefault(); runQuestion(question); }
-  function logout() { clearToken(); setConnected(false); setAnswer(""); setQuestion(""); setError(""); }
+  function logout() { clearSession(); setUser(null); setConnected(false); setAnswer(""); setQuestion(""); setError(""); }
 
   if (checkedAuth && !connected) return <main className="shell"><header className="header"><div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div></div></header><ConnectGate onConnected={() => setConnected(true)} /></main>;
 
   return <main className="shell">
-    <header className="header"><div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div></div><div className="headerRight"><a className="status" href="/import">Import data</a><span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Connecting…" : live ? "Live data" : "Demo mode"}</span><button type="button" className="logoutButton" onClick={logout}>Log out</button></div></header>
+    <header className="header"><div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div></div><div className="headerRight"><span className="status">Welcome, {user?.username || "user"}</span><a className="status" href="/import">Import data</a><span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Connecting…" : live ? "Live data" : "Demo mode"}</span><button type="button" className="logoutButton" onClick={logout}>Log out</button></div></header>
     {!live && !loading && <div className="demoBanner"><strong>DEMO MODE</strong><span>Sample electrical-wholesaler scenario · safe for testing</span></div>}
     <section className="hero"><div className="heroGlow" aria-hidden="true" /><DataFreshness businessName={businessName} /></section>
     <section className="healthBar"><div className={`healthPanel tone-${healthTone} reasoningClickable`} onClick={explainHealth} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); explainHealth(); } }} role="button" tabIndex={0} aria-label="Explain business health"><span className="iconChip lg"><Icon name={healthIcon} className="icon" /></span><div><span className="eyebrow">BUSINESS HEALTH</span><h3>{health}</h3><p>{healthText}</p></div></div><div className="healthFacts"><div><span className="iconChip sm tone-danger"><Icon name="alert" className="icon" /></span><b>{highSignals.length}</b><span>priority concerns</span></div><div><span className="iconChip sm tone-success"><Icon name="check" className="icon" /></span><b>{positiveSignals.length}</b><span>positive signals</span></div></div></section>
