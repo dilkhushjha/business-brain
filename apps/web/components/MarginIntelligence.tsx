@@ -38,10 +38,11 @@ export default function MarginIntelligence({ onExplain }: { onExplain?: (reasoni
     <section className={`card ${onExplain ? "reasoningClickable" : ""}`} onClick={onExplain ? explain : undefined} onKeyDown={onExplain ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); explain(); } } : undefined} role={onExplain ? "button" : undefined} tabIndex={onExplain ? 0 : undefined}>
       <div className="cardTitle"><span><Icon name="percent" className="icon" /></span><h3>Profit &amp; margin</h3><small>Last 30 days</small></div>
       <div className="marginStats">
-        <div><span>Gross profit</span><b>{money(s.gross_profit)}</b></div>
+        <div><span>Gross profit</span><b>{s.cost_coverage_pct === 0 ? "—" : money(s.gross_profit)}</b></div>
         <div><span>Gross margin</span><b>{s.gross_margin_pct == null ? "—" : `${s.gross_margin_pct}%`}</b></div>
         <div><span>Revenue covered</span><b>{s.cost_coverage_pct}%</b></div>
       </div>
+      {s.cost_coverage_pct === 0 && <div className="marginDataNote">Cost data is not available for the selected sales period, so profitability is not estimated.</div>}
       {p.length > 0 && <div className="marginAlerts"><strong>Low-margin products</strong>{p.map((x) => <div className="marginRow" key={x.name}><span>{x.name}</span><b className="negative">{x.margin_pct.toFixed(1)}%</b><em>{money(x.revenue)} revenue</em></div>)}</div>}
     </section>
   );
