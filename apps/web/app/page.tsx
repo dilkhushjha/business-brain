@@ -21,30 +21,6 @@ type Context = {
 type KPI = { name: string; value: string | null; change?: string | null; period?: string };
 type Anomaly = { name: string; change_pct: number; severity: string };
 
-const DEMO_CONTEXT: Context = {
-  evidence: [{ metric: "revenue", value: "850000", metadata: { change: -0.15 } }],
-  signals: [
-    { title: "Revenue declined 15%", message: "Revenue fell from ₹10.0L to ₹8.5L versus the previous period.", severity: "high" },
-    { title: "Customer concentration", message: "Two customers account for a large share of the decline and should be reviewed.", severity: "medium" },
-    { title: "LED 9W is accelerating", message: "Sales momentum is positive; check inventory before demand increases further.", severity: "positive" },
-  ],
-  recommendations: [
-    { title: "Investigate the revenue decline", description: "Start with the customers and products contributing most to the ₹1.5L decline." },
-    { title: "Review LED 9W inventory", description: "Positive product momentum may create a stock opportunity." },
-  ],
-};
-
-function demoAnswer(q: string) {
-  const s = q.toLowerCase();
-  if (s.includes("why") && (s.includes("sales") || s.includes("revenue")))
-    return "Revenue fell 15%, from ₹10.0L to ₹8.5L. The evidence indicates the decline is concentrated in a small number of customers. Compare those customers' recent orders and the products they reduced.";
-  if (s.includes("doing") || s.includes("health"))
-    return "The business is mixed: revenue is down 15%, while average order value and LED 9W momentum are positive. The priority is understanding the revenue decline.";
-  if (s.includes("follow") || s.includes("customer"))
-    return "Start with customers who have gone quiet for 45+ days and have meaningful lifetime revenue — they're the fastest wins for re-engagement.";
-  return `I can answer using the available business evidence. You asked: "${q}".`;
-}
-
 const pct = (v: string | number | null | undefined) => {
   if (v === null || v === undefined || v === "") return "—";
   const n = Number(v);
@@ -176,7 +152,7 @@ export default function Home() {
       apiFetch(`/anomalies/${getBusinessId()}?days=30&limit=5`).then((r) => (r.ok ? r.json() : [])),
     ]).then(([a, b, c]) => { setContext(a); setKpis(b); setAnomalies(c); setLive(true); }).catch((err) => {
       if (err instanceof ApiAuthError) { clearSession(); setUser(null); setConnected(false); return; }
-      setContext(DEMO_CONTEXT); setLive(false);
+      setLive(false); setContext(null); setKpis({}); setAnomalies([]); setError("Unable to load live business data. Please refresh and try again.");
     }).finally(() => setLoading(false));
   }, [checkedAuth, connected, dataVersion]);
 
@@ -201,7 +177,7 @@ export default function Home() {
   async function runQuestion(q: string) {
     if (!q.trim()) return;
     setAsking(true); setAnswer(""); setError("");
-    if (!live) { setTimeout(() => { setAnswer(demoAnswer(q)); setAsking(false); }, 300); return; }
+    if (!live) { setError("Live business data is unavailable. Please refresh and try again."); setAsking(false); return; }
     try {
       const r = await apiFetch(`/agent/${getBusinessId()}/ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q }) });
       if (!r.ok) {
@@ -243,7 +219,7 @@ export default function Home() {
 
   function renderSection() {
     if (activeSection === "overview") return <>
-      <section className="dashboardIntro"><div><span className="eyebrow">OVERVIEW</span><h2>Good morning, {user?.username || "there"}.</h2><p>{businessName} · Here's the current picture of your business.</p></div><div className="freshStatus"><span className={`freshDot ${live ? "live" : ""}`} /> {loading ? "Refreshing data" : live ? "Data is up to date" : "Using sample data"}</div></section>
+      <section className="dashboardIntro"><div><span className="eyebrow">OVERVIEW</span><h2>Good morning, {user?.username || "there"}.</h2><p>{businessName} · Here's the current picture of your business.</p></div><div className="freshStatus"><span className={`freshDot ${live ? "live" : ""}`} /> {loading ? "Refreshing data" : live ? "Data is up to date" : "Live data unavailable"}</div></section>
       <section className="dashboardSection"><div className="sectionHeading sectionHeadingLarge"><span>BUSINESS HEALTH</span><small>At-a-glance signals that deserve your attention</small></div><div className="healthLiteGrid">
         <div className={`healthLiteMain tone-${healthTone}`} onClick={explainHealth} role="button" tabIndex={0}><div className="healthLiteIcon"><Icon name={healthIcon} className="icon" /></div><div><span className="eyebrow">CURRENT STATUS</span><h3>{health}</h3><p>{healthText}</p></div><span className="cardArrow">→</span></div>
         <Metric label="Priority concerns" value={String(highSignals.length)} change="" note="signals requiring review" icon="alert" tone="danger" onClick={() => setActiveSection("insights")} />
@@ -278,13 +254,13 @@ export default function Home() {
     </aside>
 
     <div className="appMain">
-      <header className="header dashboardHeader"><div className="pageContext"><span className="pageContextEyebrow">{navGroups.flatMap((group) => group.items).find((item) => item.id === activeSection)?.label ?? "Dashboard"}</span><span className="pageContextSub">Business performance and decision support</span></div><div className="headerRight"><span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Updating…" : live ? "Live data" : "Demo mode"}</span><div className="profileWrap" ref={profileRef}><button type="button" className={`profileButton ${profileOpen ? "open" : ""}`} onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}><span className="avatar"><Icon name="user" className="icon" /></span><span className="profileName">{user?.username || "User"}</span><span className="profileChevron">⌄</span></button>{profileOpen && <div className="profileMenu"><div className="profileMenuHead"><strong>{user?.username || "User"}</strong><span>{businessName}</span></div><button type="button" className="profileLogout" onClick={logout}>Log out</button></div>}</div></div></header>
+      <header className="header dashboardHeader"><div className="pageContext"><span className="pageContextEyebrow">{navGroups.flatMap((group) => group.items).find((item) => item.id === activeSection)?.label ?? "Dashboard"}</span><span className="pageContextSub">Business performance and decision support</span></div><div className="headerRight"><span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Updating…" : live ? "Live data" : "Data unavailable"}</span><div className="profileWrap" ref={profileRef}><button type="button" className={`profileButton ${profileOpen ? "open" : ""}`} onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}><span className="avatar"><Icon name="user" className="icon" /></span><span className="profileName">{user?.username || "User"}</span><span className="profileChevron">⌄</span></button>{profileOpen && <div className="profileMenu"><div className="profileMenuHead"><strong>{user?.username || "User"}</strong><span>{businessName}</span></div><button type="button" className="profileLogout" onClick={logout}>Log out</button></div>}</div></div></header>
       {!live && !loading && <div className="demoBanner"><strong>DEMO MODE</strong><span>Sample business data · safe for testing</span></div>}
       <div className="pageContent">{renderSection()}</div>
     </div>
 
     <button className="chatLauncher" onClick={() => setChatOpen(true)} aria-label="Ask Business Brain"><Icon name="chat" className="icon" /><span>Ask Business Brain</span></button>
-    {chatOpen && <div className="chatOverlay" role="dialog" aria-modal="true"><div className="chatWindow"><div className="chatHeader"><div><span className="eyebrow">BUSINESS BRAIN</span><h3>Ask your business</h3><p>Ask a question and get an evidence-based answer.</p></div><button className="chatClose" onClick={() => setChatOpen(false)} aria-label="Close">×</button></div><div className="chatBody">{answer ? <div className="response chatResponse"><strong>Business Brain {live ? "· Live" : "· Demo"}</strong><p>{answer}</p></div> : <div className="chatEmpty"><span className="iconChip"><Icon name="sparkle" className="icon" /></span><b>What would you like to know?</b><p>Try asking about sales, revenue, customers or business health.</p></div>}{error && <div className="errorBox"><span>{error}</span><button type="button" className="chatRetry" onClick={() => runQuestion(question)} disabled={asking || !question.trim()}>Retry</button></div>}</div><form className="chatForm" onSubmit={ask}><input autoFocus value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Why did my sales fall?" disabled={asking} /><button disabled={asking || !question.trim()}>{asking ? "Thinking…" : "Ask"}</button></form></div></div>}
+    {chatOpen && <div className="chatOverlay" role="dialog" aria-modal="true"><div className="chatWindow"><div className="chatHeader"><div><span className="eyebrow">BUSINESS BRAIN</span><h3>Ask your business</h3><p>Ask a question and get an evidence-based answer.</p></div><button className="chatClose" onClick={() => setChatOpen(false)} aria-label="Close">×</button></div><div className="chatBody">{answer ? <div className="response chatResponse"><strong>Business Brain · Live</strong><p>{answer}</p></div> : <div className="chatEmpty"><span className="iconChip"><Icon name="sparkle" className="icon" /></span><b>What would you like to know?</b><p>Try asking about sales, revenue, customers or business health.</p></div>}{error && <div className="errorBox"><span>{error}</span><button type="button" className="chatRetry" onClick={() => runQuestion(question)} disabled={asking || !question.trim()}>Retry</button></div>}</div><form className="chatForm" onSubmit={ask}><input autoFocus value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Why did my sales fall?" disabled={asking} /><button disabled={asking || !question.trim()}>{asking ? "Thinking…" : "Ask"}</button></form></div></div>}
     <DashboardReasoningOverlay reasoning={selectedReasoning} onClose={() => setSelectedReasoning(null)} />
   </main>;
 }
