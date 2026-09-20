@@ -15,6 +15,7 @@ from packages.analytics.business_brain.metrics.supplier_risk import supplier_con
 from packages.analytics.business_brain.recommendations.engine import recommend
 from packages.analytics.business_brain.service import monthly_sales_kpis
 from packages.analytics.business_brain.signals.engine import detect_signals
+from packages.analytics.business_brain.state import build_business_state
 
 
 def build_business_context(db: Session, business_id: UUID, as_of: date) -> BusinessContext:
@@ -104,10 +105,23 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
             metadata={"by_category": expenses["by_category"]},
         ))
 
+    state = build_business_state(
+        kpis=kpis,
+        margin=margin,
+        receivables=receivables,
+        payables=payables,
+        purchase_risk=purchase_risk,
+        customer_concentration=concentration,
+        supplier_concentration=supplier_conc,
+        expenses=expenses,
+        signals=signals,
+    )
+
     return BusinessContext(
         business_id=business_id,
         entities=[],
         evidence=evidence,
         signals=signals,
         recommendations=recommendations,
+        state=state,
     )
