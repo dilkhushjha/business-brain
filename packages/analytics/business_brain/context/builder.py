@@ -12,26 +12,15 @@ from packages.analytics.business_brain.metrics.payables import payables_summary
 from packages.analytics.business_brain.metrics.purchase_risk import supplier_spend_risk
 from packages.analytics.business_brain.metrics.receivables import receivables_summary
 from packages.analytics.business_brain.metrics.supplier_risk import supplier_concentration
-from packages.analytics.business_brain.recommendations.engine import recommend
 from packages.analytics.business_brain.service import monthly_sales_kpis
 from packages.analytics.business_brain.signals.engine import detect_signals
 from packages.analytics.business_brain.state import build_business_state
 from packages.analytics.business_brain.correlations import correlate_signals
+from packages.analytics.business_brain.analysis import analyze_situation
 
 
 def build_business_context(db: Session, business_id: UUID, as_of: date) -> BusinessContext:
-    """Assemble the evidence-first context the agent answers from.
-
-    Originally this only included KPI evidence (revenue, invoice_count,
-    units_sold), even though the signal engine was already computing
-    margin/receivables/payables/customer- and supplier-concentration data
-    to detect signals -- that data just never made it into `evidence`, so
-    the agent could never answer a margin or receivables question with a
-    real number, only mention that a signal existed. Each metric below is
-    only added as evidence when it reflects real activity (not a bare zero
-    from an empty business), so an empty result stays "insufficient
-    evidence" rather than answering from a meaningless zero.
-    """
+    """Assemble the evidence-first context the agent answers from."""
     kpis = monthly_sales_kpis(db, business_id, as_of)
     signals = detect_signals(db, business_id, as_of)
     evidence = [
@@ -118,6 +107,8 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
     )
 
     situations = correlate_signals(signals, state)
+    analyses = [analyze_situation(situation, state) for situation in situations]
+
     from packages.analytics.business_brain.recommendations.rules import generate_recommendations
     from packages.analytics.business_brain.recommendations.models import RecommendationContext
     recommendations = generate_recommendations(RecommendationContext(signals=signals, drivers=situations))
@@ -130,4 +121,5 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
         recommendations=recommendations,
         state=state,
         situations=situations,
+        analyses=analyses,
     )
