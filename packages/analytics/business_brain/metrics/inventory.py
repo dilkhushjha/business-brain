@@ -212,3 +212,55 @@ def current_inventory_position(db: Session, business_id: UUID, limit: int = 50) 
         {"name": name, "quantity_on_hand": float(quantity), "ledger_inventory_value": float(value), "source": "inventory_movement_ledger"}
         for _, name, quantity, value in rows
     ]
+
+
+def negative_inventory_products(db: Session, business_id: UUID, limit: int = 10) -> list[dict[str, Any]]:
+    """Return products whose movement ledger has more outbound than inbound units."""
+    rows = db.execute(
+        select(
+            ProductModel.name,
+            func.coalesce(
+                func.sum(
+                    case(
+                        (InventoryMovementModel.movement_type.in_(["purchase", "return_in"]), InventoryMovementModel.quantity),
+                        (InventoryMovementModel.movement_type.in_(["sale", "return_out"]), -InventoryMovementModel.quantity),
+                        else_=0,
+                    )
+                ),
+                0,
+            ),
+        )
+        .join(InventoryMovementModel, InventoryMovementModel.product_id == ProductModel.id)
+        .where(
+            InventoryMovementModel.business_id == business_id,
+            ProductModel.business_id == business_id,
+        )
+        .group_by(ProductModel.id, ProductModel.name)
+        .having(
+            func.sum(
+                case(
+                    (InventoryMovementModel.movement_type.in_(["purchase", "return_in"]), InventoryMovementModel.quantity),
+                    (InventoryMovementModel.movement_type.in_(["sale", "return_out"]), -InventoryMovementModel.quantity),
+                    else_=0,
+                )
+            ) < 0
+        )
+        .order_by(
+            func.sum(
+                case(
+                    (InventoryMovementModel.movement_type.in_(["purchase", "return_in"]), InventoryMovementModel.quantity),
+                    (InventoryMovementModel.movement_type.in_(["sale", "return_out"]), -InventoryMovementModel.quantity),
+                    else_=0,
+                )
+            )
+        )
+        .limit(max(1, min(limit, 100)))
+    ).all()
+    return [
+        {
+            "name": name,
+            "movement_balance": float(balance),
+            "shortfall_units": float(-balance),
+        }
+        for name, balance in rows
+    ]
