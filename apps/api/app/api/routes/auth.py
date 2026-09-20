@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from jwt.exceptions import InvalidTokenError
 from pydantic import BaseModel, Field
 from pwdlib import PasswordHash
@@ -175,7 +175,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
 
 def get_current_user(
-    authorization: str | None = None,
+    authorization: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ) -> dict:
     if not authorization or not authorization.lower().startswith("bearer "):
