@@ -2442,3 +2442,35 @@ button:disabled {
   stroke-dasharray: 3 4;
   opacity: .35;
 }
+
+.trendChartWrap {
+  width: calc(100% + 52px);
+  margin-left: -26px;
+  margin-right: -26px;
+  padding: 0 0 22px;
+  overflow: visible;
+}
+.trendChart {
+  width: 100%;
+  height: 230px;
+  display: block;
+}
+.trendPoint {
+  fill: currentColor;
+  pointer-events: none;
+}
+.trendNodeInfo rect {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1;
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,.10));
+}
+.trendNodeInfo text {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+.trendNodeInfo text + text {
+  font-size: 12px;
+  font-weight: 800;
+}
