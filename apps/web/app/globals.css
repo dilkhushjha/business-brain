@@ -2224,6 +2224,15 @@ button:disabled {
   background: var(--primary-tint);
   transform: translateY(-1px);
 }
+.uploadZone.dragging {
+  border-color: var(--primary);
+  background: var(--primary-tint);
+  box-shadow: 0 0 0 3px rgba(41, 82, 227, .08);
+  transform: translateY(-1px);
+}
+.uploadZone.dragging .uploadIcon {
+  background: var(--surface);
+}
 .uploadInput {
   display: none !important;
 }
