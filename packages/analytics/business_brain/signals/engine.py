@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from packages.analytics.business_brain.metrics.customer_risk import declining_customers, inactive_customers
 from packages.analytics.business_brain.metrics.discounts import discount_anomalies
 from packages.analytics.business_brain.metrics.expenses import expense_spikes
-from packages.analytics.business_brain.metrics.inventory import dead_stock, demand_spikes, slow_moving_products, stock_risk
+from packages.analytics.business_brain.metrics.inventory import dead_stock, demand_spikes, negative_inventory_products, slow_moving_products, stock_risk
 from packages.analytics.business_brain.metrics.margin import low_margin_products
 from packages.analytics.business_brain.metrics.payables import overdue_suppliers
 from packages.analytics.business_brain.metrics.purchase_risk import supplier_spend_risk
@@ -23,6 +23,7 @@ from packages.analytics.business_brain.signals.rules import (
     detect_expense_spike_signals,
     detect_kpi_signals,
     detect_margin_signals,
+    detect_negative_inventory_signals,
     detect_payables_signals,
     detect_receivables_signals,
     detect_slow_moving_product_signals,
@@ -38,6 +39,7 @@ def detect_signals(db: Session, business_id: UUID, as_of: date) -> list[Signal]:
     signals.extend(detect_customer_decline_signals(declining_customers(db, business_id)))
     signals.extend(detect_customer_inactivity_signals(inactive_customers(db, business_id)))
     signals.extend(detect_margin_signals(low_margin_products(db, business_id)))
+    signals.extend(detect_negative_inventory_signals(negative_inventory_products(db, business_id)))
     signals.extend(detect_receivables_signals(overdue_customers(db, business_id)))
     signals.extend(detect_slow_moving_product_signals(slow_moving_products(db, business_id)))
     signals.extend(detect_payables_signals(overdue_suppliers(db, business_id)))
