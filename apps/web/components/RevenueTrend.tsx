@@ -16,6 +16,7 @@ const money = (n: number) => {
 
 export default function RevenueTrend() {
   const [points, setPoints] = useState<Point[]>([]);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   useEffect(() => {
     apiFetch(`/trends/revenue/${getBusinessId()}?days=30`)
@@ -65,9 +66,25 @@ export default function RevenueTrend() {
         {gridLines.map((y, i) => <line key={i} x1={padX} x2={width - padX} y1={y} y2={y} className="trendGrid" />)}
         <path d={areaPath} fill="url(#revFill)" stroke="none" />
         <path d={linePath} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        <line x1={xAt(points.length - 1)} x2={xAt(points.length - 1)} y1={padY} y2={height - padY} className="trendHoverLine" />
+        {hoveredIndex !== null && <line x1={xAt(hoveredIndex)} x2={xAt(hoveredIndex)} y1={padY} y2={height - padY} className="trendHoverLine" />}
         <circle cx={xAt(points.length - 1)} cy={yAt(last.revenue)} r="4.5" fill="currentColor" stroke="#fff" strokeWidth="2" />
-        {points.map((point, i) => <circle key={point.date + i} cx={xAt(i)} cy={yAt(point.revenue)} r="9" className="trendPointHit"><title>{formatDate(point.date)} · {money(point.revenue)}</title></circle>)}
+        {points.map((point, i) => (
+          <g key={point.date + i} onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)}>
+            <circle cx={xAt(i)} cy={yAt(point.revenue)} r="9" className="trendPointHit" />
+            <circle cx={xAt(i)} cy={yAt(point.revenue)} r={hoveredIndex === i ? "5" : "3"} className="trendPoint" />
+          </g>
+        ))}
+        {hoveredIndex !== null && (() => {
+          const point = points[hoveredIndex];
+          const tooltipWidth = 132;
+          const tooltipX = Math.min(Math.max(xAt(hoveredIndex) - tooltipWidth / 2, 4), width - tooltipWidth - 4);
+          const tooltipY = Math.max(yAt(point.revenue) - 50, 4);
+          return <g className="trendNodeInfo" pointerEvents="none">
+            <rect x={tooltipX} y={tooltipY} width={tooltipWidth} height="38" rx="7" />
+            <text x={tooltipX + tooltipWidth / 2} y={tooltipY + 15} textAnchor="middle">{formatDate(point.date)}</text>
+            <text x={tooltipX + tooltipWidth / 2} y={tooltipY + 30} textAnchor="middle">{money(point.revenue)}</text>
+          </g>;
+        })()}
         </svg>
         <div className="trendDates">{points.map((point, i) => {
           const step = Math.ceil(points.length / 6);
