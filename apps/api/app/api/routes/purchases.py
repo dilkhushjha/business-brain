@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from apps.api.app.api.connector_auth import require_business_access
-from packages.shared.database.models import PurchaseModel, PurchaseLineModel, SupplierModel, ProductModel
+from packages.shared.database.models import PaymentModel, PurchaseModel, PurchaseLineModel, SupplierModel, ProductModel
 from packages.shared.database.session import get_db
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])
@@ -175,3 +175,52 @@ def supplier_cost_changes(
             })
 
     return sorted(changes, key=lambda x: x["change_pct"], reverse=True)[:max(1, min(limit, 50))]
+
+
+@router.get("/{business_id}/financial-linkage")
+def purchase_financial_linkage(
+    business_id: UUID,
+    days: int = 90,
+    db: Session = Depends(get_db),
+    _auth: dict = Depends(require_business_access),
+):
+    """Connect purchase liabilities with supplier payments and cash outflow."""
+    end = date.today()
+    start = _start(days)
+
+    purchase_total = db.scalar(
+        select(func.coalesce(func.sum(PurchaseModel.total_amount), 0)).where(
+            PurchaseModel.business_id == business_id,
+            PurchaseModel.transaction_date.between(start, end),
+        )
+    ) or 0
+    purchase_paid = db.scalar(
+        select(func.coalesce(func.sum(PurchaseModel.paid_amount), 0)).where(
+            PurchaseModel.business_id == business_id,
+            PurchaseModel.transaction_date.between(start, end),
+        )
+    ) or 0
+    purchase_outstanding = db.scalar(
+        select(func.coalesce(func.sum(PurchaseModel.total_amount - PurchaseModel.paid_amount), 0)).where(
+            PurchaseModel.business_id == business_id,
+            PurchaseModel.transaction_date.between(start, end),
+        )
+    ) or 0
+
+    supplier_payments = db.scalar(
+        select(func.coalesce(func.sum(PaymentModel.amount), 0)).where(
+            PaymentModel.business_id == business_id,
+            PaymentModel.supplier_id.is_not(None),
+            PaymentModel.direction == "out",
+            PaymentModel.payment_date.between(start, end),
+        )
+    ) or 0
+
+    return {
+        "days": days,
+        "purchase_total": float(purchase_total),
+        "purchase_paid_on_documents": float(purchase_paid),
+        "purchase_outstanding": float(purchase_outstanding),
+        "supplier_cash_outflow": float(supplier_payments),
+        "payment_coverage_pct": round(float(supplier_payments / purchase_total * 100), 2) if purchase_total else 0,
+    }
