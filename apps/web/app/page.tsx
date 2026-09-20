@@ -210,7 +210,7 @@ export default function Home() {
       <section className="card"><div className="cardTitle"><b>Recommended actions</b><small>What to consider next</small></div>{context?.recommendations?.map((r, i) => <div className="signal" key={i}><div className="actionNo">{i + 1}</div><div className="signalBody"><b>{String(r.title || r.name || "Recommendation")}</b><p>{String(r.description || r.message || "Evidence-backed action available.")}</p></div></div>)}</section>
     </div>{anomalies.length > 0 && <section className="card anomalyCard"><div className="cardTitle"><b>Exceptions</b><small>Unusual movements worth investigating</small></div>{anomalies.map((a, i) => <div className="anomaly" key={i}><span className={`iconChip sm tone-${a.severity === "high" ? "danger" : "amber"}`}><Icon name="alert" className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{a.name}</b><span className={`tag ${a.severity === "high" ? "danger" : "warning"}`}>{a.severity.toUpperCase()}</span></div><p>Revenue {a.change_pct >= 0 ? "increased" : "decreased"} <strong>{Math.abs(a.change_pct).toFixed(0)}%</strong> versus the prior period.</p></div></div>)}</section>}</section>;
     if (activeSection === "reports") return <section className="contentSection"><SectionTitle title="REPORTS" subtitle="Reporting and analysis workspace" /><div className="card reportCard"><Icon name="trend" className="reportIcon" /><div><b>Detailed reporting</b><p>Review the business data and performance views. Report exports can be added here as the reporting layer grows.</p></div></div></section>;
-    return <section className="contentSection"><SectionTitle title="DATA & IMPORTS" subtitle="Upload, validate and commit business data without leaving the dashboard" /><ImportWorkspace businessName={businessName} onImported={() => setDataVersion((v) => v + 1)} /></section>;
+    return <section className="contentSection"><SectionTitle title="DATA & IMPORTS" subtitle="Upload, validate and commit business data without leaving the dashboard" /><ImportWorkspace businessName={businessName} onImported={() => setDataVersion((v) => v + 1)} onDone={() => setActiveSection("overview")} /></section>;
   }
 
   return <main className="shell appShell">
@@ -233,7 +233,7 @@ export default function Home() {
 }
 
 
-function ImportWorkspace({ businessName, onImported }: { businessName: string; onImported: () => void }) {
+function ImportWorkspace({ businessName, onImported, onDone }: { businessName: string; onImported: () => void; onDone: () => void }) {
   const [files, setFiles] = useState<File[]>([]);
   const [preview, setPreview] = useState<any | null>(null);
   const [result, setResult] = useState<any | null>(null);
@@ -263,14 +263,19 @@ function ImportWorkspace({ businessName, onImported }: { businessName: string; o
   }
   return <div className="importWorkspace">
     <section className="card importCard">
-      <div className="importCardHead"><div><span className="eyebrow">BUSINESS DATA</span><h3>Import sales data</h3><p>Upload a Tally CSV or Excel export, validate it, then explicitly commit accepted rows.</p></div><span className="status">Workspace · {businessName}</span></div>
-      <div className="field"><label>Source files</label><input type="file" multiple accept=".csv,.xlsx,.xls" onClick={(event) => { event.currentTarget.value = ""; }} onChange={chooseFile} /><small className="fieldHint">Select one or multiple CSV/Excel files. All selected files will be validated together.</small></div>
+      <div className="importCardHead"><div><span className="eyebrow">DATA & IMPORTS</span><h3>Bring your sales data into Business Brain</h3><p>Upload one or more Tally CSV or Excel exports. We’ll validate everything before anything is committed.</p></div><span className="status">Workspace · {businessName}</span></div>
+      <div className="uploadZone" onClick={() => document.getElementById("businessBrainFileInput")?.click()}>
+        <input id="businessBrainFileInput" className="uploadInput" type="file" multiple accept=".csv,.xlsx,.xls" onClick={(event) => { event.stopPropagation(); event.currentTarget.value = ""; }} onChange={chooseFile} />
+        <div className="uploadIcon"><Icon name="arrow" className="icon" /></div>
+        <div className="uploadCopy"><strong>Drop your sales files here</strong><span>or click to browse from your computer</span><small>CSV, XLSX or XLS · Multiple files supported</small></div>
+        <span className="uploadBrowse">Choose files</span>
+      </div>
       {files.length > 0 && <div className="selectedFiles">{files.map((selectedFile) => <span className="selectedFile" key={`${selectedFile.name}-${selectedFile.size}`}>{selectedFile.name} · {(selectedFile.size / 1024).toFixed(1)} KB</span>)}</div>}
       <div className="actions"><button onClick={previewFile} disabled={busy || files.length === 0}>{busy ? "Checking…" : "Preview & Validate"}</button></div>
     </section>
     {error && <div className="errorBox">{error}</div>}
     {preview && !result && <section className="card resultCard"><span className="eyebrow">VALIDATION PREVIEW</span><h3>{preview.file_count} file{preview.file_count === 1 ? "" : "s"} ready to import</h3><div className="metrics"><Metric label="Rows read" value={String(preview.rows_read)} change="" note="" icon="invoice" /><Metric label="Accepted" value={String(preview.rows_accepted)} change="" note="" icon="check" /><Metric label="Rejected" value={String(preview.rows_rejected)} change="" note="" icon="alert" tone="danger" /></div><div className="filePreviewList">{preview.files?.map((filePreview: any, i: number) => <div className="filePreview" key={`${filePreview.source}-${i}`}><div><strong>{filePreview.source}</strong><small>{filePreview.rows_read} rows · {filePreview.rows_accepted} accepted · {filePreview.rows_rejected} rejected</small></div>{filePreview.mapping?.length > 0 && <div className="issues compact"><b>Detected columns</b>{filePreview.mapping.map((m: any, j: number) => <span key={j}><strong>{m.canonical}</strong> ← {m.source} · {Math.round(m.confidence * 100)}%</span>)}</div>}{filePreview.issues?.length > 0 && <div className="issues"><b>Validation issues</b>{filePreview.issues.slice(0, 20).map((issue: any, j: number) => <p key={j}>Row {issue.row ?? "—"} · {issue.column ?? "file"}: {issue.message ?? "Validation issue"}</p>)}</div>}</div>)}</div><button onClick={importFile} disabled={busy || preview.rows_accepted === 0}>{busy ? "Importing…" : "Import accepted rows →"}</button></section>}
-    {result && <section className="card resultCard success"><span className="eyebrow">IMPORT COMPLETE</span><h3>Data committed successfully.</h3><p>{result.file_count || 0} file{result.file_count === 1 ? "" : "s"} imported · {result.sales_created?.toLocaleString?.() || 0} created · {result.sales_reconciled?.toLocaleString?.() || 0} updated · {result.rows_rejected || 0} rejected.</p><div className="importVerification"><span><b>Revenue after import</b><strong>{money(result.total_revenue_after_import)}</strong></span><span><b>Invoices after import</b><strong>{result.total_invoice_count_after_import ?? "—"}</strong></span></div><button onClick={onImported}>Refresh dashboard data →</button></section>}
+    {result && <section className="card resultCard success"><span className="eyebrow">IMPORT COMPLETE</span><h3>Data committed successfully.</h3><p>{result.file_count || 0} file{result.file_count === 1 ? "" : "s"} imported · {result.sales_created?.toLocaleString?.() || 0} created · {result.sales_reconciled?.toLocaleString?.() || 0} updated · {result.rows_rejected || 0} rejected.</p><div className="importVerification"><span><b>Revenue after import</b><strong>{money(result.total_revenue_after_import)}</strong></span><span><b>Invoices after import</b><strong>{result.total_invoice_count_after_import ?? "—"}</strong></span></div><button className="dashboardReturnButton" onClick={onDone}>← Back to Dashboard</button></section>}
   </div>;
 }
 
