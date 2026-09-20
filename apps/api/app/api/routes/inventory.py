@@ -63,3 +63,48 @@ def purchase_movements(
         }
         for row in rows
     ]
+
+
+@router.get("/{business_id}/product-flow")
+def product_flow(
+    business_id: UUID,
+    days: int = 30,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    _auth: dict = Depends(require_business_access),
+):
+    """Connect purchased units, sold units and movement-derived balance."""
+    from datetime import date, timedelta
+    end = date.today()
+    start = end - timedelta(days=max(1, days) - 1)
+    rows = db.execute(
+        select(
+            ProductModel.id,
+            ProductModel.name,
+            func.coalesce(func.sum(
+                func.case((InventoryMovementModel.movement_type == "purchase", InventoryMovementModel.quantity), else_=0)
+            ), 0),
+            func.coalesce(func.sum(
+                func.case((InventoryMovementModel.movement_type == "sale", InventoryMovementModel.quantity), else_=0)
+            ), 0),
+        )
+        .join(InventoryMovementModel, InventoryMovementModel.product_id == ProductModel.id)
+        .where(
+            ProductModel.business_id == business_id,
+            InventoryMovementModel.business_id == business_id,
+            InventoryMovementModel.movement_date.between(start, end),
+            InventoryMovementModel.movement_type.in_(["purchase", "sale"]),
+        )
+        .group_by(ProductModel.id, ProductModel.name)
+        .order_by(ProductModel.name)
+        .limit(max(1, min(limit, 50)))
+    ).all()
+    return [
+        {
+            "name": row[1],
+            "purchased": float(row[2]),
+            "sold": float(row[3]),
+            "movement_balance": float(row[2] - row[3]),
+        }
+        for row in rows
+    ]
