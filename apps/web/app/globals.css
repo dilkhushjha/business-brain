@@ -2153,3 +2153,10 @@ button:disabled {
   .chatWindow { width: 100%; height: 100%; border-radius: 0; }
   .chatLauncher { right: 14px; bottom: 14px; }
 }
+
+.pageContext { display:flex; flex-direction:column; gap:3px; justify-content:center; }
+.pageContextEyebrow { font-size:13px; font-weight:700; letter-spacing:-.01em; }
+.pageContextSub { font-size:11px; color:var(--text-muted); }
+.selectedFiles { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+.selectedFile { padding:6px 9px; border:1px solid var(--border); border-radius:8px; background:var(--surface-muted); font-size:11px; color:var(--text-muted); }
+.fieldHint { display:block; margin-top:6px; font-size:11px; color:var(--text-muted); }
