@@ -8,6 +8,7 @@ type InsightContext = {
   situations?: Array<Record<string, unknown>>;
   priorities?: Array<Record<string, unknown>>;
   decision_actions?: Array<Record<string, unknown>>;
+  situation_history?: Array<Record<string, unknown>>;
 };
 
 type Anomaly = { name: string; change_pct: number; severity: string };
@@ -59,6 +60,7 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
   const attention = critical + warning;
   const recommendations = context?.recommendations || [];
   const decisionActions = context?.decision_actions || [];
+  const situationHistory = context?.situation_history || [];
   const priorityByCode = new Map(
     (context?.priorities || []).map((p) => [String(p.situation_code || ""), p])
   );
@@ -107,6 +109,34 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
           })}
         </div>
       </section>}
+
+      {situationHistory.length > 0 && <section className="situationHistory">
+        <div className="situationHistoryHead">
+          <div><span className="eyebrow">SITUATION HISTORY</span><h3>What changed over time?</h3><p>Business Brain tracks when a situation appeared, whether it is worsening or improving, and when it was resolved.</p></div>
+          <span className="insightCount">{situationHistory.length}</span>
+        </div>
+        <div className="historyList">
+          {situationHistory.slice(0, 6).map((h, i) => {
+            const status = String(h.status || "active");
+            const trend = String(h.trend || "stable");
+            return <div className="historyItem" key={String(h.situation_code || i)}>
+              <div>
+                <div className="historyTitle">
+                  <b>{String(h.title || h.situation_code || "Business situation")}</b>
+                  <span className={"historyBadge " + status}>{status}</span>
+                  <span className="historyTrend">{trend}</span>
+                </div>
+                <small>{String(h.situation_code || "")} · first seen {String(h.first_seen_at || "—")}</small>
+              </div>
+              <div className="historyMeta">
+                <span>Priority {Number(h.priority_score || 0).toFixed(1)}</span>
+                <span>{Math.round(Number(h.confidence || 0) * 100)}% confidence</span>
+                {h.resolved_at && <span>Resolved {String(h.resolved_at)}</span>}
+              </div>
+            </div>;
+          })}
+        </div>
+      </section>
 
       <div className="insightSummaryBar">
         <div><b>{critical}</b><span>Critical</span></div>
