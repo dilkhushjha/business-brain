@@ -2969,3 +2969,119 @@ button:disabled {
 
 /* Purchase intelligence */
 .purchaseDashboard{display:flex;flex-direction:column;gap:16px}.purchaseSummary{display:grid;grid-template-columns:1.6fr repeat(3,1fr);gap:12px}.purchaseSummaryMain,.purchaseStat{border:1px solid var(--border);border-radius:11px;background:var(--surface);padding:16px;box-shadow:var(--shadow-sm)}.purchaseSummaryMain strong{display:block;margin-top:6px;font-size:17px;letter-spacing:-.02em}.purchaseSummaryMain p{margin:5px 0 0;color:var(--text-muted);font-size:10px}.purchaseStat span{display:block;color:var(--text-muted);font-size:9px}.purchaseStat b{display:block;margin-top:7px;font-size:18px}.purchaseStat small{display:block;margin-top:4px;color:var(--text-faint);font-size:9px}.purchaseGrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.purchaseCard{overflow:hidden}.purchaseHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:15px 16px 12px;border-bottom:1px solid var(--border-soft)}.purchaseHead h3{margin:5px 0 0;font-size:13px}.purchaseHead>span{color:var(--text-faint);font-size:9px}.purchaseRow{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:11px;align-items:center;padding:13px 16px;border-bottom:1px solid var(--border-soft)}.purchaseRow:last-child{border-bottom:0}.purchaseRank{width:23px;height:23px;display:grid;place-items:center;border-radius:7px;background:var(--surface-2);color:var(--text-muted);font-size:9px;font-weight:800}.purchaseRow b{display:block;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.purchaseRow small{display:block;margin-top:3px;color:var(--text-muted);font-size:9px}.purchaseRow>strong{font-size:12px}.purchaseEmpty{padding:20px}@media(max-width:900px){.purchaseSummary{grid-template-columns:1fr 1fr}.purchaseSummaryMain{grid-column:1/-1}.purchaseGrid{grid-template-columns:1fr}}@media(max-width:600px){.purchaseSummary{grid-template-columns:1fr}.purchaseSummaryMain{grid-column:auto}}
+
+/* Import workspace refinement */
+.importTypeSwitch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  margin: 22px 0 16px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface-2);
+}
+.importTypeSwitch button {
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+.importTypeSwitch button:hover {
+  background: #fff;
+  color: var(--text);
+}
+.importTypeSwitch button.active {
+  background: #fff;
+  color: var(--primary-dark);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.selectedFiles {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface-2);
+}
+.selectedFilesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 2px 2px 11px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.selectedFilesHeader b {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.clearFilesButton {
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 750;
+}
+.clearFilesButton:hover {
+  background: var(--surface);
+  color: var(--danger);
+  border-color: #e8c5ca;
+}
+.selectedFile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 11px 2px 2px;
+}
+.selectedFile span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.removeFileButton {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+}
+.removeFileButton:hover {
+  background: var(--danger-tint);
+  color: var(--danger);
+  border-color: #e8c5ca;
+}
+@media(max-width:600px) {
+  .importTypeSwitch {
+    gap: 6px;
+  }
+  .importTypeSwitch button {
+    min-height: 40px;
+    padding: 9px 10px;
+  }
+  .selectedFilesHeader {
+    align-items: flex-start;
+  }
+}
