@@ -16,7 +16,7 @@ router = APIRouter(prefix="/kpis", tags=["analytics"])
 def sales_kpis(business_id: UUID, as_of: date | None = None, db: Session = Depends(get_db), _auth: dict = Depends(require_business_access)):
     effective_date = as_of or date.today()
     monthly = monthly_sales_kpis(db, business_id, effective_date)
-    historical = sales_summary(db, business_id, date(2000, 1, 1), effective_date)
+    historical = sales_summary(db, business_id, date(2000, 1, 1), date.max)
 
     response = [
         {
