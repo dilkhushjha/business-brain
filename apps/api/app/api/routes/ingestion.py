@@ -134,7 +134,7 @@ def record_ingestion_run(
 
         from packages.analytics.business_brain.query.sales import sales_summary
         from datetime import date
-        totals = sales_summary(db, business_id, date(2000, 1, 1), date.today())
+        totals = sales_summary(db, business_id, date(2000, 1, 1), date.max)
 
         return {
             "status": "completed",
