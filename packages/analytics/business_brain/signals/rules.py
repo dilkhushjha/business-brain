@@ -393,3 +393,14 @@ def detect_dead_stock_signals(dead_stock: list[dict]) -> list[Signal]:
             )
         )
     return signals
+
+
+def detect_supplier_spend_signals(risk: dict) -> list[Signal]:
+    signals=[]
+    top_share=Decimal(str(risk.get("top_share_pct",0)))
+    if top_share >= 60:
+        signals.append(Signal(code="SUPPLIER_CONCENTRATION",title=f"{risk.get('top_supplier')} accounts for {top_share}% of purchase spend",severity="warning" if top_share < 80 else "critical",confidence=Decimal("0.85"),metric="supplier_spend_share_pct",current_value=top_share,baseline_value=None,change=None,evidence={"supplier":risk.get("top_supplier"),"total_spend":risk.get("total_spend"),"rule":"top supplier share >= 60%"},recommended_next_step=f"Review dependency on {risk.get('top_supplier')} and identify whether a viable secondary supplier exists."))
+    for row in risk.get("spend_spikes", []):
+        change=Decimal(str(row["change_pct"]))
+        signals.append(Signal(code="SUPPLIER_SPEND_SPIKE",title=f"Purchasing from {row['supplier']} has increased sharply",severity="critical" if change >= 50 else "warning",confidence=Decimal("0.80"),metric="supplier_purchase_spend",current_value=Decimal(str(row["current_spend"])),baseline_value=Decimal(str(row["previous_spend"])),change=change,evidence={"supplier":row["supplier"],"rule":"supplier spend increase >= 25% vs prior period"},recommended_next_step=f"Check whether the increase in purchases from {row['supplier']} reflects demand, stock building, or a change in buying terms."))
+    return signals
