@@ -36,6 +36,10 @@ export default function RevenueTrend() {
   const linePath = points.map((p, i) => `${i ? "L" : "M"}${xAt(i).toFixed(1)},${yAt(p.revenue).toFixed(1)}`).join(" ");
   const areaPath = `${linePath} L${xAt(points.length - 1).toFixed(1)},${height - pad} L${xAt(0).toFixed(1)},${height - pad} Z`;
   const gridLines = [0.25, 0.5, 0.75].map((f) => height - pad - f * (height - pad * 2));
+  const formatDate = (value: string) => {
+    const date = new Date(`${value}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  };
   const last = points[points.length - 1];
   const first = points[0];
   const changePct = first.revenue ? ((last.revenue - first.revenue) / first.revenue) * 100 : 0;
@@ -47,7 +51,8 @@ export default function RevenueTrend() {
         <h3>Revenue trend</h3>
         <small className={changePct >= 0 ? "positive" : "negative"}>{changePct >= 0 ? "▲" : "▼"} {Math.abs(changePct).toFixed(0)}% over period</small>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="30 day revenue trend" className="trendChart">
+      <div className="trendChartWrap">
+        <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="30 day revenue trend" className="trendChart">
         <defs>
           <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="currentColor" stopOpacity="0.22" />
@@ -57,11 +62,15 @@ export default function RevenueTrend() {
         {gridLines.map((y, i) => <line key={i} x1={pad} x2={width - pad} y1={y} y2={y} className="trendGrid" />)}
         <path d={areaPath} fill="url(#revFill)" stroke="none" />
         <path d={linePath} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <line x1={xAt(points.length - 1)} x2={xAt(points.length - 1)} y1={pad} y2={height - pad} className="trendHoverLine" />
         <circle cx={xAt(points.length - 1)} cy={yAt(last.revenue)} r="4.5" fill="currentColor" stroke="#fff" strokeWidth="2" />
-      </svg>
+        {points.map((point, i) => <circle key={point.date + i} cx={xAt(i)} cy={yAt(point.revenue)} r="9" className="trendPointHit"><title>{formatDate(point.date)} · {money(point.revenue)}</title></circle>)}
+        </svg>
+        <div className="trendDates">{points.map((point, i) => <span key={point.date + i} style={{ left: `${(xAt(i) / width) * 100}%` }}>{formatDate(point.date)}</span>)}</div>
+      </div>
       <div className="trendLabels">
-        <span>{first.date}</span>
-        <span className="trendLast">{money(last.revenue)} on {last.date}</span>
+        <span>{formatDate(first.date)}</span>
+        <span className="trendLast">{money(last.revenue)} on {formatDate(last.date)}</span>
       </div>
     </section>
   );
