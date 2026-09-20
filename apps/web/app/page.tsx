@@ -263,7 +263,7 @@ function ImportWorkspace({ businessName }: { businessName: string }) {
   return <div className="importWorkspace">
     <section className="card importCard">
       <div className="importCardHead"><div><span className="eyebrow">BUSINESS DATA</span><h3>Import sales data</h3><p>Upload a Tally CSV or Excel export, validate it, then explicitly commit accepted rows.</p></div><span className="status">Workspace · {businessName}</span></div>
-      <div className="field"><label>Source files</label><input type="file" multiple accept=".csv,.xlsx,.xls" onChange={chooseFile} /><small className="fieldHint">Select one or multiple CSV/Excel files. All selected files will be validated together.</small></div>
+      <div className="field"><label>Source files</label><input type="file" multiple accept=".csv,.xlsx,.xls" onClick={(event) => { event.currentTarget.value = ""; }} onChange={chooseFile} /><small className="fieldHint">Select one or multiple CSV/Excel files. All selected files will be validated together.</small></div>
       {files.length > 0 && <div className="selectedFiles">{files.map((selectedFile) => <span className="selectedFile" key={`${selectedFile.name}-${selectedFile.size}`}>{selectedFile.name} · {(selectedFile.size / 1024).toFixed(1)} KB</span>)}</div>}
       <div className="actions"><button onClick={previewFile} disabled={busy || files.length === 0}>{busy ? "Checking…" : "Preview & Validate"}</button></div>
     </section>
