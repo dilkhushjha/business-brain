@@ -224,3 +224,13 @@ def purchase_financial_linkage(
         "supplier_cash_outflow": float(supplier_payments),
         "payment_coverage_pct": round(float(supplier_payments / purchase_total * 100), 2) if purchase_total else 0,
     }
+
+
+@router.get("/{business_id}/integrity")
+def purchase_integrity(
+    business_id: UUID,
+    days: int = 3650,
+    db: Session = Depends(get_db),
+    _auth: dict = Depends(require_business_access),
+):
+    return purchase_integrity_summary(db, business_id, days)
