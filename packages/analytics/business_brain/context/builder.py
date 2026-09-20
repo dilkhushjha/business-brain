@@ -9,6 +9,7 @@ from packages.analytics.business_brain.metrics.customer_risk import customer_con
 from packages.analytics.business_brain.metrics.expenses import expense_summary
 from packages.analytics.business_brain.metrics.margin import margin_summary
 from packages.analytics.business_brain.metrics.payables import payables_summary
+from packages.analytics.business_brain.metrics.purchase_risk import supplier_spend_risk
 from packages.analytics.business_brain.metrics.receivables import receivables_summary
 from packages.analytics.business_brain.metrics.supplier_risk import supplier_concentration
 from packages.analytics.business_brain.recommendations.engine import recommend
@@ -85,6 +86,14 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
             source="supplier_risk_engine", metric="supplier_concentration_top_share_pct",
             value=Decimal(str(supplier_conc["top_share_pct"])), period="all_time",
             metadata={"top_suppliers": supplier_conc["top_suppliers"], "risk": supplier_conc["risk"]},
+        ))
+
+    purchase_risk = supplier_spend_risk(db, business_id)
+    if purchase_risk["total_spend"]:
+        evidence.append(Evidence(
+            source="purchase_risk_engine", metric="supplier_spend_concentration_pct",
+            value=Decimal(str(purchase_risk["top_share_pct"])), period="trailing_90_days",
+            metadata={"top_supplier": purchase_risk["top_supplier"], "total_spend": purchase_risk["total_spend"]},
         ))
 
     expenses = expense_summary(db, business_id)
