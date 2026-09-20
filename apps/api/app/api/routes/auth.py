@@ -124,10 +124,15 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     try:
         db.execute(
             text("""
-                INSERT INTO businesses (id, name, industry)
-                VALUES (:id, :name, :industry)
+                INSERT INTO businesses (id, name, industry, created_at)
+                VALUES (:id, :name, :industry, :created_at)
             """),
-            {"id": str(business_id), "name": payload.business_name.strip(), "industry": payload.industry.strip().lower()},
+            {
+                "id": str(business_id),
+                "name": payload.business_name.strip(),
+                "industry": payload.industry.strip().lower(),
+                "created_at": datetime.utcnow(),
+            },
         )
         db.execute(
             text("""
