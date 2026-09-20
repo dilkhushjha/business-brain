@@ -90,7 +90,6 @@ def test_user_registration_and_me(client):
 
 def test_login_accepts_username_email_and_phone(client):
     password = "StrongPassword!123"
-    business = uuid4()
     client.post("/api/auth/register", json={
         "username": "loginuser", "email": "login@example.com", "phone": "+919999999999",
         "password": password, "business_name": "Login Business", "industry": "retail",
