@@ -16,6 +16,7 @@ from packages.analytics.business_brain.recommendations.engine import recommend
 from packages.analytics.business_brain.service import monthly_sales_kpis
 from packages.analytics.business_brain.signals.engine import detect_signals
 from packages.analytics.business_brain.state import build_business_state
+from packages.analytics.business_brain.correlations import correlate_signals
 
 
 def build_business_context(db: Session, business_id: UUID, as_of: date) -> BusinessContext:
@@ -117,6 +118,8 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
         signals=signals,
     )
 
+    situations = correlate_signals(signals, state)
+
     return BusinessContext(
         business_id=business_id,
         entities=[],
@@ -124,4 +127,5 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
         signals=signals,
         recommendations=recommendations,
         state=state,
+        situations=situations,
     )
