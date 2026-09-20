@@ -2,7 +2,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
-from packages.analytics.business_brain.metrics.inventory import dead_stock, demand_spikes, inventory_signals, slow_moving_products, stock_risk
+from packages.analytics.business_brain.metrics.inventory import current_inventory_position, dead_stock, demand_spikes, inventory_signals, slow_moving_products, stock_risk
 from apps.api.app.api.connector_auth import require_business_access
 from packages.shared.database.models import InventoryMovementModel, ProductModel, PurchaseModel, SaleModel
 from packages.shared.database.session import get_db
@@ -217,3 +217,14 @@ def inventory_integrity(
             for name, v in sorted(movement_balance.items())
         ][:max(1, min(limit, 50))],
     }
+
+
+@router.get("/{business_id}/position")
+def inventory_position(
+    business_id: UUID,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    _auth: dict = Depends(require_business_access),
+):
+    """Return current movement-derived stock position."""
+    return current_inventory_position(db, business_id, limit=limit)
