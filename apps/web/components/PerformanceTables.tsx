@@ -121,23 +121,24 @@ export default function PerformanceTables({ section = "sales", dataVersion = 0 }
       )}
 
       {section === "customers" && (concentration || declining.length || inactive.length) && (
-        <>
-          <div className="customerInsightIntro">
-            <div><span className="eyebrow">CUSTOMER INTELLIGENCE</span><h3>Who needs attention?</h3></div>
-            {concentration && <span className={`customerRiskBadge ${concentration.risk}`}>{concentration.risk.toUpperCase()} CONCENTRATION RISK</span>}
+        <div className="customerCommandCenter">
+          <div className="customerOverview">
+            <div className="customerOverviewMain"><span className="eyebrow">CUSTOMER COMMAND CENTER</span><h3>Know who is driving revenue — and who needs attention.</h3><p>Recent customer activity, revenue dependency and retention signals in one view.</p></div>
+            <div className={"customerHealth " + (declining.length || inactive.length ? "attention" : "healthy")}><b>{declining.length + inactive.length}</b><span>customers needing review</span></div>
           </div>
-          <section className="customerInsightGrid">
-            {concentration && (
-              <div className="card customerInsightCard">
-                <div className="cardTitle"><span><Icon name="layers" className="icon" /></span><h3>Customer concentration</h3><small>Revenue dependency</small></div>
-                <div className="customerHeadline"><strong>{concentration.top_share_pct.toFixed(0)}%</strong><span>of revenue comes from the top 5 customers</span></div>
-                {concentration.top_customers.map((c, i) => (
-                  <div className="customerMiniRow" key={c.name}>
-                    <span>{i + 1}</span><b>{c.name}</b><small>{c.share_pct.toFixed(0)}%</small><strong>{money(c.revenue)}</strong>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="customerMetrics">
+            <div><span>Revenue concentration</span><b>{concentration ? concentration.top_share_pct.toFixed(0) + "%" : "—"}</b><small>top 5 customers</small></div>
+            <div><span>Declining</span><b>{declining.length}</b><small>crossed decline threshold</small></div>
+            <div><span>Follow up</span><b>{inactive.length}</b><small>no recent orders</small></div>
+          </div>
+          <div className="customerCommandGrid">
+            {concentration && <section className="customerCommandCard customerLeaders"><div className="customerCommandHead"><div><span className="eyebrow">REVENUE LEADERS</span><h4>Top customers</h4></div><span>Last 30 days</span></div>{concentration.top_customers.map((c,i) => <div className="customerLeaderRow" key={c.name}><span>{i+1}</span><div><b>{c.name}</b><small>{c.share_pct.toFixed(0)}% of revenue</small></div><strong>{money(c.revenue)}</strong></div>)}</section>}
+            <section className="customerCommandCard"><div className="customerCommandHead"><div><span className="eyebrow">RETENTION SIGNAL</span><h4>Customers losing momentum</h4></div><span>{declining.length}</span></div>{declining.length ? declining.map(c => <div className="customerSignalRow" key={c.name}><div><b>{c.name}</b><small>{money(c.previous_revenue)} → {money(c.current_revenue)}</small></div><strong className="negative">{pct(c.change_pct)}</strong></div>) : <div className="customerCommandEmpty">No customers have crossed the current decline threshold.</div>}</section>
+            <section className="customerCommandCard"><div className="customerCommandHead"><div><span className="eyebrow">RETENTION SIGNAL</span><h4>Follow-up queue</h4></div><span>{inactive.length}</span></div>{inactive.length ? inactive.map(c => <div className="customerSignalRow" key={c.name}><div><b>{c.name}</b><small>Last order {c.last_order || "unknown"} · {c.inactive_days ?? "—"} days inactive</small></div><strong>{money(c.lifetime_revenue)}</strong></div>) : <div className="customerCommandEmpty">No inactive customers detected.</div>}</section>
+            {concentration && <section className="customerCommandCard customerActionCard"><div className="customerCommandHead"><div><span className="eyebrow">RECOMMENDED REVIEW</span><h4>Customer dependency</h4></div></div><div className="customerAction"><Icon name="users" className="icon" /><p>{concentration.risk === "high" ? "A small group of customers contributes a large share of revenue. Protect these relationships while reducing dependency over time." : concentration.risk === "medium" ? "Leading customers have meaningful revenue influence. Monitor retention and avoid over-reliance on a small group." : "Revenue is reasonably distributed across customers. Continue monitoring concentration as the mix changes."}</p></div></section>}
+          </div>
+        </div>
+      )}}
 
             <div className="card customerInsightCard">
               <div className="cardTitle"><span><Icon name="trendDown" className="icon" /></span><h3>Customers losing momentum</h3><small>Revenue decline</small></div>
