@@ -246,7 +246,7 @@ function ImportWorkspace({ businessName }: { businessName: string }) {
     if (!files.length) throw new Error("Choose at least one CSV or Excel file first.");
     const businessId = getBusinessId();
     if (!businessId) throw new Error("Your business session is missing. Please sign in again.");
-    const form = new FormData(); form.append("file", file);
+    const form = new FormData(); files.forEach((selectedFile) => form.append("files", selectedFile));
     const response = await apiFetch(`/ingestion/${path}/${businessId}`, { method: "POST", body: form });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.detail || `Import service returned ${response.status}`);
@@ -254,11 +254,11 @@ function ImportWorkspace({ businessName }: { businessName: string }) {
   }
   async function previewFile() {
     setBusy(true); setError(""); setResult(null);
-    try { setPreview(await send("preview")); } catch (e) { setError(e instanceof ApiAuthError ? "Your session has expired. Please sign in again." : e instanceof Error ? e.message : "Unable to preview file"); } finally { setBusy(false); }
+    try { setPreview(await send("preview")); } catch (e) { setError(e instanceof ApiAuthError ? "Your session has expired. Please sign in again." : e instanceof Error ? e.message : "Unable to preview files"); } finally { setBusy(false); }
   }
   async function importFile() {
     setBusy(true); setError("");
-    try { setResult(await send("record-run")); } catch (e) { setError(e instanceof ApiAuthError ? "Your session has expired. Please sign in again." : e instanceof Error ? e.message : "Unable to import file"); } finally { setBusy(false); }
+    try { setResult(await send("record-run")); } catch (e) { setError(e instanceof ApiAuthError ? "Your session has expired. Please sign in again." : e instanceof Error ? e.message : "Unable to import files"); } finally { setBusy(false); }
   }
   return <div className="importWorkspace">
     <section className="card importCard">
@@ -268,8 +268,8 @@ function ImportWorkspace({ businessName }: { businessName: string }) {
       <div className="actions"><button onClick={previewFile} disabled={busy || files.length === 0}>{busy ? "Checking…" : "Preview & Validate"}</button></div>
     </section>
     {error && <div className="errorBox">{error}</div>}
-    {preview && !result && <section className="card resultCard"><span className="eyebrow">VALIDATION PREVIEW</span><h3>{preview.source}</h3><div className="metrics"><Metric label="Rows read" value={String(preview.rows_read)} change="" note="" icon="invoice" /><Metric label="Accepted" value={String(preview.rows_accepted)} change="" note="" icon="check" tone="success" /><Metric label="Rejected" value={String(preview.rows_rejected)} change="" note="" icon="alert" tone="danger" /></div>{preview.mapping?.length > 0 && <div className="issues"><b>Detected columns</b>{preview.mapping.map((m: any, i: number) => <p key={i}><strong>{m.canonical}</strong> ← {m.source} · {Math.round(m.confidence * 100)}%</p>)}</div>}{preview.issues?.length > 0 && <div className="issues"><b>Validation issues</b>{preview.issues.slice(0, 20).map((x: any, i: number) => <p key={i}>Row {x.row ?? "—"} · {x.column ?? "file"}: {x.message ?? "Validation issue"}</p>)}</div>}<button onClick={importFile} disabled={busy || preview.rows_accepted === 0}>{busy ? "Importing…" : "Import accepted rows →"}</button></section>}
-    {result && <section className="card resultCard success"><span className="eyebrow">IMPORT COMPLETE</span><h3>Data committed successfully.</h3><p>{result.sales_created?.toLocaleString?.() || 0} sales records created · {result.rows_rejected || 0} rejected.</p><p className="muted">Checksum: {result.checksum}</p><button onClick={() => window.location.reload()}>Refresh dashboard data →</button></section>}
+    {preview && !result && <section className="card resultCard"><span className="eyebrow">VALIDATION PREVIEW</span><h3>{preview.file_count} file{preview.file_count === 1 ? "" : "s"} ready to import</h3><div className="metrics"><Metric label="Rows read" value={String(preview.rows_read)} change="" note="" icon="invoice" /><Metric label="Accepted" value={String(preview.rows_accepted)} change="" note="" icon="check" /><Metric label="Rejected" value={String(preview.rows_rejected)} change="" note="" icon="alert" tone="danger" /></div><div className="filePreviewList">{preview.files?.map((filePreview: any, i: number) => <div className="filePreview" key={`${filePreview.source}-${i}`}><div><strong>{filePreview.source}</strong><small>{filePreview.rows_read} rows · {filePreview.rows_accepted} accepted · {filePreview.rows_rejected} rejected</small></div>{filePreview.mapping?.length > 0 && <div className="issues compact"><b>Detected columns</b>{filePreview.mapping.map((m: any, j: number) => <span key={j}><strong>{m.canonical}</strong> ← {m.source} · {Math.round(m.confidence * 100)}%</span>)}</div>}{filePreview.issues?.length > 0 && <div className="issues"><b>Validation issues</b>{filePreview.issues.slice(0, 20).map((issue: any, j: number) => <p key={j}>Row {issue.row ?? "—"} · {issue.column ?? "file"}: {issue.message ?? "Validation issue"}</p>)}</div>}</div>)}</div><button onClick={importFile} disabled={busy || preview.rows_accepted === 0}>{busy ? "Importing…" : "Import accepted rows →"}</button></section>}
+    {result && <section className="card resultCard success"><span className="eyebrow">IMPORT COMPLETE</span><h3>Data committed successfully.</h3><p>{result.file_count || 0} file{result.file_count === 1 ? "" : "s"} imported · {result.sales_created?.toLocaleString?.() || 0} sales records created · {result.rows_rejected || 0} rejected.</p><button onClick={() => window.location.reload()}>Refresh dashboard data →</button></section>}
   </div>;
 }
 
