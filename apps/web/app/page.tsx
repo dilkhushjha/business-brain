@@ -109,6 +109,9 @@ export default function Home() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [selectedReasoning, setSelectedReasoning] = useState<ReasoningPayload | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeSection, setActiveSection] = useState("overview");
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     if (!hasToken()) { setConnected(false); setCheckedAuth(true); return; }
@@ -165,85 +168,71 @@ export default function Home() {
 
   if (checkedAuth && !connected) return <main className="shell"><header className="header"><div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div></div></header><ConnectGate onConnected={() => setConnected(true)} /></main>;
 
-  return <main className="shell">
-    <header className="header dashboardHeader">
-      <div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Dashboard</h1></div></div>
-      <div className="headerRight">
-        <span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Updating…" : live ? "Live data" : "Demo mode"}</span>
-        <div className="profileWrap">
-          <button type="button" className="profileButton" onClick={() => setProfileOpen(!profileOpen)} aria-expanded={profileOpen}><span className="avatar">{(user?.username || "U").charAt(0).toUpperCase()}</span><span className="profileName">{user?.username || "User"}</span><span className="profileChevron">⌄</span></button>
-          {profileOpen && <div className="profileMenu">
-            <div className="profileMenuHead"><strong>{user?.username || "User"}</strong><span>{businessName}</span></div>
-            <button type="button" onClick={() => { setProfileOpen(false); scrollTo("business-overview"); }}>Business overview</button>
-            <a href="/import">Import data</a>
-            <button type="button" className="profileLogout" onClick={logout}>Log out</button>
-          </div>}
-        </div>
-      </div>
-    </header>
+  const navGroups = [
+    { label: "OVERVIEW", items: [{ id: "overview", label: "Dashboard", icon: "sparkle" as IconName }] },
+    { label: "PERFORMANCE", items: [
+      { id: "sales", label: "Sales Performance", icon: "trend" as IconName },
+      { id: "customers", label: "Customers", icon: "invoice" as IconName },
+    ]},
+    { label: "BUSINESS", items: [
+      { id: "financials", label: "Financials", icon: "wallet" as IconName },
+      { id: "operations", label: "Operations", icon: "receipt" as IconName },
+    ]},
+    { label: "INTELLIGENCE", items: [
+      { id: "insights", label: "Business Insights", icon: "sparkle" as IconName },
+      { id: "reports", label: "Reports", icon: "trend" as IconName },
+    ]},
+    { label: "DATA", items: [{ id: "imports", label: "Data & Imports", icon: "arrow" as IconName }] },
+  ];
 
-    {!live && !loading && <div className="demoBanner"><strong>DEMO MODE</strong><span>Sample business data · safe for testing</span></div>}
-
-    <section className="dashboardIntro">
-      <div><span className="eyebrow">OVERVIEW</span><h2>Good morning, {user?.username || "there"}.</h2><p>{businessName} · Here's the current picture of your business.</p></div>
-      <div className="freshStatus"><span className={`freshDot ${live ? "live" : ""}`} /> {loading ? "Refreshing data" : live ? "Data is up to date" : "Using sample data"}</div>
-    </section>
-
-    <section id="business-health" className="dashboardSection">
-      <div className="sectionHeading sectionHeadingLarge"><span>BUSINESS HEALTH</span><small>At-a-glance signals that deserve your attention</small></div>
-      <div className="healthLiteGrid">
-        <div className={`healthLiteMain tone-${healthTone}`} onClick={explainHealth} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); explainHealth(); } }}>
-          <div className="healthLiteIcon"><Icon name={healthIcon} className="icon" /></div><div><span className="eyebrow">CURRENT STATUS</span><h3>{health}</h3><p>{healthText}</p></div><span className="cardArrow">→</span>
-        </div>
-        <Metric label="Priority concerns" value={String(highSignals.length)} change="" note="signals requiring review" icon="alert" tone="danger" onClick={() => scrollTo("insight-details")} />
-        <Metric label="Positive signals" value={String(positiveSignals.length)} change="" note="healthy movements" icon="check" tone="success" onClick={() => scrollTo("insight-details")} />
-      </div>
-    </section>
-
-    <section id="business-overview" className="dashboardSection">
-      <div className="sectionHeading sectionHeadingLarge"><span>BUSINESS OVERVIEW</span><small>Core numbers from your imported business data</small></div>
-      <div className="metrics">
+  function renderSection() {
+    if (activeSection === "overview") return <>
+      <section className="dashboardIntro"><div><span className="eyebrow">OVERVIEW</span><h2>Good morning, {user?.username || "there"}.</h2><p>{businessName} · Here's the current picture of your business.</p></div><div className="freshStatus"><span className={`freshDot ${live ? "live" : ""}`} /> {loading ? "Refreshing data" : live ? "Data is up to date" : "Using sample data"}</div></section>
+      <section className="dashboardSection"><div className="sectionHeading sectionHeadingLarge"><span>BUSINESS HEALTH</span><small>At-a-glance signals that deserve your attention</small></div><div className="healthLiteGrid">
+        <div className={`healthLiteMain tone-${healthTone}`} onClick={explainHealth} role="button" tabIndex={0}><div className="healthLiteIcon"><Icon name={healthIcon} className="icon" /></div><div><span className="eyebrow">CURRENT STATUS</span><h3>{health}</h3><p>{healthText}</p></div><span className="cardArrow">→</span></div>
+        <Metric label="Priority concerns" value={String(highSignals.length)} change="" note="signals requiring review" icon="alert" tone="danger" onClick={() => setActiveSection("insights")} />
+        <Metric label="Positive signals" value={String(positiveSignals.length)} change="" note="healthy movements" icon="check" tone="success" onClick={() => setActiveSection("insights")} />
+      </div></section>
+      <section className="dashboardSection"><div className="sectionHeading sectionHeadingLarge"><span>BUSINESS OVERVIEW</span><small>Core numbers from your imported business data</small></div><div className="metrics">
         <Metric label="Total Revenue" value={money(totalRevenue?.value ?? revenue?.value)} change="" note="all imported data" icon="wallet" onClick={() => explainMetric("total-revenue")} />
         <Metric label="Total Invoices" value={totalInvoices?.value ?? "—"} change="" note="all imported data" icon="invoice" onClick={() => explainMetric("total-invoices")} />
         <Metric label="Current Month Revenue" value={money(rk?.value)} change={pct(revenueChange)} note="vs previous month" icon="trend" tone={revenueChange == null ? "primary" : Number(revenueChange) < 0 ? "danger" : "success"} onClick={() => explainMetric("current-month-revenue")} />
         <Metric label="Average Invoice Value" value={money(ak?.value)} change={pct(ak?.change)} note="current month" icon="receipt" tone="amber" onClick={() => explainMetric("average-invoice-value")} />
-      </div>
-    </section>
+      </div></section>
+      <section className="dashboardSection"><div className="sectionHeading sectionHeadingLarge"><span>SALES PERFORMANCE</span><small>Revenue movement and commercial momentum</small></div><div className="salesPreview"><RevenueTrend /><PerformanceTables /></div></section>
+    </>;
 
-    <section id="sales-performance" className="dashboardSection">
-      <div className="sectionHeading sectionHeadingLarge"><span>SALES PERFORMANCE</span><small>Revenue movement and commercial momentum</small></div>
-      <div className="salesPreview"><RevenueTrend /><PerformanceTables /></div>
-    </section>
+    if (activeSection === "sales") return <section className="contentSection"><SectionTitle title="SALES PERFORMANCE" subtitle="Revenue movement and commercial momentum" /><div className="salesPreview"><RevenueTrend /><PerformanceTables /></div></section>;
+    if (activeSection === "customers") return <section className="contentSection"><SectionTitle title="CUSTOMERS" subtitle="Customer contribution, activity and product performance" /><PerformanceTables /></section>;
+    if (activeSection === "financials") return <section className="contentSection"><SectionTitle title="FINANCIALS" subtitle="Profitability, margins, cash position and receivables" /><div className="statGrid"><MarginIntelligence onExplain={setSelectedReasoning} /><ReceivablesIntelligence onExplain={setSelectedReasoning} /></div></section>;
+    if (activeSection === "operations") return <section className="contentSection"><SectionTitle title="OPERATIONS" subtitle="Inventory health and operational intelligence" /><InventoryIntelligence onExplain={setSelectedReasoning} /></section>;
+    if (activeSection === "insights") return <section className="contentSection"><SectionTitle title="BUSINESS INSIGHTS" subtitle="Signals, anomalies and recommended actions" /><div className="insightColumns">
+      <section className="card"><div className="cardTitle"><b>Management attention</b><small>Highest-priority signals</small></div>{context?.signals?.slice(0, 5).map((s, i) => { const sev = severityIcon(s.severity as string | undefined); return <div className="signal" key={i}><span className={`iconChip sm tone-${sev.tone}`}><Icon name={sev.icon} className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{String(s.title || s.name || "Business signal")}</b><span className={`tag ${s.severity === "high" ? "danger" : s.severity === "positive" ? "good" : "warning"}`}>{String(s.severity || "REVIEW").toUpperCase()}</span></div><p>{String(s.message || s.description || "Review this signal.")}</p></div></div>; })}</section>
+      <section className="card"><div className="cardTitle"><b>Recommended actions</b><small>What to consider next</small></div>{context?.recommendations?.map((r, i) => <div className="signal" key={i}><div className="actionNo">{i + 1}</div><div className="signalBody"><b>{String(r.title || r.name || "Recommendation")}</b><p>{String(r.description || r.message || "Evidence-backed action available.")}</p></div></div>)}</section>
+    </div>{anomalies.length > 0 && <section className="card anomalyCard"><div className="cardTitle"><b>Exceptions</b><small>Unusual movements worth investigating</small></div>{anomalies.map((a, i) => <div className="anomaly" key={i}><span className={`iconChip sm tone-${a.severity === "high" ? "danger" : "amber"}`}><Icon name="alert" className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{a.name}</b><span className={`tag ${a.severity === "high" ? "danger" : "warning"}`}>{a.severity.toUpperCase()}</span></div><p>Revenue {a.change_pct >= 0 ? "increased" : "decreased"} <strong>{Math.abs(a.change_pct).toFixed(0)}%</strong> versus the prior period.</p></div></div>)}</section>}</section>;
+    if (activeSection === "reports") return <section className="contentSection"><SectionTitle title="REPORTS" subtitle="Reporting and analysis workspace" /><div className="card reportCard"><Icon name="trend" className="reportIcon" /><div><b>Detailed reporting</b><p>Review the business data and performance views. Report exports can be added here as the reporting layer grows.</p></div></div></section>;
+    return <section className="contentSection"><SectionTitle title="DATA & IMPORTS" subtitle="Bring in new business data and manage your data pipeline" /><div className="card reportCard"><Icon name="arrow" className="reportIcon" /><div><b>Data management</b><p>Import new CSV data, review your imported information and keep the business workspace current.</p><a className="inlineAction" href="/import">Open import workspace →</a></div></div></section>;
+  }
 
-    <section className="exploreArea">
-      <div className="sectionHeading sectionHeadingLarge"><span>EXPLORE YOUR BUSINESS</span><small>Detailed areas are grouped here so the dashboard stays focused</small></div>
-      <div className="exploreGrid">
-        <button id="financials" className="exploreCard" onClick={() => scrollTo("financial-details")}><span className="iconChip"><Icon name="wallet" className="icon" /></span><b>Financials</b><p>Margins, profitability and receivables.</p><span>View details →</span></button>
-        <button id="operations" className="exploreCard" onClick={() => scrollTo("operations-details")}><span className="iconChip"><Icon name="receipt" className="icon" /></span><b>Operations</b><p>Inventory health and operational signals.</p><span>View details →</span></button>
-        <button id="customers" className="exploreCard" onClick={() => scrollTo("customer-details")}><span className="iconChip"><Icon name="invoice" className="icon" /></span><b>Customers & Sales</b><p>Customer contribution and product insights.</p><span>View details →</span></button>
-        <button id="insights" className="exploreCard" onClick={() => scrollTo("insight-details")}><span className="iconChip"><Icon name="sparkle" className="icon" /></span><b>Business Insights</b><p>Signals, anomalies and recommended actions.</p><span>View details →</span></button>
-        <a className="exploreCard" href="/import"><span className="iconChip"><Icon name="arrow" className="icon" /></span><b>Data & Imports</b><p>Bring in new business data and manage imports.</p><span>Manage data →</span></a>
-        <button className="exploreCard" onClick={() => scrollTo("reports")}><span className="iconChip"><Icon name="trend" className="icon" /></span><b>Reports</b><p>Review the business data behind your dashboard.</p><span>View reports →</span></button>
-      </div>
-    </section>
+  return <main className={`shell appShell ${sidebarCollapsed ? "sidebarCollapsed" : ""}`}>
+    <aside className="appSidebar">
+      <div className="sidebarTop"><div className="sidebarBrand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div className="sidebarBrandText"><span className="eyebrow">BUSINESS BRAIN</span><strong>{businessName}</strong></div></div><button className="sidebarToggle" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>{sidebarCollapsed ? "→" : "←"}</button></div>
+      <nav className="sidebarNav">{navGroups.map((group) => <div className="navGroup" key={group.label}><span className="navGroupLabel">{group.label}</span>{group.items.map((item) => <button key={item.id} className={`navItem ${activeSection === item.id ? "active" : ""}`} onClick={() => setActiveSection(item.id)} title={sidebarCollapsed ? item.label : undefined}><span className="navIcon"><Icon name={item.icon} className="icon" /></span><span className="navLabel">{item.label}</span></button>)}</div>)}</nav>
+      <div className="sidebarBottom"><button className="sidebarAsk" onClick={() => setChatOpen(true)} title="Ask Business Brain"><Icon name="chat" className="icon" /><span className="navLabel">Ask Business Brain</span></button></div>
+    </aside>
 
-    <section id="financial-details" className="detailSection"><div className="sectionHeading sectionHeadingLarge"><span>FINANCIALS</span><small>Profitability and cash position</small></div><div className="statGrid"><MarginIntelligence onExplain={setSelectedReasoning} /><ReceivablesIntelligence onExplain={setSelectedReasoning} /></div></section>
-    <section id="operations-details" className="detailSection"><div className="sectionHeading sectionHeadingLarge"><span>OPERATIONS</span><small>Inventory and operational intelligence</small></div><InventoryIntelligence onExplain={setSelectedReasoning} /></section>
-    <section id="customer-details" className="detailSection"><div className="sectionHeading sectionHeadingLarge"><span>CUSTOMERS & SALES DETAILS</span><small>Customer contribution, product movement and commercial risks</small></div><PerformanceTables /></section>
+    <div className="appMain">
+      <header className="header dashboardHeader"><div className="mobileBrand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><strong>Business Brain</strong></div><div className="headerRight"><span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Updating…" : live ? "Live data" : "Demo mode"}</span><div className="profileWrap"><button type="button" className="profileButton" onClick={() => setProfileOpen(!profileOpen)} aria-expanded={profileOpen}><span className="avatar">{(user?.username || "U").charAt(0).toUpperCase()}</span><span className="profileName">{user?.username || "User"}</span><span className="profileChevron">⌄</span></button>{profileOpen && <div className="profileMenu"><div className="profileMenuHead"><strong>{user?.username || "User"}</strong><span>{businessName}</span></div><a href="/import">Import data</a><button type="button" className="profileLogout" onClick={logout}>Log out</button></div>}</div></div></header>
+      {!live && !loading && <div className="demoBanner"><strong>DEMO MODE</strong><span>Sample business data · safe for testing</span></div>}
+      <div className="pageContent">{renderSection()}</div>
+    </div>
 
-    <section id="insight-details" className="detailSection">
-      <div className="sectionHeading sectionHeadingLarge"><span>BUSINESS INSIGHTS</span><small>Signals and recommended actions</small></div>
-      <div className="insightColumns">
-        <section className="card"><div className="cardTitle"><b>Management attention</b><small>Highest-priority signals</small></div>{context?.signals?.slice(0, 5).map((s, i) => { const sev = severityIcon(s.severity as string | undefined); return <div className="signal" key={i}><span className={`iconChip sm tone-${sev.tone}`}><Icon name={sev.icon} className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{String(s.title || s.name || "Business signal")}</b><span className={`tag ${s.severity === "high" ? "danger" : s.severity === "positive" ? "good" : "warning"}`}>{String(s.severity || "REVIEW").toUpperCase()}</span></div><p>{String(s.message || s.description || "Review this signal.")}</p></div></div>; })}</section>
-        <section className="card"><div className="cardTitle"><b>Recommended actions</b><small>What to consider next</small></div>{context?.recommendations?.map((r, i) => <div className="signal" key={i}><div className="actionNo">{i + 1}</div><div className="signalBody"><b>{String(r.title || r.name || "Recommendation")}</b><p>{String(r.description || r.message || "Evidence-backed action available.")}</p></div></div>)}</section>
-      </div>
-      {anomalies.length > 0 && <section className="card anomalyCard"><div className="cardTitle"><b>Exceptions</b><small>Unusual movements worth investigating</small></div>{anomalies.map((a, i) => <div className="anomaly" key={i}><span className={`iconChip sm tone-${a.severity === "high" ? "danger" : "amber"}`}><Icon name="alert" className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{a.name}</b><span className={`tag ${a.severity === "high" ? "danger" : "warning"}`}>{a.severity.toUpperCase()}</span></div><p>Revenue {a.change_pct >= 0 ? "increased" : "decreased"} <strong>{Math.abs(a.change_pct).toFixed(0)}%</strong> versus the prior period.</p></div></div>)}</section>}
-    </section>
-
-    <section id="reports" className="detailSection"><div className="sectionHeading sectionHeadingLarge"><span>REPORTS</span><small>Reporting and analysis workspace</small></div><div className="card reportCard"><Icon name="trend" className="reportIcon" /><div><b>Detailed reporting</b><p>Review the grouped business views above. Report exports can be added here as the reporting layer grows.</p></div></div></section>
-
-    {error && <div className="errorBox">{error}</div>}
-    <section className="ask card stickyAsk"><div className="askHead"><span className="iconChip"><Icon name="chat" className="icon" /></span><div><span className="eyebrow">ASK BUSINESS BRAIN</span><h3>Ask about your business</h3></div></div><form onSubmit={ask}><input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Why did my sales fall?" disabled={asking} /><button disabled={asking}>{asking ? "Thinking…" : "Ask"}</button></form>{answer && <div className="response"><strong>Business Brain {live ? "· Live" : "· Demo"}</strong><p>{answer}</p></div>}</section>
+    <button className="chatLauncher" onClick={() => setChatOpen(true)} aria-label="Ask Business Brain"><Icon name="chat" className="icon" /><span>Ask Business Brain</span></button>
+    {chatOpen && <div className="chatOverlay" role="dialog" aria-modal="true"><div className="chatWindow"><div className="chatHeader"><div><span className="eyebrow">BUSINESS BRAIN</span><h3>Ask your business</h3><p>Ask a question and get an evidence-based answer.</p></div><button className="chatClose" onClick={() => setChatOpen(false)} aria-label="Close">×</button></div><div className="chatBody">{answer ? <div className="response chatResponse"><strong>Business Brain {live ? "· Live" : "· Demo"}</strong><p>{answer}</p></div> : <div className="chatEmpty"><span className="iconChip"><Icon name="sparkle" className="icon" /></span><b>What would you like to know?</b><p>Try asking about sales, revenue, customers or business health.</p></div>}{error && <div className="errorBox">{error}</div>}</div><form className="chatForm" onSubmit={ask}><input autoFocus value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Why did my sales fall?" disabled={asking} /><button disabled={asking || !question.trim()}>{asking ? "Thinking…" : "Ask"}</button></form></div></div>}
     <DashboardReasoningOverlay reasoning={selectedReasoning} onClose={() => setSelectedReasoning(null)} />
   </main>;
+}
+
+function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
+  return <div className="sectionHeading sectionHeadingLarge contentTitle"><span>{title}</span><small>{subtitle}</small></div>;
 }
