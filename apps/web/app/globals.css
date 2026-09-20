@@ -2522,6 +2522,79 @@ button:disabled {
 .insightsHealth.clear { border-color:#d5e8dc; background:#fbfefc; }
 .insightsHealth.clear strong { color:#27734a; }
 
+.businessSituations {
+  margin-bottom:20px;
+  padding:17px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface);
+  box-shadow:var(--shadow-sm);
+}
+.situationsHead {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  padding-bottom:13px;
+  border-bottom:1px solid var(--border-soft);
+}
+.situationsHead h3 { margin:5px 0 3px; font-size:15px; letter-spacing:-.02em; }
+.situationsHead p { margin:0; color:var(--text-muted); font-size:10.5px; line-height:1.5; }
+.situationsGrid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.situationCard {
+  position:relative;
+  padding:13px 14px 12px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface-2);
+  overflow:hidden;
+}
+.situationCard::before {
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:3px;
+  background:#b7c0cc;
+}
+.situation-critical::before { background:#c64545; }
+.situation-medium::before { background:#d59a32; }
+.situation-info::before { background:#5e7aa5; }
+.situation-positive::before { background:#3b8a5c; }
+.situationTop { display:flex; justify-content:space-between; gap:10px; align-items:center; }
+.situationCard h4 { margin:7px 0 5px; font-size:12px; line-height:1.35; }
+.situationCard > p { margin:0; color:var(--text-muted); font-size:10.5px; line-height:1.5; }
+.situationEvidence, .situationAction {
+  display:flex;
+  align-items:flex-start;
+  gap:7px;
+  margin-top:8px;
+  padding:7px 9px;
+  border-radius:7px;
+  background:var(--surface);
+  font-size:9.5px;
+  line-height:1.45;
+}
+.situationAction { background:var(--primary-tint); }
+.situationEvidence b, .situationAction b {
+  flex:none;
+  color:var(--text);
+  font-size:8.5px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.situationEvidence span, .situationAction span { color:var(--text-muted); overflow-wrap:anywhere; }
+.situationCard small { display:block; margin-top:8px; color:var(--text-faint); font-size:8.5px; text-transform:uppercase; letter-spacing:.04em; }
+@media(max-width:700px) {
+  .situationsGrid { grid-template-columns:1fr; }
+}
+
 .insightSummaryBar {
   display:grid;
   grid-template-columns:repeat(4, minmax(90px, 1fr)) minmax(180px, 1.8fr);
