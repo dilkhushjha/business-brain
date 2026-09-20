@@ -17,7 +17,7 @@ type ProductMomentum = { name: string; current_revenue: number; previous_revenue
 const money = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 const pct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(0)}%`;
 
-export default function PerformanceTables({ section = "sales" }: { section?: "sales" | "customers" }) {
+export default function PerformanceTables({ section = "sales", dataVersion = 0 }: { section?: "sales" | "customers"; dataVersion?: number }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [concentration, setConcentration] = useState<Concentration | null>(null);
@@ -44,7 +44,7 @@ export default function PerformanceTables({ section = "sales" }: { section?: "sa
       setProductConcentration(productConcentrationData);
       setProductMomentum(productMomentumData);
     }).catch(() => { });
-  }, []);
+  }, [dataVersion]);
 
   if (!products.length && !customers.length && !concentration && !inactive.length && !declining.length && !productConcentration && !productMomentum.length) return null;
 
