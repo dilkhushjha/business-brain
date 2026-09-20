@@ -404,3 +404,33 @@ def detect_supplier_spend_signals(risk: dict) -> list[Signal]:
         change=Decimal(str(row["change_pct"]))
         signals.append(Signal(code="SUPPLIER_SPEND_SPIKE",title=f"Purchasing from {row['supplier']} has increased sharply",severity="critical" if change >= 50 else "warning",confidence=Decimal("0.80"),metric="supplier_purchase_spend",current_value=Decimal(str(row["current_spend"])),baseline_value=Decimal(str(row["previous_spend"])),change=change,evidence={"supplier":row["supplier"],"rule":"supplier spend increase >= 25% vs prior period"},recommended_next_step=f"Check whether the increase in purchases from {row['supplier']} reflects demand, stock building, or a change in buying terms."))
     return signals
+
+
+def detect_negative_inventory_signals(negative_inventory: list[dict]) -> list[Signal]:
+    """Surface movement-ledger stock shortfalls as data-integrity signals."""
+    signals: list[Signal] = []
+    for row in negative_inventory:
+        shortfall = Decimal(str(row["shortfall_units"]))
+        signals.append(
+            Signal(
+                code="NEGATIVE_INVENTORY",
+                title=f"{row['name']} has negative inventory",
+                severity="critical",
+                confidence=Decimal("0.98"),
+                metric="inventory_balance",
+                current_value=Decimal(str(row["movement_balance"])),
+                baseline_value=None,
+                change=None,
+                evidence={
+                    "product": row["name"],
+                    "movement_balance": row["movement_balance"],
+                    "shortfall_units": row["shortfall_units"],
+                    "rule": "outbound movement exceeds inbound movement",
+                },
+                recommended_next_step=(
+                    f"Investigate the {shortfall:g}-unit stock shortfall for {row['name']} "
+                    "and reconcile receiving, delivery, returns, or opening stock."
+                ),
+            )
+        )
+    return signals
