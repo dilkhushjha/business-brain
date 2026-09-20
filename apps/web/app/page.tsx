@@ -6,7 +6,6 @@ import PerformanceTables from "../components/PerformanceTables";
 import MarginIntelligence from "../components/MarginIntelligence";
 import ReceivablesIntelligence from "../components/ReceivablesIntelligence";
 import InventoryIntelligence from "../components/InventoryIntelligence";
-import DataFreshness from "../components/DataFreshness";
 import ConnectGate from "../components/ConnectGate";
 import DashboardReasoningOverlay from "../components/DashboardReasoningOverlay";
 import { ApiAuthError, apiFetch, clearSession, getBusinessId, getCurrentUser, hasToken, type SessionUser } from "../lib/api";
@@ -107,6 +106,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [connected, setConnected] = useState(false);
   const [checkedAuth, setCheckedAuth] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [selectedReasoning, setSelectedReasoning] = useState<ReasoningPayload | null>(null);
 
@@ -114,6 +114,7 @@ export default function Home() {
     if (!hasToken()) { setConnected(false); setCheckedAuth(true); return; }
     getCurrentUser().then((current) => { setUser(current); setConnected(true); }).catch(() => { clearSession(); setConnected(false); }).finally(() => setCheckedAuth(true));
   }, []);
+
   useEffect(() => {
     if (!checkedAuth || !connected || !getBusinessId()) { setLoading(false); return; }
     setLoading(true);
@@ -137,7 +138,7 @@ export default function Home() {
   const highSignals = (context?.signals || []).filter((s) => s.severity === "high");
   const positiveSignals = (context?.signals || []).filter((s) => s.severity === "positive");
   const health = highSignals.length >= 2 ? "Needs attention" : highSignals.length === 1 ? "Watch closely" : "On track";
-  const healthText = health === "Needs attention" ? "A few issues deserve attention today. Start with the highest-impact signals below." : health === "Watch closely" ? "Performance is mixed. Review the highlighted signal before making decisions." : "No major warning signals are currently visible.";
+  const healthText = health === "Needs attention" ? "A few issues deserve attention today." : health === "Watch closely" ? "Performance is mixed. Review the highlighted signals." : "No major warning signals are currently visible.";
   const healthIcon = health === "Needs attention" ? "alert" : health === "Watch closely" ? "pulse" : "check";
   const healthTone = health === "Needs attention" ? "danger" : health === "Watch closely" ? "amber" : "success";
 
@@ -157,32 +158,90 @@ export default function Home() {
       setError(x instanceof Error ? x.message : "Unable to reach Business Brain");
     } finally { setAsking(false); }
   }
+
   function ask(e: FormEvent) { e.preventDefault(); runQuestion(question); }
   function logout() { clearSession(); setUser(null); setConnected(false); setAnswer(""); setQuestion(""); setError(""); }
+  function scrollTo(id: string) { document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }
 
   if (checkedAuth && !connected) return <main className="shell"><header className="header"><div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div></div></header><ConnectGate onConnected={() => setConnected(true)} /></main>;
 
   return <main className="shell">
-    <header className="header"><div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div></div><div className="headerRight"><span className="status">Welcome, {user?.username || "user"}</span><a className="status" href="/import">Import data</a><span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Connecting…" : live ? "Live data" : "Demo mode"}</span><button type="button" className="logoutButton" onClick={logout}>Log out</button></div></header>
-    {!live && !loading && <div className="demoBanner"><strong>DEMO MODE</strong><span>Sample electrical-wholesaler scenario · safe for testing</span></div>}
-    <section className="hero"><div className="heroGlow" aria-hidden="true" /><DataFreshness businessName={businessName} /></section>
-    <section className="healthBar"><div className={`healthPanel tone-${healthTone} reasoningClickable`} onClick={explainHealth} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); explainHealth(); } }} role="button" tabIndex={0} aria-label="Explain business health"><span className="iconChip lg"><Icon name={healthIcon} className="icon" /></span><div><span className="eyebrow">BUSINESS HEALTH</span><h3>{health}</h3><p>{healthText}</p></div></div><div className="healthFacts"><div><span className="iconChip sm tone-danger"><Icon name="alert" className="icon" /></span><b>{highSignals.length}</b><span>priority concerns</span></div><div><span className="iconChip sm tone-success"><Icon name="check" className="icon" /></span><b>{positiveSignals.length}</b><span>positive signals</span></div></div></section>
-    <section className="sectionHeading"><span>BUSINESS OVERVIEW</span><small>All imported data + current period</small></section>
-    <section className="metrics"><Metric label="Total Revenue" value={money(totalRevenue?.value ?? revenue?.value)} change="" note="all imported data" icon="wallet" tone="primary" onClick={() => explainMetric("total-revenue")} /><Metric label="Total Invoices" value={totalInvoices?.value ?? "—"} change="" note="all imported data" icon="invoice" tone="primary" onClick={() => explainMetric("total-invoices")} /><Metric label="Current Month Revenue" value={money(rk?.value)} change={pct(revenueChange)} note="vs previous month" icon="trend" tone={revenueChange == null ? "primary" : Number(revenueChange) < 0 ? "danger" : "success"} onClick={() => explainMetric("current-month-revenue")} /><Metric label="Average Invoice Value" value={money(ak?.value)} change={pct(ak?.change)} note="current month" icon="receipt" tone="amber" onClick={() => explainMetric("average-invoice-value")} /></section>
-    <div className="dashboardGrid"><div>
-      <section className="sectionHeading"><span>SALES PERFORMANCE</span><small>Revenue and commercial momentum</small></section>
-      <RevenueTrend /><PerformanceTables />
-      <section className="sectionHeading"><span>PROFITABILITY &amp; CASH</span><small>Where revenue becomes profit and cash</small></section>
-      <div className="statGrid"><MarginIntelligence onExplain={setSelectedReasoning} /><ReceivablesIntelligence onExplain={setSelectedReasoning} /></div>
-      <InventoryIntelligence onExplain={setSelectedReasoning} />
-    </div>
-      <aside>
-        <section className="sectionHeading"><span>MANAGEMENT ATTENTION</span><small>Highest-priority signals</small></section>
-        <section className="card signalCard">{context?.signals?.slice(0, 4).map((s, i) => { const sev = severityIcon(s.severity as string | undefined); return <div className="signal" key={i}><span className={`iconChip sm tone-${sev.tone}`}><Icon name={sev.icon} className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{String(s.title || s.name || "Business signal")}</b><span className={`tag ${s.severity === "high" ? "danger" : s.severity === "positive" ? "good" : "warning"}`}>{String(s.severity || "REVIEW").toUpperCase()}</span></div><p>{String(s.message || s.description || "Review this signal.")}</p></div></div>; })}</section>
-        <section className="sectionHeading"><span>RECOMMENDED ACTIONS</span><small>What to do next</small></section>
-        <section className="card actionCard">{context?.recommendations?.map((r, i) => <div className="signal" key={i}><div className="actionNo">{i + 1}</div><div className="signalBody"><b>{String(r.title || r.name || "Recommendation")}</b><p>{String(r.description || r.message || "Evidence-backed action available.")}</p></div></div>)}</section>
-      </aside></div>
-    {anomalies.length > 0 && <><section className="sectionHeading"><span>EXCEPTIONS</span><small>Unusual movements worth investigating</small></section><section className="card anomalyCard">{anomalies.map((a, i) => <div className="anomaly" key={i}><span className={`iconChip sm tone-${a.severity === "high" ? "danger" : "amber"}`}><Icon name="alert" className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{a.name}</b><span className={`tag ${a.severity === "high" ? "danger" : "warning"}`}>{a.severity.toUpperCase()}</span></div><p>Revenue {a.change_pct >= 0 ? "increased" : "decreased"} <strong>{Math.abs(a.change_pct).toFixed(0)}%</strong> versus the prior period.</p></div></div>)}</section></>}
+    <header className="header dashboardHeader">
+      <div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Dashboard</h1></div></div>
+      <div className="headerRight">
+        <span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Updating…" : live ? "Live data" : "Demo mode"}</span>
+        <div className="profileWrap">
+          <button type="button" className="profileButton" onClick={() => setProfileOpen(!profileOpen)} aria-expanded={profileOpen}><span className="avatar">{(user?.username || "U").charAt(0).toUpperCase()}</span><span className="profileName">{user?.username || "User"}</span><span className="profileChevron">⌄</span></button>
+          {profileOpen && <div className="profileMenu">
+            <div className="profileMenuHead"><strong>{user?.username || "User"}</strong><span>{businessName}</span></div>
+            <button type="button" onClick={() => { setProfileOpen(false); scrollTo("business-overview"); }}>Business overview</button>
+            <a href="/import">Import data</a>
+            <button type="button" className="profileLogout" onClick={logout}>Log out</button>
+          </div>}
+        </div>
+      </div>
+    </header>
+
+    {!live && !loading && <div className="demoBanner"><strong>DEMO MODE</strong><span>Sample business data · safe for testing</span></div>}
+
+    <section className="dashboardIntro">
+      <div><span className="eyebrow">OVERVIEW</span><h2>Good morning, {user?.username || "there"}.</h2><p>{businessName} · Here's the current picture of your business.</p></div>
+      <div className="freshStatus"><span className={`freshDot ${live ? "live" : ""}`} /> {loading ? "Refreshing data" : live ? "Data is up to date" : "Using sample data"}</div>
+    </section>
+
+    <section id="business-health" className="dashboardSection">
+      <div className="sectionHeading sectionHeadingLarge"><span>BUSINESS HEALTH</span><small>At-a-glance signals that deserve your attention</small></div>
+      <div className="healthLiteGrid">
+        <div className={`healthLiteMain tone-${healthTone}`} onClick={explainHealth} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); explainHealth(); } }}>
+          <div className="healthLiteIcon"><Icon name={healthIcon} className="icon" /></div><div><span className="eyebrow">CURRENT STATUS</span><h3>{health}</h3><p>{healthText}</p></div><span className="cardArrow">→</span>
+        </div>
+        <Metric label="Priority concerns" value={String(highSignals.length)} change="" note="signals requiring review" icon="alert" tone="danger" onClick={() => scrollTo("insight-details")} />
+        <Metric label="Positive signals" value={String(positiveSignals.length)} change="" note="healthy movements" icon="check" tone="success" onClick={() => scrollTo("insight-details")} />
+      </div>
+    </section>
+
+    <section id="business-overview" className="dashboardSection">
+      <div className="sectionHeading sectionHeadingLarge"><span>BUSINESS OVERVIEW</span><small>Core numbers from your imported business data</small></div>
+      <div className="metrics">
+        <Metric label="Total Revenue" value={money(totalRevenue?.value ?? revenue?.value)} change="" note="all imported data" icon="wallet" onClick={() => explainMetric("total-revenue")} />
+        <Metric label="Total Invoices" value={totalInvoices?.value ?? "—"} change="" note="all imported data" icon="invoice" onClick={() => explainMetric("total-invoices")} />
+        <Metric label="Current Month Revenue" value={money(rk?.value)} change={pct(revenueChange)} note="vs previous month" icon="trend" tone={revenueChange == null ? "primary" : Number(revenueChange) < 0 ? "danger" : "success"} onClick={() => explainMetric("current-month-revenue")} />
+        <Metric label="Average Invoice Value" value={money(ak?.value)} change={pct(ak?.change)} note="current month" icon="receipt" tone="amber" onClick={() => explainMetric("average-invoice-value")} />
+      </div>
+    </section>
+
+    <section id="sales-performance" className="dashboardSection">
+      <div className="sectionHeading sectionHeadingLarge"><span>SALES PERFORMANCE</span><small>Revenue movement and commercial momentum</small></div>
+      <div className="salesPreview"><RevenueTrend /><PerformanceTables /></div>
+    </section>
+
+    <section className="exploreArea">
+      <div className="sectionHeading sectionHeadingLarge"><span>EXPLORE YOUR BUSINESS</span><small>Detailed areas are grouped here so the dashboard stays focused</small></div>
+      <div className="exploreGrid">
+        <button id="financials" className="exploreCard" onClick={() => scrollTo("financial-details")}><span className="iconChip"><Icon name="wallet" className="icon" /></span><b>Financials</b><p>Margins, profitability and receivables.</p><span>View details →</span></button>
+        <button id="operations" className="exploreCard" onClick={() => scrollTo("operations-details")}><span className="iconChip"><Icon name="receipt" className="icon" /></span><b>Operations</b><p>Inventory health and operational signals.</p><span>View details →</span></button>
+        <button id="customers" className="exploreCard" onClick={() => scrollTo("customer-details")}><span className="iconChip"><Icon name="invoice" className="icon" /></span><b>Customers & Sales</b><p>Customer contribution and product insights.</p><span>View details →</span></button>
+        <button id="insights" className="exploreCard" onClick={() => scrollTo("insight-details")}><span className="iconChip"><Icon name="sparkle" className="icon" /></span><b>Business Insights</b><p>Signals, anomalies and recommended actions.</p><span>View details →</span></button>
+        <a className="exploreCard" href="/import"><span className="iconChip"><Icon name="arrow" className="icon" /></span><b>Data & Imports</b><p>Bring in new business data and manage imports.</p><span>Manage data →</span></a>
+        <button className="exploreCard" onClick={() => scrollTo("reports")}><span className="iconChip"><Icon name="trend" className="icon" /></span><b>Reports</b><p>Review the business data behind your dashboard.</p><span>View reports →</span></button>
+      </div>
+    </section>
+
+    <section id="financial-details" className="detailSection"><div className="sectionHeading sectionHeadingLarge"><span>FINANCIALS</span><small>Profitability and cash position</small></div><div className="statGrid"><MarginIntelligence onExplain={setSelectedReasoning} /><ReceivablesIntelligence onExplain={setSelectedReasoning} /></div></section>
+    <section id="operations-details" className="detailSection"><div className="sectionHeading sectionHeadingLarge"><span>OPERATIONS</span><small>Inventory and operational intelligence</small></div><InventoryIntelligence onExplain={setSelectedReasoning} /></section>
+    <section id="customer-details" className="detailSection"><div className="sectionHeading sectionHeadingLarge"><span>CUSTOMERS & SALES DETAILS</span><small>Customer contribution, product movement and commercial risks</small></div><PerformanceTables /></section>
+
+    <section id="insight-details" className="detailSection">
+      <div className="sectionHeading sectionHeadingLarge"><span>BUSINESS INSIGHTS</span><small>Signals and recommended actions</small></div>
+      <div className="insightColumns">
+        <section className="card"><div className="cardTitle"><b>Management attention</b><small>Highest-priority signals</small></div>{context?.signals?.slice(0, 5).map((s, i) => { const sev = severityIcon(s.severity as string | undefined); return <div className="signal" key={i}><span className={`iconChip sm tone-${sev.tone}`}><Icon name={sev.icon} className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{String(s.title || s.name || "Business signal")}</b><span className={`tag ${s.severity === "high" ? "danger" : s.severity === "positive" ? "good" : "warning"}`}>{String(s.severity || "REVIEW").toUpperCase()}</span></div><p>{String(s.message || s.description || "Review this signal.")}</p></div></div>; })}</section>
+        <section className="card"><div className="cardTitle"><b>Recommended actions</b><small>What to consider next</small></div>{context?.recommendations?.map((r, i) => <div className="signal" key={i}><div className="actionNo">{i + 1}</div><div className="signalBody"><b>{String(r.title || r.name || "Recommendation")}</b><p>{String(r.description || r.message || "Evidence-backed action available.")}</p></div></div>)}</section>
+      </div>
+      {anomalies.length > 0 && <section className="card anomalyCard"><div className="cardTitle"><b>Exceptions</b><small>Unusual movements worth investigating</small></div>{anomalies.map((a, i) => <div className="anomaly" key={i}><span className={`iconChip sm tone-${a.severity === "high" ? "danger" : "amber"}`}><Icon name="alert" className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{a.name}</b><span className={`tag ${a.severity === "high" ? "danger" : "warning"}`}>{a.severity.toUpperCase()}</span></div><p>Revenue {a.change_pct >= 0 ? "increased" : "decreased"} <strong>{Math.abs(a.change_pct).toFixed(0)}%</strong> versus the prior period.</p></div></div>)}</section>}
+    </section>
+
+    <section id="reports" className="detailSection"><div className="sectionHeading sectionHeadingLarge"><span>REPORTS</span><small>Reporting and analysis workspace</small></div><div className="card reportCard"><Icon name="trend" className="reportIcon" /><div><b>Detailed reporting</b><p>Review the grouped business views above. Report exports can be added here as the reporting layer grows.</p></div></div></section>
+
     {error && <div className="errorBox">{error}</div>}
     <section className="ask card stickyAsk"><div className="askHead"><span className="iconChip"><Icon name="chat" className="icon" /></span><div><span className="eyebrow">ASK BUSINESS BRAIN</span><h3>Ask about your business</h3></div></div><form onSubmit={ask}><input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Why did my sales fall?" disabled={asking} /><button disabled={asking}>{asking ? "Thinking…" : "Ask"}</button></form>{answer && <div className="response"><strong>Business Brain {live ? "· Live" : "· Demo"}</strong><p>{answer}</p></div>}</section>
     <DashboardReasoningOverlay reasoning={selectedReasoning} onClose={() => setSelectedReasoning(null)} />
