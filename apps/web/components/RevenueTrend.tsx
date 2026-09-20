@@ -29,7 +29,7 @@ export default function RevenueTrend() {
 
   const rawMax = Math.max(...points.map((p) => p.revenue), 1);
   const rawMin = Math.min(...points.map((p) => p.revenue), 0);
-  const width = 900, height = 210, padX = 2, padY = 18;
+  const width = 900, height = 210, padX = 0, padY = 18;
   const rawRange = Math.max(rawMax - rawMin, 1);
   const chartMin = Math.max(0, rawMin - rawRange * 0.08);
   const chartMax = rawMax + rawRange * 0.08;
@@ -89,7 +89,7 @@ export default function RevenueTrend() {
         <div className="trendDates">{points.map((point, i) => {
           const step = Math.ceil(points.length / 6);
           const showLabel = points.length <= 8 || i === 0 || i === points.length - 1 || i % step === 0;
-          return showLabel ? <span key={point.date + i} style={{ left: (xAt(i) / width) * 100 + "%" }}>{formatDate(point.date)}</span> : null;
+          return showLabel ? <span key={point.date + i} style={{ left: (xAt(i) / width) * 100 + "%", transform: i === 0 ? "translateX(0)" : i === points.length - 1 ? "translateX(-100%)" : "translateX(-50%)" }}>{formatDate(point.date)}</span> : null;
         })}</div>
       </div>
       <div className="trendLabels">
