@@ -17,7 +17,7 @@ def top_products(db: Session, business_id: UUID, days: int = 30, limit: int = 10
                func.sum(SaleLineModel.quantity * SaleLineModel.unit_price).label("revenue"))
         .join(SaleLineModel, SaleLineModel.product_id == ProductModel.id)
         .join(SaleModel, SaleModel.id == SaleLineModel.sale_id)
-        .where(SaleModel.business_id == business_id, SaleModel.transaction_date.between(start, end))
+        .where(ProductModel.business_id == business_id, SaleModel.business_id == business_id, SaleModel.transaction_date.between(start, end))
         .group_by(ProductModel.id, ProductModel.name)
         .order_by(func.sum(SaleLineModel.quantity * SaleLineModel.unit_price).desc())
         .limit(limit)
