@@ -52,6 +52,9 @@ def record_customer_payment(
         if sale.customer_id is None:
             sale.customer_id = customer.id
 
+    if sale.customer_id is None:
+        raise HTTPException(status_code=400, detail="A customer is required for a customer payment.")
+
     outstanding = max(Decimal(sale.total_amount or 0) - Decimal(sale.paid_amount or 0), Decimal("0"))
     if request.amount > outstanding:
         raise HTTPException(
