@@ -1,8 +1,10 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from packages.analytics.business_brain.metrics.inventory import dead_stock, demand_spikes, inventory_signals, slow_moving_products, stock_risk
 from apps.api.app.api.connector_auth import require_business_access
+from packages.shared.database.models import InventoryMovementModel, ProductModel
 from packages.shared.database.session import get_db
 router=APIRouter(prefix="/inventory",tags=["analytics"])
 @router.get("/{business_id}/signals")
@@ -15,3 +17,49 @@ def stock_risk_route(business_id:UUID,velocity_days:int=30,low_days_threshold:fl
 def demand_spikes_route(business_id:UUID,days:int=30,threshold:float=100,limit:int=10,db:Session=Depends(get_db),_auth:dict=Depends(require_business_access)): return demand_spikes(db,business_id,days,threshold,limit)
 @router.get("/{business_id}/dead-stock")
 def dead_stock_route(business_id:UUID,velocity_days:int=60,limit:int=10,db:Session=Depends(get_db),_auth:dict=Depends(require_business_access)): return dead_stock(db,business_id,velocity_days,limit=limit)
+
+
+@router.get("/{business_id}/purchase-movements")
+def purchase_movements(
+    business_id: UUID,
+    days: int = 30,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    _auth: dict = Depends(require_business_access),
+):
+    """Show inventory units/cost entering the business through purchases.
+
+    This is the purchase-side inventory ledger, not an estimate of stock on
+    hand. Actual stock-on-hand remains driven by InventorySnapshotModel until
+    sales/returns are also represented as inventory movements.
+    """
+    from datetime import date, timedelta
+    end = date.today()
+    start = end - timedelta(days=max(1, days) - 1)
+    rows = db.execute(
+        select(
+            ProductModel.name,
+            func.coalesce(func.sum(InventoryMovementModel.quantity), 0),
+            func.coalesce(
+                func.sum(InventoryMovementModel.quantity * InventoryMovementModel.unit_cost),
+                0,
+            ),
+        )
+        .join(ProductModel, ProductModel.id == InventoryMovementModel.product_id)
+        .where(
+            InventoryMovementModel.business_id == business_id,
+            InventoryMovementModel.movement_type == "purchase",
+            InventoryMovementModel.movement_date.between(start, end),
+        )
+        .group_by(ProductModel.id, ProductModel.name)
+        .order_by(func.sum(InventoryMovementModel.quantity).desc())
+        .limit(max(1, min(limit, 50)))
+    ).all()
+    return [
+        {
+            "name": row[0],
+            "quantity_received": float(row[1]),
+            "purchase_value": float(row[2]),
+        }
+        for row in rows
+    ]
