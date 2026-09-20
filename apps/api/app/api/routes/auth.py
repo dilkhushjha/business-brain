@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 import jwt
 from fastapi import APIRouter, Depends, Header, HTTPException
-from jwt.exceptions import InvalidTokenError
+from jwt import InvalidTokenError
 from pydantic import BaseModel, Field
 from pwdlib import PasswordHash
 from sqlalchemy import text
