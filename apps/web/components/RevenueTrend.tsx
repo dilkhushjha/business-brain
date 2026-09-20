@@ -26,16 +26,19 @@ export default function RevenueTrend() {
 
   if (!points.length) return null;
 
-  const max = Math.max(...points.map((p) => p.revenue), 1);
-  const min = Math.min(...points.map((p) => p.revenue), 0);
-  const width = 720, height = 220, pad = 20;
-  const range = Math.max(max - min, 1);
-  const xAt = (i: number) => pad + (i / Math.max(points.length - 1, 1)) * (width - pad * 2);
-  const yAt = (v: number) => height - pad - ((v - min) / range) * (height - pad * 2);
+  const rawMax = Math.max(...points.map((p) => p.revenue), 1);
+  const rawMin = Math.min(...points.map((p) => p.revenue), 0);
+  const width = 900, height = 210, padX = 18, padY = 18;
+  const rawRange = Math.max(rawMax - rawMin, 1);
+  const chartMin = Math.max(0, rawMin - rawRange * 0.08);
+  const chartMax = rawMax + rawRange * 0.08;
+  const range = Math.max(chartMax - chartMin, 1);
+  const xAt = (i: number) => padX + (i / Math.max(points.length - 1, 1)) * (width - padX * 2);
+  const yAt = (v: number) => height - padY - ((v - chartMin) / range) * (height - padY * 2);
 
   const linePath = points.map((p, i) => `${i ? "L" : "M"}${xAt(i).toFixed(1)},${yAt(p.revenue).toFixed(1)}`).join(" ");
-  const areaPath = `${linePath} L${xAt(points.length - 1).toFixed(1)},${height - pad} L${xAt(0).toFixed(1)},${height - pad} Z`;
-  const gridLines = [0.25, 0.5, 0.75].map((f) => height - pad - f * (height - pad * 2));
+  const areaPath = `${linePath} L${xAt(points.length - 1).toFixed(1)},${height - padY} L${xAt(0).toFixed(1)},${height - padY} Z`;
+  const gridLines = [0.25, 0.5, 0.75].map((f) => height - padY - f * (height - padY * 2));
   const formatDate = (value: string) => {
     const date = new Date(`${value}T00:00:00`);
     return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
@@ -59,14 +62,18 @@ export default function RevenueTrend() {
             <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
           </linearGradient>
         </defs>
-        {gridLines.map((y, i) => <line key={i} x1={pad} x2={width - pad} y1={y} y2={y} className="trendGrid" />)}
+        {gridLines.map((y, i) => <line key={i} x1={padX} x2={width - padX} y1={y} y2={y} className="trendGrid" />)}
         <path d={areaPath} fill="url(#revFill)" stroke="none" />
         <path d={linePath} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        <line x1={xAt(points.length - 1)} x2={xAt(points.length - 1)} y1={pad} y2={height - pad} className="trendHoverLine" />
+        <line x1={xAt(points.length - 1)} x2={xAt(points.length - 1)} y1={padY} y2={height - padY} className="trendHoverLine" />
         <circle cx={xAt(points.length - 1)} cy={yAt(last.revenue)} r="4.5" fill="currentColor" stroke="#fff" strokeWidth="2" />
         {points.map((point, i) => <circle key={point.date + i} cx={xAt(i)} cy={yAt(point.revenue)} r="9" className="trendPointHit"><title>{formatDate(point.date)} · {money(point.revenue)}</title></circle>)}
         </svg>
-        <div className="trendDates">{points.map((point, i) => <span key={point.date + i} style={{ left: `${(xAt(i) / width) * 100}%` }}>{formatDate(point.date)}</span>)}</div>
+        <div className="trendDates">{points.map((point, i) => {
+          const step = Math.ceil(points.length / 6);
+          const showLabel = points.length <= 8 || i === 0 || i === points.length - 1 || i % step === 0;
+          return showLabel ? <span key={point.date + i} style={{ left: (xAt(i) / width) * 100 + "%" }}>{formatDate(point.date)}</span> : null;
+        })}</div>
       </div>
       <div className="trendLabels">
         <span>{formatDate(first.date)}</span>
