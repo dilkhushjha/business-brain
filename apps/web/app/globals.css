@@ -2167,3 +2167,155 @@ button:disabled {
 .filePreview small { display:block; color:var(--text-muted); margin-top:4px; }
 .issues.compact { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
 .issues.compact span { font-size:11px; color:var(--text-muted); }
+
+
+/* Modern sales data upload workspace */
+.importCard {
+  padding: 0;
+  overflow: hidden;
+}
+.importCardHead {
+  padding: 24px 26px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--border-soft);
+  background: linear-gradient(180deg, #ffffff, #fbfcff);
+}
+.importCardHead h3 {
+  margin: 6px 0 6px;
+  font-size: 21px;
+  letter-spacing: -.035em;
+}
+.importCardHead p {
+  margin: 0;
+  max-width: 680px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.importCardHead .status {
+  flex: none;
+}
+.importCard > .field {
+  margin: 0;
+  padding: 22px 26px 0;
+}
+.importCard > .field > label {
+  margin-bottom: 10px;
+}
+.uploadZone {
+  margin: 0 26px;
+  min-height: 178px;
+  border: 1.5px dashed #b9c6d8;
+  border-radius: 15px;
+  background: linear-gradient(180deg, #fbfcff, #f7f9fd);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 26px;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.uploadZone:hover {
+  border-color: var(--primary);
+  background: var(--primary-tint);
+  transform: translateY(-1px);
+}
+.uploadInput {
+  display: none !important;
+}
+.uploadIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  background: var(--primary-tint);
+  color: var(--primary);
+  flex: none;
+}
+.uploadIcon .icon {
+  width: 23px;
+  height: 23px;
+  transform: rotate(-90deg);
+}
+.uploadCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.uploadCopy strong {
+  font-size: 15px;
+  letter-spacing: -.015em;
+}
+.uploadCopy span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.uploadCopy small {
+  margin-top: 3px;
+  color: var(--text-faint);
+  font-size: 10.5px;
+}
+.uploadBrowse {
+  margin-left: 10px;
+  padding: 9px 13px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--primary-dark);
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.uploadZone:hover .uploadBrowse {
+  border-color: #aab9d2;
+}
+.importCard > .selectedFiles {
+  margin: 14px 26px 0;
+}
+.importCard > .actions {
+  padding: 18px 26px 24px;
+  justify-content: flex-start;
+}
+.importCard > .actions button {
+  padding: 11px 17px;
+}
+.dashboardReturnButton {
+  margin-top: 14px;
+  background: var(--primary-dark);
+}
+.dashboardReturnButton:hover {
+  background: #152c86;
+}
+@media(max-width:700px) {
+  .importCardHead {
+    flex-direction: column;
+    padding: 20px;
+  }
+  .importCard > .field {
+    padding: 18px 20px 0;
+  }
+  .uploadZone {
+    margin: 0 20px;
+    min-height: 165px;
+    flex-direction: column;
+    text-align: center;
+    padding: 22px;
+  }
+  .uploadBrowse {
+    margin-left: 0;
+  }
+  .importCard > .selectedFiles {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+  .importCard > .actions {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
