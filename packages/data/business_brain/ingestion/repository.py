@@ -7,7 +7,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from packages.data.business_brain.ingestion.canonicalize import canonicalize_sale_row
-from packages.shared.database.models import CustomerModel, ProductModel, SaleLineModel, SaleModel
+from packages.shared.database.models import CustomerModel, InventoryMovementModel, ProductModel, SaleLineModel, SaleModel
 
 
 def _find_customer(db: Session, business_id: UUID, name: str | None) -> CustomerModel | None:
@@ -64,6 +64,34 @@ def _replace_sale_lines(
         )
 
 
+def _replace_sale_inventory_movements(
+    db: Session,
+    business_id: UUID,
+    invoice_number: str,
+    sale_rows: list[dict],
+) -> None:
+    """Rebuild source-owned sale movements for one invoice."""
+    db.execute(
+        delete(InventoryMovementModel).where(
+            InventoryMovementModel.business_id == business_id,
+            InventoryMovementModel.movement_type == "sale",
+            InventoryMovementModel.reference == invoice_number,
+        )
+    )
+    for row in sale_rows:
+        db.add(
+            InventoryMovementModel(
+                business_id=business_id,
+                product_id=row["product_id"],
+                movement_date=row["transaction_date"],
+                movement_type="sale",
+                quantity=row["quantity"],
+                unit_cost=row.get("cost_price"),
+                reference=invoice_number,
+            )
+        )
+
+
 def persist_sales(db: Session, business_id: UUID, rows: list[dict]) -> dict[str, int]:
     """Persist sales as invoice-level records and reconcile repeated exports.
 
@@ -108,6 +136,9 @@ def persist_sales(db: Session, business_id: UUID, rows: list[dict]) -> dict[str,
             existing.due_date = header["due_date"]
             existing.paid_amount = header["paid_amount"]
             _replace_sale_lines(db, existing, invoice_rows)
+            db.flush()
+            movement_rows = [{"product_id": line.product_id, "quantity": line.quantity, "cost_price": line.cost_price, "transaction_date": existing.transaction_date} for line in db.execute(select(SaleLineModel).where(SaleLineModel.sale_id == existing.id)).scalars().all()]
+            _replace_sale_inventory_movements(db, business_id, invoice, movement_rows)
             reconciled += 1
             continue
 
@@ -125,6 +156,9 @@ def persist_sales(db: Session, business_id: UUID, rows: list[dict]) -> dict[str,
         db.add(sale)
         db.flush()
         _replace_sale_lines(db, sale, invoice_rows)
+        db.flush()
+        movement_rows = [{"product_id": line.product_id, "quantity": line.quantity, "cost_price": line.cost_price, "transaction_date": sale.transaction_date} for line in db.execute(select(SaleLineModel).where(SaleLineModel.sale_id == sale.id)).scalars().all()]
+        _replace_sale_inventory_movements(db, business_id, invoice, movement_rows)
         created += 1
 
     return {"created": created, "reconciled": reconciled}
