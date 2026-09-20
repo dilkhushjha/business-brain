@@ -1852,7 +1852,6 @@ button:disabled {
   padding: 0;
   background: var(--bg);
 }
-.appShell.sidebarCollapsed { grid-template-columns: 5% 95%; }
 .appSidebar {
   position: sticky;
   top: 0;
@@ -2136,7 +2135,6 @@ button:disabled {
 .chatForm input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-tint); }
 .chatForm button { min-width: 78px; }
 @media(max-width:900px) {
-  .appShell, .appShell.sidebarCollapsed { grid-template-columns: 64px 1fr; }
   .appSidebar { padding-left: 7px; padding-right: 7px; }
   .sidebarBrandText, .navGroupLabel, .navLabel { display: none; }
   .sidebarBrand { justify-content: center; }
@@ -2149,7 +2147,6 @@ button:disabled {
   .appMain { padding: 0 20px; }
 }
 @media(max-width:600px) {
-  .appShell, .appShell.sidebarCollapsed { grid-template-columns: 54px 1fr; }
   .appMain { padding: 0 12px; }
   .profileName { display: none; }
   .chatOverlay { padding: 0; }

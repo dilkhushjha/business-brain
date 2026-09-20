@@ -17,7 +17,7 @@ type ProductMomentum = { name: string; current_revenue: number; previous_revenue
 const money = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 const pct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(0)}%`;
 
-export default function PerformanceTables() {
+export default function PerformanceTables({ section = "sales" }: { section?: "sales" | "customers" }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [concentration, setConcentration] = useState<Concentration | null>(null);
@@ -51,7 +51,7 @@ export default function PerformanceTables() {
   return (
     <>
       <section className="grid performanceGrid">
-        <div className="card">
+        {section === "sales" && <div className="card">
           <div className="cardTitle"><span><Icon name="trophy" className="icon" /></span><h3>Top products</h3><small>Last 30 days</small></div>
           {products.length ? products.map((p, i) => (
             <div className="performanceRow" key={p.name}>
@@ -59,9 +59,9 @@ export default function PerformanceTables() {
               <div><b>{p.name}</b><small>{p.quantity} units sold</small></div>
               <strong>{money(p.revenue)}</strong>
             </div>
-          )) : <p className="emptyInsight">No product sales in the current 30-day period.</p>}
-        </div>
-        <div className="card">
+          )) : <p className="emptyInsight">No product sales found.</p>}
+        </div>}
+        {section === "customers" && <div className="card">
           <div className="cardTitle"><span><Icon name="users" className="icon" /></span><h3>Top customers</h3><small>Last 30 days</small></div>
           {customers.length ? customers.map((c, i) => (
             <div className="performanceRow" key={c.name}>
@@ -69,11 +69,11 @@ export default function PerformanceTables() {
               <div><b>{c.name}</b><small>{c.orders} orders</small></div>
               <strong>{money(c.revenue)}</strong>
             </div>
-          )) : <p className="emptyInsight">No customer sales in the current 30-day period.</p>}
-        </div>
+          )) : <p className="emptyInsight">No customer sales found.</p>}
+        </div>}
       </section>
 
-      {(productConcentration || productMomentum.length) && (
+      {section === "sales" && (productConcentration || productMomentum.length) && (
         <>
           <div className="customerInsightIntro">
             <div><span className="eyebrow">PRODUCT INTELLIGENCE</span><h3>What is driving the business?</h3></div>
@@ -118,7 +118,7 @@ export default function PerformanceTables() {
         </>
       )}
 
-      {(concentration || declining.length || inactive.length) && (
+      {section === "customers" && (concentration || declining.length || inactive.length) && (
         <>
           <div className="customerInsightIntro">
             <div><span className="eyebrow">CUSTOMER INTELLIGENCE</span><h3>Who needs attention?</h3></div>

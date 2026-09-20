@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import RevenueTrend from "../components/RevenueTrend";
 import PerformanceTables from "../components/PerformanceTables";
 import MarginIntelligence from "../components/MarginIntelligence";
@@ -109,7 +109,6 @@ export default function Home() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [selectedReasoning, setSelectedReasoning] = useState<ReasoningPayload | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
   const [chatOpen, setChatOpen] = useState(false);
 
@@ -164,7 +163,6 @@ export default function Home() {
 
   function ask(e: FormEvent) { e.preventDefault(); runQuestion(question); }
   function logout() { clearSession(); setUser(null); setConnected(false); setAnswer(""); setQuestion(""); setError(""); }
-  function scrollTo(id: string) { document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }
 
   if (checkedAuth && !connected) return <main className="shell"><header className="header"><div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div></div></header><ConnectGate onConnected={() => setConnected(true)} /></main>;
 
@@ -199,11 +197,11 @@ export default function Home() {
         <Metric label="Current Month Revenue" value={money(rk?.value)} change={pct(revenueChange)} note="vs previous month" icon="trend" tone={revenueChange == null ? "primary" : Number(revenueChange) < 0 ? "danger" : "success"} onClick={() => explainMetric("current-month-revenue")} />
         <Metric label="Average Invoice Value" value={money(ak?.value)} change={pct(ak?.change)} note="current month" icon="receipt" tone="amber" onClick={() => explainMetric("average-invoice-value")} />
       </div></section>
-      <section className="dashboardSection"><div className="sectionHeading sectionHeadingLarge"><span>SALES PERFORMANCE</span><small>Revenue movement and commercial momentum</small></div><div className="salesPreview"><RevenueTrend /><PerformanceTables /></div></section>
+      <section className="dashboardSection"><div className="sectionHeading sectionHeadingLarge"><span>SALES PERFORMANCE</span><small>Revenue movement and commercial momentum</small></div><div className="salesPreview"><RevenueTrend /></div></section>
     </>;
 
     if (activeSection === "sales") return <section className="contentSection"><SectionTitle title="SALES PERFORMANCE" subtitle="Revenue movement and commercial momentum" /><div className="salesPreview"><RevenueTrend /><PerformanceTables /></div></section>;
-    if (activeSection === "customers") return <section className="contentSection"><SectionTitle title="CUSTOMERS" subtitle="Customer contribution, activity and product performance" /><PerformanceTables /></section>;
+    if (activeSection === "customers") return <section className="contentSection"><SectionTitle title="CUSTOMERS" subtitle="Customer contribution, activity and follow-up intelligence" /><PerformanceTables section="customers" /></section>;
     if (activeSection === "financials") return <section className="contentSection"><SectionTitle title="FINANCIALS" subtitle="Profitability, margins, cash position and receivables" /><div className="statGrid"><MarginIntelligence onExplain={setSelectedReasoning} /><ReceivablesIntelligence onExplain={setSelectedReasoning} /></div></section>;
     if (activeSection === "operations") return <section className="contentSection"><SectionTitle title="OPERATIONS" subtitle="Inventory health and operational intelligence" /><InventoryIntelligence onExplain={setSelectedReasoning} /></section>;
     if (activeSection === "insights") return <section className="contentSection"><SectionTitle title="BUSINESS INSIGHTS" subtitle="Signals, anomalies and recommended actions" /><div className="insightColumns">
@@ -211,18 +209,18 @@ export default function Home() {
       <section className="card"><div className="cardTitle"><b>Recommended actions</b><small>What to consider next</small></div>{context?.recommendations?.map((r, i) => <div className="signal" key={i}><div className="actionNo">{i + 1}</div><div className="signalBody"><b>{String(r.title || r.name || "Recommendation")}</b><p>{String(r.description || r.message || "Evidence-backed action available.")}</p></div></div>)}</section>
     </div>{anomalies.length > 0 && <section className="card anomalyCard"><div className="cardTitle"><b>Exceptions</b><small>Unusual movements worth investigating</small></div>{anomalies.map((a, i) => <div className="anomaly" key={i}><span className={`iconChip sm tone-${a.severity === "high" ? "danger" : "amber"}`}><Icon name="alert" className="icon" /></span><div className="signalBody"><div className="signalTop"><b>{a.name}</b><span className={`tag ${a.severity === "high" ? "danger" : "warning"}`}>{a.severity.toUpperCase()}</span></div><p>Revenue {a.change_pct >= 0 ? "increased" : "decreased"} <strong>{Math.abs(a.change_pct).toFixed(0)}%</strong> versus the prior period.</p></div></div>)}</section>}</section>;
     if (activeSection === "reports") return <section className="contentSection"><SectionTitle title="REPORTS" subtitle="Reporting and analysis workspace" /><div className="card reportCard"><Icon name="trend" className="reportIcon" /><div><b>Detailed reporting</b><p>Review the business data and performance views. Report exports can be added here as the reporting layer grows.</p></div></div></section>;
-    return <section className="contentSection"><SectionTitle title="DATA & IMPORTS" subtitle="Bring in new business data and manage your data pipeline" /><div className="card reportCard"><Icon name="arrow" className="reportIcon" /><div><b>Data management</b><p>Import new CSV data, review your imported information and keep the business workspace current.</p><a className="inlineAction" href="/import">Open import workspace →</a></div></div></section>;
+    return <section className="contentSection"><SectionTitle title="DATA & IMPORTS" subtitle="Upload, validate and commit business data without leaving the dashboard" /><ImportWorkspace businessName={businessName} /></section>;
   }
 
-  return <main className={`shell appShell ${sidebarCollapsed ? "sidebarCollapsed" : ""}`}>
+  return <main className="shell appShell">
     <aside className="appSidebar">
-      <div className="sidebarTop"><div className="sidebarBrand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div className="sidebarBrandText"><span className="eyebrow">BUSINESS BRAIN</span><strong>{businessName}</strong></div></div><button className="sidebarToggle" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>{sidebarCollapsed ? "→" : "←"}</button></div>
-      <nav className="sidebarNav">{navGroups.map((group) => <div className="navGroup" key={group.label}><span className="navGroupLabel">{group.label}</span>{group.items.map((item) => <button key={item.id} className={`navItem ${activeSection === item.id ? "active" : ""}`} onClick={() => setActiveSection(item.id)} title={sidebarCollapsed ? item.label : undefined}><span className="navIcon"><Icon name={item.icon} className="icon" /></span><span className="navLabel">{item.label}</span></button>)}</div>)}</nav>
+      <div className="sidebarTop"><div className="sidebarBrand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div className="sidebarBrandText"><span className="eyebrow">BUSINESS BRAIN</span><strong>{businessName}</strong></div></div></div>
+      <nav className="sidebarNav">{navGroups.map((group) => <div className="navGroup" key={group.label}><span className="navGroupLabel">{group.label}</span>{group.items.map((item) => <button key={item.id} className={`navItem ${activeSection === item.id ? "active" : ""}`} onClick={() => setActiveSection(item.id)}><span className="navIcon"><Icon name={item.icon} className="icon" /></span><span className="navLabel">{item.label}</span></button>)}</div>)}</nav>
       <div className="sidebarBottom"><button className="sidebarAsk" onClick={() => setChatOpen(true)} title="Ask Business Brain"><Icon name="chat" className="icon" /><span className="navLabel">Ask Business Brain</span></button></div>
     </aside>
 
     <div className="appMain">
-      <header className="header dashboardHeader"><div className="mobileBrand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><strong>Business Brain</strong></div><div className="headerRight"><span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Updating…" : live ? "Live data" : "Demo mode"}</span><div className="profileWrap"><button type="button" className="profileButton" onClick={() => setProfileOpen(!profileOpen)} aria-expanded={profileOpen}><span className="avatar">{(user?.username || "U").charAt(0).toUpperCase()}</span><span className="profileName">{user?.username || "User"}</span><span className="profileChevron">⌄</span></button>{profileOpen && <div className="profileMenu"><div className="profileMenuHead"><strong>{user?.username || "User"}</strong><span>{businessName}</span></div><a href="/import">Import data</a><button type="button" className="profileLogout" onClick={logout}>Log out</button></div>}</div></div></header>
+      <header className="header dashboardHeader"><div className="headerSpacer" /><div className="headerRight"><span className={`status ${loading ? "loading" : live ? "live" : "demo"}`}><span className="statusDot" /> {loading ? "Updating…" : live ? "Live data" : "Demo mode"}</span><div className="profileWrap"><button type="button" className="profileButton" onClick={() => setProfileOpen(!profileOpen)} aria-expanded={profileOpen}><span className="avatar">{(user?.username || "U").charAt(0).toUpperCase()}</span><span className="profileName">{user?.username || "User"}</span><span className="profileChevron">⌄</span></button>{profileOpen && <div className="profileMenu"><div className="profileMenuHead"><strong>{user?.username || "User"}</strong><span>{businessName}</span></div><button type="button" className="profileLogout" onClick={logout}>Log out</button></div>}</div></div></header>
       {!live && !loading && <div className="demoBanner"><strong>DEMO MODE</strong><span>Sample business data · safe for testing</span></div>}
       <div className="pageContent">{renderSection()}</div>
     </div>
@@ -231,6 +229,48 @@ export default function Home() {
     {chatOpen && <div className="chatOverlay" role="dialog" aria-modal="true"><div className="chatWindow"><div className="chatHeader"><div><span className="eyebrow">BUSINESS BRAIN</span><h3>Ask your business</h3><p>Ask a question and get an evidence-based answer.</p></div><button className="chatClose" onClick={() => setChatOpen(false)} aria-label="Close">×</button></div><div className="chatBody">{answer ? <div className="response chatResponse"><strong>Business Brain {live ? "· Live" : "· Demo"}</strong><p>{answer}</p></div> : <div className="chatEmpty"><span className="iconChip"><Icon name="sparkle" className="icon" /></span><b>What would you like to know?</b><p>Try asking about sales, revenue, customers or business health.</p></div>}{error && <div className="errorBox">{error}</div>}</div><form className="chatForm" onSubmit={ask}><input autoFocus value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Why did my sales fall?" disabled={asking} /><button disabled={asking || !question.trim()}>{asking ? "Thinking…" : "Ask"}</button></form></div></div>}
     <DashboardReasoningOverlay reasoning={selectedReasoning} onClose={() => setSelectedReasoning(null)} />
   </main>;
+}
+
+
+function ImportWorkspace({ businessName }: { businessName: string }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<any | null>(null);
+  const [result, setResult] = useState<any | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  function chooseFile(event: ChangeEvent<HTMLInputElement>) {
+    setFile(event.target.files?.[0] || null); setPreview(null); setResult(null); setError("");
+  }
+  async function send(path: "preview" | "record-run") {
+    if (!file) throw new Error("Choose a CSV or Excel file first.");
+    const businessId = getBusinessId();
+    if (!businessId) throw new Error("Your business session is missing. Please sign in again.");
+    const form = new FormData(); form.append("file", file);
+    const response = await apiFetch(`/ingestion/${path}/${businessId}`, { method: "POST", body: form });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail || `Import service returned ${response.status}`);
+    return data;
+  }
+  async function previewFile() {
+    setBusy(true); setError(""); setResult(null);
+    try { setPreview(await send("preview")); } catch (e) { setError(e instanceof ApiAuthError ? "Your session has expired. Please sign in again." : e instanceof Error ? e.message : "Unable to preview file"); } finally { setBusy(false); }
+  }
+  async function importFile() {
+    setBusy(true); setError("");
+    try { setResult(await send("record-run")); } catch (e) { setError(e instanceof ApiAuthError ? "Your session has expired. Please sign in again." : e instanceof Error ? e.message : "Unable to import file"); } finally { setBusy(false); }
+  }
+  return <div className="importWorkspace">
+    <section className="card importCard">
+      <div className="importCardHead"><div><span className="eyebrow">BUSINESS DATA</span><h3>Import sales data</h3><p>Upload a Tally CSV or Excel export, validate it, then explicitly commit accepted rows.</p></div><span className="status">Workspace · {businessName}</span></div>
+      <div className="field"><label>Source file</label><input type="file" accept=".csv,.xlsx,.xls" onChange={chooseFile} /></div>
+      {file && <p className="muted fileName">Selected: <strong>{file.name}</strong> · {(file.size / 1024).toFixed(1)} KB</p>}
+      <div className="actions"><button onClick={previewFile} disabled={busy || !file}>{busy ? "Checking…" : "Preview & Validate"}</button></div>
+    </section>
+    {error && <div className="errorBox">{error}</div>}
+    {preview && !result && <section className="card resultCard"><span className="eyebrow">VALIDATION PREVIEW</span><h3>{preview.source}</h3><div className="metrics"><Metric label="Rows read" value={String(preview.rows_read)} change="" note="" icon="invoice" /><Metric label="Accepted" value={String(preview.rows_accepted)} change="" note="" icon="check" tone="success" /><Metric label="Rejected" value={String(preview.rows_rejected)} change="" note="" icon="alert" tone="danger" /></div>{preview.mapping?.length > 0 && <div className="issues"><b>Detected columns</b>{preview.mapping.map((m: any, i: number) => <p key={i}><strong>{m.canonical}</strong> ← {m.source} · {Math.round(m.confidence * 100)}%</p>)}</div>}{preview.issues?.length > 0 && <div className="issues"><b>Validation issues</b>{preview.issues.slice(0, 20).map((x: any, i: number) => <p key={i}>Row {x.row ?? "—"} · {x.column ?? "file"}: {x.message ?? "Validation issue"}</p>)}</div>}<button onClick={importFile} disabled={busy || preview.rows_accepted === 0}>{busy ? "Importing…" : "Import accepted rows →"}</button></section>}
+    {result && <section className="card resultCard success"><span className="eyebrow">IMPORT COMPLETE</span><h3>Data committed successfully.</h3><p>{result.sales_created?.toLocaleString?.() || 0} sales records created · {result.rows_rejected || 0} rejected.</p><p className="muted">Checksum: {result.checksum}</p><button onClick={() => window.location.reload()}>Refresh dashboard data →</button></section>}
+  </div>;
 }
 
 function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
