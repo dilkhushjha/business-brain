@@ -9,7 +9,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from packages.data.business_brain.ingestion.column_mapping import suggest_mapping
-from packages.data.business_brain.ingestion.duplicate import already_imported
 from packages.data.business_brain.ingestion.orchestrator import prepare_expense_file, prepare_file, prepare_inventory_file
 from packages.data.business_brain.ingestion.persistence import persist_ingestion_run
 from packages.data.business_brain.ingestion.repository import persist_sales
@@ -44,8 +43,6 @@ def _prepare_upload(file: UploadFile, business_id: UUID, db: Session, prepare_fn
         finally:
             close(fd)
 
-        if already_imported(db, business_id, path):
-            raise HTTPException(409, "This source file was already imported")
 
         result, prepared = prepare_fn(path, source_name=file.filename)
         return result, prepared, temp_name
