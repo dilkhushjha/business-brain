@@ -2,20 +2,21 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from uuid import uuid4
 
 from packages.analytics.business_brain.context.builder import build_business_context
 from packages.data.business_brain.ingestion.purchase_repository import persist_purchases
 from packages.data.business_brain.ingestion.repository import persist_sales
+from packages.shared.database.models import BusinessModel
 
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "golden_sme_distribution.json"
 
 
 def test_golden_dataset_builds_coherent_business_context(db_session):
     data = json.loads(FIXTURE.read_text(encoding="utf-8"))
-    business = __import__("tests.conftest", fromlist=["Seeder"]).Seeder(db_session).business(
-        name=data["business"]["name"],
-        industry=data["business"]["industry"],
-    )
+    business = BusinessModel(id=uuid4(), name=data["business"]["name"], industry=data["business"]["industry"])
+    db_session.add(business)
+    db_session.commit()
 
     sales = [
         {
