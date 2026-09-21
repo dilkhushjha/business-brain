@@ -64,8 +64,8 @@ def test_reconciliation_is_scoped_to_business(db_session, seeder):
     first = seeder.business("First")
     second = seeder.business("Second")
 
-    assert persist_sales(db_session, first.id, [_row("INV-300", "Cable", paid="10")]) == 1
-    assert persist_sales(db_session, second.id, [_row("INV-300", "Cable", paid="90")]) == 1
+    assert persist_sales(db_session, first.id, [_row("INV-300", "Cable", paid="10")])["created"] == 1
+    assert persist_sales(db_session, second.id, [_row("INV-300", "Cable", paid="90")])["created"] == 1
     db_session.commit()
 
     sales = db_session.execute(select(SaleModel).order_by(SaleModel.business_id)).scalars().all()
