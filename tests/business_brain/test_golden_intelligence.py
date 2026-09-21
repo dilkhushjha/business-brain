@@ -127,3 +127,59 @@ def test_golden_intelligence_scenario_does_not_invent_cash(db_session, seeder):
 
     assert context.state.metadata["cash_position"] is None
     assert "Not estimated" in context.state.metadata["cash_position_note"]
+
+
+def test_golden_working_capital_scenario_tracks_pressure_and_resolution(db_session, seeder):
+    business = seeder.business(name="Golden Working Capital", industry="distribution")
+    customer = seeder.customer(business.id, "Alpha Traders")
+    supplier = seeder.supplier(business.id, "Prime Cables")
+    product = seeder.product(business.id, "HDMI Cable 2M")
+
+    sale = seeder.sale_with_line(
+        business.id,
+        product.id,
+        customer_id=customer.id,
+        days_ago=10,
+        quantity=20,
+        unit_price=100,
+        due_days_ago=5,
+        paid_amount=0,
+    )
+    purchase = seeder.purchase_with_line(
+        business.id,
+        product.id,
+        supplier_id=supplier.id,
+        days_ago=10,
+        quantity=20,
+        unit_cost=60,
+        due_days_ago=5,
+        paid_amount=0,
+        invoice_number="PUR-WC-001",
+    )
+    db_session.commit()
+
+    first = build_business_context(db_session, business.id, date.today())
+    situation_codes = {s.code for s in first.situations}
+    action_codes = {a.code for a in first.decision_actions}
+
+    assert "RECEIVABLE_OVERDUE" in {s.code for s in first.signals}
+    assert "PAYABLE_OVERDUE" in {s.code for s in first.signals}
+    assert "WORKING_CAPITAL_PRESSURE" in situation_codes
+    assert "REVIEW_WORKING_CAPITAL_PRESSURE" in action_codes
+
+    history = next(h for h in first.situation_history if h.situation_code == "WORKING_CAPITAL_PRESSURE")
+    assert history.status == "active"
+    assert history.trend == "new"
+
+    # Resolve both sides of the pressure and refresh the same business.
+    sale.paid_amount = sale.total_amount
+    purchase.paid_amount = purchase.total_amount
+    db_session.commit()
+
+    second = build_business_context(db_session, business.id, date.today())
+    resolved = next(
+        h for h in second.situation_history
+        if h.situation_code == "WORKING_CAPITAL_PRESSURE"
+    )
+    assert resolved.status == "resolved"
+    assert resolved.resolved_at == date.today()
