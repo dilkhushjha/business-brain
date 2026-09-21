@@ -32,7 +32,7 @@ def test_csv_with_discount_and_gst_flows_through_to_stored_sale(db_session, seed
     created = persist_sales(db_session, business.id, [row.values for row in prepared_rows])
     db_session.commit()
 
-    assert created == 1
+    assert created["created"] == 1
     sale = db_session.execute(select(SaleModel).where(SaleModel.business_id == business.id)).scalar_one()
     assert sale.total_amount == Decimal("950")
     assert sale.discount_amount == Decimal("50")
