@@ -11,7 +11,7 @@ def test_financial_linkage_reconciles_document_and_payment_ledger(db_session, se
     sale.customer_id = customer.id
     sale.paid_amount = 80
     purchase = seeder.purchase_with_line(
-        business.id, seeder.product(business.id, "Cable"), quantity=2, unit_cost=50, invoice_number="PUR-FIN-1"
+        business.id, product, quantity=2, unit_cost=50, invoice_number="PUR-FIN-1"
     )
     purchase.supplier_id = supplier.id
     purchase.paid_amount = 60
