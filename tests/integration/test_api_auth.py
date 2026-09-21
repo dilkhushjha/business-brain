@@ -44,7 +44,7 @@ def _user_token(client, db_session, business_id) -> str:
     db_session.execute(
         text("INSERT INTO users (id, username, email, password_hash) VALUES (:id,:username,:email,:hash)"),
         {
-            "id": str(user_id),
+            "id": user_id.hex,
             "username": username,
             "email": f"{username}@example.com",
             "hash": PasswordHash.recommended().hash(password),
@@ -52,7 +52,7 @@ def _user_token(client, db_session, business_id) -> str:
     )
     db_session.execute(
         text("INSERT INTO user_businesses (user_id, business_id, role) VALUES (:user_id,:business_id,'owner')"),
-        {"user_id": str(user_id), "business_id": str(business_id)},
+        {"user_id": user_id.hex, "business_id": business_id.hex},
     )
     db_session.commit()
     response = client.post("/api/auth/login", json={"identifier": username, "password": password})
