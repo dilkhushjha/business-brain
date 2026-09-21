@@ -62,7 +62,7 @@ def _user_row(db: Session, user_id: UUID):
             ORDER BY ub.created_at
             LIMIT 1
         """),
-        {"user_id": str(user_id)},
+        {"user_id": user_id.hex},
     ).mappings().first()
 
 
@@ -128,7 +128,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
                 VALUES (:id, :name, :industry, :created_at)
             """),
             {
-                "id": str(business_id),
+                "id": business_id.hex,
                 "name": payload.business_name.strip(),
                 "industry": payload.industry.strip().lower(),
                 "created_at": datetime.utcnow(),
@@ -140,7 +140,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
                 VALUES (:id, :username, :email, :phone, :password_hash)
             """),
             {
-                "id": str(user_id),
+                "id": user_id.hex,
                 "username": username,
                 "email": email,
                 "phone": phone,
@@ -152,7 +152,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
                 INSERT INTO user_businesses (user_id, business_id, role)
                 VALUES (:user_id, :business_id, 'owner')
             """),
-            {"user_id": str(user_id), "business_id": str(business_id)},
+            {"user_id": user_id.hex, "business_id": business_id.hex},
         )
         db.commit()
     except Exception:
