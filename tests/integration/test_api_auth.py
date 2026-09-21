@@ -218,8 +218,8 @@ def test_sales_import_persists_new_and_reimported_invoices(client, seeder):
     token = register.json()["access_token"]
     business_id = register.json()["user"]["business"]["id"]
 
-    first = b"invoice_number,date,customer,product,category,quantity,unit_price,total_amount,payment_method,status\nREG001,2026-09-01,Alpha,Network Cable,Cables,1,1000,1000,UPI,Completed\n"
-    second = b"invoice_number,date,customer,product,category,quantity,unit_price,total_amount,payment_method,status\nREG002,2026-09-02,Beta,USB Connector,Connectors,1,2500,2500,Cash,Completed\n"
+    first = b"invoice_number,transaction_date,customer_name,product_name,quantity,unit_price,total_amount\nREG001,2026-09-01,Alpha,Network Cable,1,1000,1000\n"
+    second = b"invoice_number,date,customer,product,category,quantity,unit_price,total_amount,payment_method,status\nREG002,2026-09-02,Beta,USB Connector,1,2500,2500\n"
 
     headers = {"Authorization": f"Bearer {token}"}
     r1 = client.post(f"/api/ingestion/record-run/{business_id}", headers=headers, files={"files": ("test.csv", first, "text/csv")})
