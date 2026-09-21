@@ -35,7 +35,7 @@ class UserModel(Base):
     phone: Mapped[str | None] = mapped_column(String(32), unique=True)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     is_active: Mapped[bool] = mapped_column(default=True, server_default=sa.true(), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, server_default=sa.func.current_timestamp(), nullable=False)
 
 
 class UserBusinessModel(Base):
