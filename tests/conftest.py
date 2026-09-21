@@ -266,6 +266,7 @@ class Seeder:
             total_amount=total,
             paid_amount=paid_amount,
             due_days_ago=due_days_ago,
+            invoice_number=invoice_number,
         )
         self.purchase_line(purchase.id, product_id, quantity=quantity, unit_cost=unit_cost)
         return purchase
