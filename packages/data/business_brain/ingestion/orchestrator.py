@@ -39,9 +39,10 @@ def prepare_file(path: str | Path, *, source_name: str | None = None) -> tuple[I
     rules = [
         FieldRule("invoice_number", required=True),
         FieldRule("transaction_date", required=True),
-        FieldRule("quantity", kind="number"),
-        FieldRule("unit_price", kind="number"),
-        FieldRule("total_amount", kind="number"),
+        FieldRule("product_name", required=True),
+        FieldRule("quantity", required=True, kind="number"),
+        FieldRule("unit_price", required=True, kind="number"),
+        FieldRule("total_amount", required=True, kind="number"),
     ]
     return _prepare(path, rules, source_name=source_name)
 
