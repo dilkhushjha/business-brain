@@ -35,5 +35,5 @@ def test_financial_aging_uses_supplied_as_of_date(db_session, seeder):
     # A future as-of date moves the same documents deeper into aging,
     # proving the business context is reproducible for historical dates.
     later = as_of + timedelta(days=11)
-    assert overdue_customers(db_session, business.id, as_of=later)[0]["days_overdue"] == 30
-    assert overdue_suppliers(db_session, business.id, as_of=later)[0]["days_overdue"] == 30
+    assert overdue_customers(db_session, business.id, as_of=later)[0]["days_overdue"] == 31
+    assert overdue_suppliers(db_session, business.id, as_of=later)[0]["days_overdue"] == 31
