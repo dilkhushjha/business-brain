@@ -6,8 +6,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from packages.shared.database.models import PurchaseModel, SupplierModel
 
-def payables_summary(db: Session, business_id: UUID) -> dict[str, Any]:
-    today=date.today()
+def payables_summary(db: Session, business_id: UUID, as_of: date | None = None) -> dict[str, Any]:
+    today = as_of or date.today()
     rows=db.execute(select(PurchaseModel.total_amount,PurchaseModel.paid_amount,PurchaseModel.due_date).where(PurchaseModel.business_id==business_id)).all()
     outstanding=Decimal("0"); overdue=Decimal("0"); buckets={"0_30":Decimal("0"),"31_60":Decimal("0"),"61_90":Decimal("0"),"90_plus":Decimal("0")}
     for total,paid,due in rows:
@@ -17,8 +17,8 @@ def payables_summary(db: Session, business_id: UUID) -> dict[str, Any]:
             key="0_30" if days<=30 else "31_60" if days<=60 else "61_90" if days<=90 else "90_plus"; buckets[key]+=amount
     return {"outstanding":float(outstanding),"overdue":float(overdue),"overdue_pct":round(float(overdue/outstanding*100),2) if outstanding else 0,"buckets":{k:float(v) for k,v in buckets.items()}}
 
-def overdue_suppliers(db: Session,business_id: UUID,limit:int=10)->list[dict[str,Any]]:
-    today=date.today(); rows=db.execute(select(SupplierModel.name,PurchaseModel.total_amount,PurchaseModel.paid_amount,PurchaseModel.due_date).join(PurchaseModel,PurchaseModel.supplier_id==SupplierModel.id).where(PurchaseModel.business_id==business_id,PurchaseModel.due_date<today)).all(); agg={}
+def overdue_suppliers(db: Session,business_id: UUID,limit:int=10,as_of: date | None = None)->list[dict[str,Any]]:
+    today = as_of or date.today(); rows=db.execute(select(SupplierModel.name,PurchaseModel.total_amount,PurchaseModel.paid_amount,PurchaseModel.due_date).join(PurchaseModel,PurchaseModel.supplier_id==SupplierModel.id).where(PurchaseModel.business_id==business_id,PurchaseModel.due_date<today)).all(); agg={}
     for name,total,paid,due in rows:
         outstanding=max(Decimal(total or 0)-Decimal(paid or 0),Decimal("0"));
         if outstanding: x=agg.setdefault(name,[Decimal("0"),0]);x[0]+=outstanding;x[1]=max(x[1],(today-due).days)
