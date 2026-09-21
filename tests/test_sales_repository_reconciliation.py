@@ -42,7 +42,7 @@ def test_multi_line_invoice_is_persisted_once_with_all_lines(db_session, seeder)
 def test_repeated_invoice_export_reconciles_payment_and_lines(db_session, seeder):
     business = seeder.business()
     initial = [_row("INV-200", "Cable", paid="0")]
-    assert persist_sales(db_session, business.id, initial) == 1
+    assert persist_sales(db_session, business.id, initial)["created"] == 1
     db_session.commit()
 
     updated = [
