@@ -27,7 +27,7 @@ def test_persist_sales_stores_discount_and_tax_amounts(db_session, seeder):
     created = persist_sales(db_session, business.id, rows)
     db_session.commit()
 
-    assert created == 1
+    assert created["created"] == 1
     sale = db_session.execute(select(SaleModel).where(SaleModel.business_id == business.id)).scalar_one()
     assert sale.discount_amount == Decimal("50")
     assert sale.tax_amount == Decimal("171")
