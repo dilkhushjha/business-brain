@@ -11,14 +11,14 @@ def test_financial_aging_uses_supplied_as_of_date(db_session, seeder):
     product = seeder.product(business.id, "Cable")
 
     sale = seeder.sale_with_line(
-        business.id, product, quantity=1, unit_price=100,
+        business.id, product.id, quantity=1, unit_price=100,
         due_days_ago=20,
     )
     sale.customer_id = customer.id
     sale.paid_amount = 0
 
     purchase = seeder.purchase_with_line(
-        business.id, product, quantity=1, unit_cost=50,
+        business.id, product.id, quantity=1, unit_cost=50,
         due_days_ago=20,
     )
     purchase.supplier_id = supplier.id
