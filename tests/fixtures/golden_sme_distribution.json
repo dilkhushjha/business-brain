@@ -1,0 +1,38 @@
+{
+  "business": {
+    "name": "Golden SME Distribution",
+    "industry": "distribution"
+  },
+  "customers": [
+    {"external_id": "C001", "name": "Alpha Traders"},
+    {"external_id": "C002", "name": "Beta Retail"}
+  ],
+  "suppliers": [
+    {"external_id": "S001", "name": "Prime Cables"},
+    {"external_id": "S002", "name": "Metro Components"}
+  ],
+  "products": [
+    {"sku": "HDMI-2M", "name": "HDMI Cable 2M"},
+    {"sku": "USB-C-1M", "name": "USB-C Cable 1M"},
+    {"sku": "LAN-CAT6", "name": "CAT6 LAN Cable"}
+  ],
+  "purchases": [
+    {"invoice_number": "P-1001", "product": "HDMI Cable 2M", "supplier": "Prime Cables", "quantity": 150, "unit_cost": 40, "total": 6000},
+    {"invoice_number": "P-1002", "product": "USB-C Cable 1M", "supplier": "Metro Components", "quantity": 100, "unit_cost": 55, "total": 5500},
+    {"invoice_number": "P-1003", "product": "CAT6 LAN Cable", "supplier": "Prime Cables", "quantity": 200, "unit_cost": 30, "total": 6000}
+  ],
+  "sales": [
+    {"invoice_number": "S-2001", "product": "HDMI Cable 2M", "customer": "Alpha Traders", "quantity": 60, "unit_price": 75, "total": 4500},
+    {"invoice_number": "S-2002", "product": "USB-C Cable 1M", "customer": "Beta Retail", "quantity": 40, "unit_price": 90, "total": 3600},
+    {"invoice_number": "S-2003", "product": "CAT6 LAN Cable", "customer": "Alpha Traders", "quantity": 80, "unit_price": 55, "total": 4400}
+  ],
+  "expected": {
+    "inventory_units": {
+      "HDMI Cable 2M": 90,
+      "USB-C Cable 1M": 60,
+      "CAT6 LAN Cable": 120
+    },
+    "revenue": 12500,
+    "purchase_spend": 17500
+  }
+}
