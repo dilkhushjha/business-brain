@@ -1,5 +1,5 @@
 from packages.analytics.business_brain.data_quality import audit_data_quality
-from packages.shared.database.models import CustomerModel, ProductModel
+from packages.shared.database.models import CustomerModel, ProductModel, SaleLineModel
 
 
 def test_data_quality_reconciles_clean_business(db_session, seeder):
@@ -39,7 +39,7 @@ def test_data_quality_detects_document_and_numeric_issues(db_session, seeder):
     product = seeder.product(business.id, "Cable")
     sale = seeder.sale_with_line(business.id, product.id, quantity=2, unit_price=100)
     sale.total_amount = 250
-    line = sale.lines[0]
+    line = db_session.query(SaleLineModel).filter(SaleLineModel.sale_id == sale.id).one()
     line.quantity = 0
     db_session.commit()
 
