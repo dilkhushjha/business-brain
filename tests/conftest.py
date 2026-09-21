@@ -254,6 +254,7 @@ class Seeder:
         unit_cost: Decimal | float = 100,
         due_days_ago: int | None = None,
         paid_amount: Decimal | float = 0,
+        invoice_number: str | None = None,
     ) -> PurchaseModel:
         """Convenience: one purchase with a single matching purchase line --
         mirrors sale_with_line()."""
