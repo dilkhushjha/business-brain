@@ -6,7 +6,8 @@ def test_financial_linkage_reconciles_document_and_payment_ledger(db_session, se
     business = seeder.business()
     customer = seeder.customer(business.id, "Customer")
     supplier = seeder.supplier(business.id, "Supplier")
-    sale = seeder.sale_with_line(business.id, seeder.product(business.id, "Cable").id, quantity=2, unit_price=100)
+    product = seeder.product(business.id, "Cable")
+    sale = seeder.sale_with_line(business.id, product.id, quantity=2, unit_price=100)
     sale.customer_id = customer.id
     sale.paid_amount = 80
     purchase = seeder.purchase_with_line(
@@ -35,7 +36,8 @@ def test_financial_linkage_reconciles_document_and_payment_ledger(db_session, se
 def test_financial_linkage_detects_payment_mismatch_and_unlinked_payment(db_session, seeder):
     business = seeder.business()
     customer = seeder.customer(business.id, "Customer")
-    sale = seeder.sale_with_line(business.id, seeder.product(business.id, "Cable").id, quantity=1, unit_price=100)
+    product = seeder.product(business.id, "Cable")
+    sale = seeder.sale_with_line(business.id, product.id, quantity=1, unit_price=100)
     sale.customer_id = customer.id
     sale.paid_amount = 100
     db_session.add(
