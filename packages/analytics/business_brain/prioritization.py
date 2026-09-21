@@ -30,11 +30,9 @@ def _impact_weight(analysis: Any | None) -> Decimal:
     if not impacts:
         return Decimal("0")
 
-    weight = Decimal("10")
-    for impact in impacts:
-        if getattr(impact, "value", None) is not None:
-            weight += Decimal("10")
-    return weight
+    if any(getattr(impact, "value", None) is not None for impact in impacts):
+        return Decimal("10")
+    return Decimal("0")
 
 
 def prioritize_situations(
