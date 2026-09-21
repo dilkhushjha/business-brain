@@ -29,8 +29,8 @@ def test_financial_aging_uses_supplied_as_of_date(db_session, seeder):
 
     assert receivables_summary(db_session, business.id, as_of)["overdue"] == 100.0
     assert payables_summary(db_session, business.id, as_of)["overdue"] == 50.0
-    assert overdue_customers(db_session, business.id, as_of=as_of)[0]["days_overdue"] == 19
-    assert overdue_suppliers(db_session, business.id, as_of=as_of)[0]["days_overdue"] == 19
+    assert overdue_customers(db_session, business.id, as_of=as_of)[0]["days_overdue"] == 20
+    assert overdue_suppliers(db_session, business.id, as_of=as_of)[0]["days_overdue"] == 20
 
     # A future as-of date moves the same documents deeper into aging,
     # proving the business context is reproducible for historical dates.
