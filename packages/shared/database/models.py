@@ -43,7 +43,7 @@ class UserBusinessModel(Base):
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     business_id: Mapped[UUID] = mapped_column(ForeignKey("businesses.id", ondelete="CASCADE"), primary_key=True)
     role: Mapped[str] = mapped_column(String(32), default="owner", nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, server_default=sa.func.current_timestamp(), nullable=False)
 
 
 class CustomerModel(Base):
