@@ -8,76 +8,75 @@ from packages.data.business_brain.normalization.value_parser import parse_date, 
 
 
 def canonicalize_sale_row(row: dict[str, Any]) -> dict[str, Any]:
-    """Convert a prepared source row into database-ready sale fields."""
+    """Convert a prepared source row into database-ready sale fields.
+
+    Sales imports must carry enough line information to support inventory and
+    margin reasoning. Missing quantity, price, product or non-positive values
+    are rejected rather than guessed.
+    """
     parsed_date = parse_date(row.get("transaction_date"))
     if parsed_date is None:
         raise ValueError("transaction_date could not be parsed")
 
+    product_name = _text(row.get("product_name"))
     quantity = parse_decimal(row.get("quantity"))
     unit_price = parse_decimal(row.get("unit_price"))
     total_amount = parse_decimal(row.get("total_amount"))
 
-    if total_amount is None and quantity is not None and unit_price is not None:
-        total_amount = quantity * unit_price
-
-    if total_amount is None:
-        raise ValueError("total_amount could not be determined")
+    if not product_name:
+        raise ValueError("product_name is required")
+    if quantity is None or quantity <= 0:
+        raise ValueError("quantity must be positive")
+    if unit_price is None or unit_price < 0:
+        raise ValueError("unit_price must be zero or positive")
+    if total_amount is None or total_amount <= 0:
+        raise ValueError("total_amount must be positive")
 
     return {
         "customer_name": _text(row.get("customer_name")),
-        "product_name": _text(row.get("product_name")) or "Unknown product",
+        "product_name": product_name,
         "invoice_number": _text(row.get("invoice_number")),
         "transaction_date": parsed_date,
-        "quantity": quantity or Decimal("1"),
-        "unit_price": unit_price or total_amount,
+        "quantity": quantity,
+        "unit_price": unit_price,
         "total_amount": total_amount,
         "cost_price": parse_decimal(row.get("cost_price")),
         "discount_amount": parse_decimal(row.get("discount_amount")) or Decimal("0"),
-        # A Tally export represents tax either as one combined column ("tax")
-        # or split across cgst/sgst/igst -- sum whichever are present rather
-        # than assuming one particular layout.
         "tax_amount": _sum_present(row.get("tax"), row.get("cgst"), row.get("sgst"), row.get("igst")),
-        # due_date/paid_amount are usually absent from a plain sales
-        # register export (they typically live in a separate outstanding-
-        # receivables report Tally can produce) -- captured here for the
-        # cases where a combined export does carry them, rather than being
-        # silently dropped the way discount/tax used to be.
         "due_date": parse_date(row.get("due_date")),
         "paid_amount": parse_decimal(row.get("paid_amount")) or Decimal("0"),
     }
 
 
 def canonicalize_purchase_row(row: dict[str, Any]) -> dict[str, Any]:
-    """Convert a prepared source row (a Tally purchase-register export) into
-    database-ready purchase fields. Mirrors canonicalize_sale_row -- reuses
-    the same generic column-mapper canonical fields (unit_price,
-    total_amount, ...) rather than introducing a parallel alias system, and
-    relabels them to their purchase-side equivalents (unit_cost, net_amount)
-    since PurchaseLineModel's columns are named differently from
-    SaleLineModel's."""
+    """Convert a prepared purchase row without inventing missing line data."""
     parsed_date = parse_date(row.get("transaction_date"))
     if parsed_date is None:
         raise ValueError("transaction_date could not be parsed")
 
+    product_name = _text(row.get("product_name"))
     quantity = parse_decimal(row.get("quantity"))
     unit_cost = parse_decimal(row.get("unit_price"))
     if unit_cost is None:
         unit_cost = parse_decimal(row.get("cost_price"))
     total_amount = parse_decimal(row.get("total_amount"))
 
-    if total_amount is None and quantity is not None and unit_cost is not None:
-        total_amount = quantity * unit_cost
-
-    if total_amount is None:
-        raise ValueError("total_amount could not be determined")
+    if not product_name:
+        raise ValueError("product_name is required")
+    if quantity is None or quantity <= 0:
+        raise ValueError("quantity must be positive")
+    if unit_cost is None or unit_cost < 0:
+        raise ValueError("unit_cost must be zero or positive")
+    if total_amount is None or total_amount <= 0:
+        raise ValueError("total_amount must be positive")
 
     return {
         "supplier_name": _text(row.get("supplier_name")),
-        "product_name": _text(row.get("product_name")) or "Unknown product",
+        "product_name": product_name,
         "invoice_number": _text(row.get("invoice_number")),
         "transaction_date": parsed_date,
-        "quantity": quantity or Decimal("1"),
-        "unit_cost": unit_cost or total_amount,
+        "quantity": quantity,
+        "unit_cost": unit_cost,
         "total_amount": total_amount,
         "net_amount": total_amount,
         "discount_amount": parse_decimal(row.get("discount_amount")) or Decimal("0"),
@@ -88,14 +87,7 @@ def canonicalize_purchase_row(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def canonicalize_expense_row(row: dict[str, Any]) -> dict[str, Any]:
-    """Convert a prepared source row (a Tally expense/payment voucher
-    register export) into database-ready expense fields. Unlike sales and
-    purchases, an expense register is typically one row per voucher, no
-    line items -- so this is simpler than canonicalize_sale_row/
-    canonicalize_purchase_row, not a variant of them. Reuses the same
-    generic column-mapper canonical fields (total_amount, transaction_date,
-    invoice_number) relabeled to their expense-side meaning, rather than a
-    parallel alias system."""
+    """Convert an expense/payment voucher row into database-ready fields."""
     parsed_date = parse_date(row.get("transaction_date"))
     if parsed_date is None:
         raise ValueError("expense_date could not be parsed")
@@ -114,14 +106,7 @@ def canonicalize_expense_row(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def canonicalize_inventory_snapshot_row(row: dict[str, Any]) -> dict[str, Any]:
-    """Convert a prepared source row (a Tally Stock Summary export -- one
-    row per item as of a given date, not a transaction) into database-ready
-    inventory snapshot fields. This is the shape a real Tally stock report
-    actually takes: a point-in-time closing quantity/value per item, not a
-    ledger of every movement -- so this ingests InventorySnapshotModel
-    only, not InventoryMovementModel (which would need a full stock
-    movement ledger, largely redundant with what Sale/PurchaseLine already
-    capture)."""
+    """Convert a stock summary row into a point-in-time inventory snapshot."""
     parsed_date = parse_date(row.get("transaction_date"))
     if parsed_date is None:
         raise ValueError("snapshot_date could not be parsed")
