@@ -86,7 +86,7 @@ def require_business_access(
     user: dict = Depends(get_current_user),
 ) -> dict:
     """Authorize a human user for a business without exposing connector credentials."""
-    if str(user["business_id"]) != str(business_id):
+    if UUID(str(user["business_id"])) != business_id:
         raise HTTPException(403, "You do not have access to this business")
     return user
 
