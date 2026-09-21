@@ -51,7 +51,7 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
                       "gross_profit": margin["gross_profit"], "cost_coverage_pct": margin["cost_coverage_pct"]},
         ))
 
-    receivables = receivables_summary(db, business_id)
+    receivables = receivables_summary(db, business_id, as_of)
     if receivables["outstanding"]:
         evidence.append(Evidence(
             source="receivables_engine", metric="receivables_outstanding",
@@ -59,7 +59,7 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
             metadata={"overdue": receivables["overdue"], "overdue_pct": receivables["overdue_pct"]},
         ))
 
-    payables = payables_summary(db, business_id)
+    payables = payables_summary(db, business_id, as_of)
     if payables["outstanding"]:
         evidence.append(Evidence(
             source="payables_engine", metric="payables_outstanding",
