@@ -177,7 +177,19 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
                     answer += f" Impact: {description}"
         elif signals:
             grounded = True
-            top = signals[0]
+            # Prefer an entity-specific signal so root-cause answers identify
+            # the actual customer/product/supplier involved rather than a
+            # generic KPI decline that happened to be emitted first.
+            top = next(
+                (
+                    item for item in signals
+                    if any(
+                        key in (item.get("evidence") or {})
+                        for key in ("customer", "product", "supplier", "category")
+                    )
+                ),
+                signals[0],
+            )
             answer = (
                 "I can't assign a single definitive cause, but the detected signals provide candidate factors -- "
                 f"most notably: {top.get('title', 'a detected issue')}."
