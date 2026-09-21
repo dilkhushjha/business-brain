@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch, getBusinessId, type ApiAuthError } from "../lib/api";
+import { apiFetch, getBusinessId, ApiAuthError } from "../lib/api";
 
 type PayablesSummary = {
   outstanding: number;
