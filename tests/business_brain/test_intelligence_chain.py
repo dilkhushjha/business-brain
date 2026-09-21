@@ -32,8 +32,8 @@ def test_situation_to_recommendation_chain():
     assert [s.code for s in situations] == ["MARGIN_PRESSURE"]
     assert [r.code for r in recommendations] == [
         "INVESTIGATE_MARGIN_PRESSURE",
-        "REVIEW_PRODUCT_MARGIN",
         "REVIEW_SUPPLIER_PRICE_INCREASE",
+        "REVIEW_PRODUCT_MARGIN",
     ]
     assert recommendations[0].evidence == situations[0].evidence
     assert recommendations[0].confidence == situations[0].confidence
