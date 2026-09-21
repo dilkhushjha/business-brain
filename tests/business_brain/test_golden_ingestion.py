@@ -3,18 +3,19 @@ from __future__ import annotations
 import json
 from decimal import Decimal
 from pathlib import Path
+from uuid import uuid4
 
 from sqlalchemy import func, select
 
 from packages.data.business_brain.ingestion.purchase_repository import persist_purchases
 from packages.data.business_brain.ingestion.repository import persist_sales
 from packages.shared.database.models import (
+    BusinessModel,
     InventoryMovementModel,
     ProductModel,
     PurchaseModel,
     SaleModel,
 )
-
 
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "golden_sme_distribution.json"
 
@@ -47,19 +48,26 @@ def _rows(data: dict) -> tuple[list[dict], list[dict]]:
     return sales, purchases
 
 
+def _business(db, data: dict) -> BusinessModel:
+    business = BusinessModel(
+        id=uuid4(),
+        name=data["business"]["name"],
+        industry=data["business"]["industry"],
+    )
+    db.add(business)
+    db.commit()
+    return business
+
+
 def test_golden_dataset_persists_into_canonical_sales_purchases_and_inventory(db_session):
     data = json.loads(FIXTURE.read_text(encoding="utf-8"))
-    business = __import__("tests.conftest", fromlist=["Seeder"]).Seeder(db_session).business(
-        name=data["business"]["name"], industry=data["business"]["industry"]
-    )
+    business = _business(db_session, data)
 
     sales, purchases = _rows(data)
-    sale_result = persist_sales(db_session, business.id, sales)
-    purchase_result = persist_purchases(db_session, business.id, purchases)
+    assert persist_sales(db_session, business.id, sales) == {"created": 3, "reconciled": 0}
+    assert persist_purchases(db_session, business.id, purchases) == {"created": 3, "reconciled": 0}
     db_session.commit()
 
-    assert sale_result == {"created": 3, "reconciled": 0}
-    assert purchase_result == {"created": 3, "reconciled": 0}
     assert db_session.scalar(select(func.count()).select_from(SaleModel)) == 3
     assert db_session.scalar(select(func.count()).select_from(PurchaseModel)) == 3
 
@@ -86,8 +94,7 @@ def test_golden_dataset_persists_into_canonical_sales_purchases_and_inventory(db
 
 def test_golden_dataset_reimport_reconciles_instead_of_duplicating(db_session):
     data = json.loads(FIXTURE.read_text(encoding="utf-8"))
-    seeder = __import__("tests.conftest", fromlist=["Seeder"]).Seeder(db_session)
-    business = seeder.business(name=data["business"]["name"], industry=data["business"]["industry"])
+    business = _business(db_session, data)
 
     sales, purchases = _rows(data)
     persist_sales(db_session, business.id, sales)
@@ -117,7 +124,5 @@ def test_golden_dataset_reimport_reconciles_instead_of_duplicating(db_session):
         )
     ).all()
 
-    purchase_units = sum(m.quantity for m in movements if m.movement_type == "purchase")
-    sale_units = sum(m.quantity for m in movements if m.movement_type == "sale")
-    assert purchase_units == Decimal("160")
-    assert sale_units == Decimal("70")
+    assert sum(m.quantity for m in movements if m.movement_type == "purchase") == Decimal("160")
+    assert sum(m.quantity for m in movements if m.movement_type == "sale") == Decimal("70")
