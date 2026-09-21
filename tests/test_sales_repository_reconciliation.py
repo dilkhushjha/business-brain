@@ -31,7 +31,7 @@ def test_multi_line_invoice_is_persisted_once_with_all_lines(db_session, seeder)
     created = persist_sales(db_session, business.id, rows)
     db_session.commit()
 
-    assert created == 1
+    assert created["created"] == 1
     sales = db_session.execute(select(SaleModel)).scalars().all()
     lines = db_session.execute(select(SaleLineModel)).scalars().all()
     assert len(sales) == 1
