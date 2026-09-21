@@ -6,7 +6,7 @@ def test_data_quality_reconciles_clean_business(db_session, seeder):
     business = seeder.business()
     product = seeder.product(business.id, "Cable")
     customer = seeder.customer(business.id, "Customer")
-    sale = seeder.sale_with_line(business.id, product, 2, 100)
+    sale = seeder.sale_with_line(business.id, product.id, quantity=2, unit_price=100)
     sale.customer_id = customer.id
     sale.total_amount = 200
     db_session.commit()
