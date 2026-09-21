@@ -49,7 +49,7 @@ def test_repeated_invoice_export_reconciles_payment_and_lines(db_session, seeder
         _row("INV-200", "Cable", paid="100"),
         _row("INV-200", "Connector", paid="100", total="25"),
     ]
-    assert persist_sales(db_session, business.id, updated) == 0
+    assert persist_sales(db_session, business.id, updated)["created"] == 0
     db_session.commit()
 
     sale = db_session.execute(select(SaleModel)).scalar_one()
