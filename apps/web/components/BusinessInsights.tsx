@@ -136,7 +136,7 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
             </div>;
           })}
         </div>
-      </section>
+      </section>}
 
       <div className="insightSummaryBar">
         <div><b>{critical}</b><span>Critical</span></div>
