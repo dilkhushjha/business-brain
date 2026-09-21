@@ -37,7 +37,7 @@ def test_data_quality_detects_ambiguous_entity_names(db_session, seeder):
 def test_data_quality_detects_document_and_numeric_issues(db_session, seeder):
     business = seeder.business()
     product = seeder.product(business.id, "Cable")
-    sale = seeder.sale_with_line(business.id, product, 2, 100)
+    sale = seeder.sale_with_line(business.id, product.id, quantity=2, unit_price=100)
     sale.total_amount = 250
     line = sale.lines[0]
     line.quantity = 0
