@@ -36,6 +36,7 @@ from apps.api.app.api.routes.performance import router as performance_router
 from apps.api.app.api.routes.purchases import router as purchases_router
 from apps.api.app.api.routes.payments import router as payments_router
 from apps.api.app.api.routes.financial_integrity import router as financial_integrity_router
+from apps.api.app.api.routes.data_integrity import router as data_integrity_router
 from apps.api.app.core.config import settings
 from packages.shared.database.session import engine
 
@@ -77,10 +78,7 @@ async def production_safety_headers(request: Request, call_next):
         response = await call_next(request)
     except Exception:
         logger.exception("Unhandled request failure request=%s path=%s", request_id, request.url.path)
-        response = JSONResponse(
-            status_code=500,
-            content={"detail": "Internal server error.", "request_id": request_id},
-        )
+        response = JSONResponse(status_code=500, content={"detail": "Internal server error.", "request_id": request_id})
 
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -132,5 +130,6 @@ for router in (
     purchases_router,
     payments_router,
     financial_integrity_router,
+    data_integrity_router,
 ):
     app.include_router(router, prefix="/api")
