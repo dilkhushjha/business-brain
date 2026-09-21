@@ -21,7 +21,7 @@ def test_persist_purchases_creates_purchase_and_line(db_session, seeder):
     created = persist_purchases(db_session, business.id, rows)
     db_session.commit()
 
-    assert created == 1
+    assert created["created"] == 1
     purchase = db_session.execute(select(PurchaseModel).where(PurchaseModel.business_id == business.id)).scalar_one()
     assert purchase.total_amount == Decimal("6000")
     supplier = db_session.execute(select(SupplierModel).where(SupplierModel.business_id == business.id)).scalar_one()
@@ -49,7 +49,7 @@ def test_persist_purchases_creates_one_invoice_from_multiple_lines(db_session, s
     created = persist_purchases(db_session, business.id, rows)
     db_session.commit()
 
-    assert created == 1
+    assert created["created"] == 1
     purchases = db_session.execute(select(PurchaseModel).where(PurchaseModel.business_id == business.id)).scalars().all()
     assert len(purchases) == 1
     lines = db_session.execute(select(PurchaseLineModel).where(PurchaseLineModel.purchase_id == purchases[0].id)).scalars().all()
@@ -79,7 +79,7 @@ def test_persist_purchases_reconciles_repeated_export(db_session, seeder):
     created = persist_purchases(db_session, business.id, second_pass)
     db_session.commit()
 
-    assert created == 0  # reconciled, not counted as new
+    assert created["created"] == 0  # reconciled, not counted as new
     purchases = db_session.execute(select(PurchaseModel).where(PurchaseModel.business_id == business.id)).scalars().all()
     assert len(purchases) == 1
     assert purchases[0].paid_amount == Decimal("600")
