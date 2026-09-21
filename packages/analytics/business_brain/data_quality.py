@@ -27,7 +27,7 @@ def _duplicate_names(rows):
     for row_id, name in rows:
         key = _norm(name)
         if key:
-            groups[key].append((str(row_id), name))
+            groups[key].append({"id": str(row_id), "name": name})
     return [
         {"normalized_name": key, "records": records, "count": len(records)}
         for key, records in sorted(groups.items())
@@ -35,32 +35,22 @@ def _duplicate_names(rows):
     ]
 
 
-def _entity_identity_audit(db: Session, model, label: str):
+def _entity_duplicates(db: Session, model, business_id: UUID, label: str, limit: int):
     rows = db.execute(
-        select(model.id, model.name, model.external_id)
+        select(model.id, model.name)
+        .where(model.business_id == business_id)
     ).all()
-    duplicate_names = _duplicate_names([(row[0], row[1]) for row in rows])
-    missing_identifiers = [
-        {"id": str(row[0]), "name": row[1]}
-        for row in rows
-        if not (row[2] and str(row[2]).strip())
-    ]
+    groups = _duplicate_names(rows)
     return {
-        "duplicate_name_groups": duplicate_names,
-        "missing_external_id_count": len(missing_identifiers),
-        "missing_external_ids": missing_identifiers[:50],
         "entity_type": label,
+        "duplicate_name_groups": groups[:limit],
+        "duplicate_name_group_count": len(groups),
     }
 
 
-def _line_value(quantity: Decimal, unit_value: Decimal) -> Decimal:
-    return quantity * unit_value
-
-
-def _sale_total_mismatches(db: Session):
+def _sale_total_mismatches(db: Session, business_id: UUID):
     rows = db.execute(
         select(
-            SaleModel.id,
             SaleModel.invoice_number,
             SaleModel.total_amount,
             SaleModel.tax_amount,
@@ -68,6 +58,7 @@ def _sale_total_mismatches(db: Session):
             func.coalesce(func.sum(SaleLineModel.quantity * SaleLineModel.unit_price), 0),
         )
         .outerjoin(SaleLineModel, SaleLineModel.sale_id == SaleModel.id)
+        .where(SaleModel.business_id == business_id)
         .group_by(
             SaleModel.id,
             SaleModel.invoice_number,
@@ -77,7 +68,9 @@ def _sale_total_mismatches(db: Session):
         )
     ).all()
     issues = []
-    for sale_id, invoice, total, tax, discount, subtotal in rows:
+    for invoice, total, tax, discount, subtotal in rows:
+        # Sales headers store the document total, while lines store the
+        # pre-tax/pre-discount selling value.
         expected = Decimal(str(subtotal)) + Decimal(str(tax)) - Decimal(str(discount))
         actual = Decimal(str(total))
         if abs(actual - expected) > Decimal("0.01"):
@@ -90,29 +83,21 @@ def _sale_total_mismatches(db: Session):
     return issues
 
 
-def _purchase_total_mismatches(db: Session):
+def _purchase_total_mismatches(db: Session, business_id: UUID):
     rows = db.execute(
         select(
-            PurchaseModel.id,
             PurchaseModel.invoice_number,
             PurchaseModel.total_amount,
-            PurchaseModel.tax_amount,
-            PurchaseModel.discount_amount,
             func.coalesce(func.sum(PurchaseLineModel.net_amount), 0),
         )
         .outerjoin(PurchaseLineModel, PurchaseLineModel.purchase_id == PurchaseModel.id)
-        .group_by(
-            PurchaseModel.id,
-            PurchaseModel.invoice_number,
-            PurchaseModel.total_amount,
-            PurchaseModel.tax_amount,
-            PurchaseModel.discount_amount,
-        )
+        .where(PurchaseModel.business_id == business_id)
+        .group_by(PurchaseModel.id, PurchaseModel.invoice_number, PurchaseModel.total_amount)
     ).all()
     issues = []
-    for purchase_id, invoice, total, tax, discount, net_amount in rows:
-        # net_amount is the canonical line amount after line-level discounts;
-        # do not add header tax/discount again when reconciling purchases.
+    for invoice, total, net_amount in rows:
+        # Purchase line net_amount is already the canonical line amount after
+        # line-level discounts, so header tax/discount are not added again.
         expected = Decimal(str(net_amount))
         actual = Decimal(str(total))
         if abs(actual - expected) > Decimal("0.01"):
@@ -125,59 +110,50 @@ def _purchase_total_mismatches(db: Session):
     return issues
 
 
-def _numeric_issues(db: Session):
+def _numeric_issues(db: Session, business_id: UUID):
     issues = []
 
-    sale_lines = db.execute(
+    sales = db.execute(
         select(SaleModel.invoice_number, SaleLineModel.quantity, SaleLineModel.unit_price)
         .join(SaleLineModel, SaleLineModel.sale_id == SaleModel.id)
+        .where(SaleModel.business_id == business_id)
     ).all()
-    for invoice, quantity, unit_price in sale_lines:
-        if Decimal(str(quantity)) <= 0:
+    for invoice, quantity, unit_price in sales:
+        quantity = Decimal(str(quantity))
+        unit_price = Decimal(str(unit_price))
+        if quantity <= 0:
             issues.append({"type": "sale_line_quantity", "invoice_number": invoice, "value": float(quantity)})
-        if Decimal(str(unit_price)) < 0:
+        if unit_price < 0:
             issues.append({"type": "sale_line_unit_price", "invoice_number": invoice, "value": float(unit_price)})
 
-    purchase_lines = db.execute(
+    purchases = db.execute(
         select(PurchaseModel.invoice_number, PurchaseLineModel.quantity, PurchaseLineModel.unit_cost)
         .join(PurchaseLineModel, PurchaseLineModel.purchase_id == PurchaseModel.id)
+        .where(PurchaseModel.business_id == business_id)
     ).all()
-    for invoice, quantity, unit_cost in purchase_lines:
-        if Decimal(str(quantity)) <= 0:
+    for invoice, quantity, unit_cost in purchases:
+        quantity = Decimal(str(quantity))
+        unit_cost = Decimal(str(unit_cost))
+        if quantity <= 0:
             issues.append({"type": "purchase_line_quantity", "invoice_number": invoice, "value": float(quantity)})
-        if Decimal(str(unit_cost)) < 0:
+        if unit_cost < 0:
             issues.append({"type": "purchase_line_unit_cost", "invoice_number": invoice, "value": float(unit_cost)})
 
     return issues
 
 
 def audit_data_quality(db: Session, business_id: UUID, limit: int = 50) -> dict:
-    """Read-only audit of identity, required fields and canonical financial values.
+    """Read-only audit of identity, document completeness and numeric consistency.
 
-    This audit reports ambiguity and inconsistencies; it never chooses which
-    duplicate entity or document is correct and never repairs data.
+    Duplicate names are reported as ambiguity, not merged. Optional source
+    identifiers such as SKU/external_id are not treated as errors because the
+    database schema permits businesses that do not provide them.
     """
     limit = max(1, min(limit, 200))
 
-    # Scope every entity/document query to the requested business.
-    def scoped_identity(model, label):
-        rows = db.execute(
-            select(model.id, model.name, model.external_id)
-            .where(model.business_id == business_id)
-        ).all()
-        duplicate_names = _duplicate_names([(row[0], row[1]) for row in rows])
-        missing_ids = [
-            {"id": str(row[0]), "name": row[1]}
-            for row in rows
-            if not (row[2] and str(row[2]).strip())
-        ]
-        return {
-            "entity_type": label,
-            "duplicate_name_groups": duplicate_names[:limit],
-            "duplicate_name_group_count": len(duplicate_names),
-            "missing_external_id_count": len(missing_ids),
-            "missing_external_ids": missing_ids[:limit],
-        }
+    customers = _entity_duplicates(db, CustomerModel, business_id, "customer", limit)
+    suppliers = _entity_duplicates(db, SupplierModel, business_id, "supplier", limit)
+    products = _entity_duplicates(db, ProductModel, business_id, "product", limit)
 
     sales = db.execute(
         select(SaleModel.id, SaleModel.invoice_number, SaleModel.transaction_date)
@@ -188,51 +164,49 @@ def audit_data_quality(db: Session, business_id: UUID, limit: int = 50) -> dict:
         .where(PurchaseModel.business_id == business_id)
     ).all()
 
-    missing_sale_invoices = [
-        {"id": str(row[0])} for row in sales if not str(row[1] or "").strip()
-    ]
-    missing_purchase_invoices = [
-        {"id": str(row[0])} for row in purchases if not str(row[1] or "").strip()
-    ]
+    missing_sale_invoices = [{"id": str(row[0])} for row in sales if not str(row[1] or "").strip()]
+    missing_purchase_invoices = [{"id": str(row[0])} for row in purchases if not str(row[1] or "").strip()]
     missing_sale_dates = [{"invoice_number": row[1]} for row in sales if row[2] is None]
     missing_purchase_dates = [{"invoice_number": row[1]} for row in purchases if row[2] is None]
 
-    sale_total_issues = _sale_total_mismatches_for_business(db, business_id)
-    purchase_total_issues = _purchase_total_mismatches_for_business(db, business_id)
-    numeric = _numeric_issues_for_business(db, business_id)
+    sale_totals = _sale_total_mismatches(db, business_id)
+    purchase_totals = _purchase_total_mismatches(db, business_id)
+    numeric = _numeric_issues(db, business_id)
 
     sections = {
-        "customers": scoped_identity(CustomerModel, "customer"),
-        "suppliers": scoped_identity(SupplierModel, "supplier"),
-        "products": scoped_identity(ProductModel, "product"),
+        "customers": customers,
+        "suppliers": suppliers,
+        "products": products,
         "sales": {
             "missing_invoice_number_count": len(missing_sale_invoices),
             "missing_invoice_numbers": missing_sale_invoices[:limit],
             "missing_transaction_date_count": len(missing_sale_dates),
             "missing_transaction_dates": missing_sale_dates[:limit],
-            "total_mismatches": sale_total_issues[:limit],
-            "total_mismatch_count": len(sale_total_issues),
+            "total_mismatches": sale_totals[:limit],
+            "total_mismatch_count": len(sale_totals),
         },
         "purchases": {
             "missing_invoice_number_count": len(missing_purchase_invoices),
             "missing_invoice_numbers": missing_purchase_invoices[:limit],
             "missing_transaction_date_count": len(missing_purchase_dates),
             "missing_transaction_dates": missing_purchase_dates[:limit],
-            "total_mismatches": purchase_total_issues[:limit],
-            "total_mismatch_count": len(purchase_total_issues),
+            "total_mismatches": purchase_totals[:limit],
+            "total_mismatch_count": len(purchase_totals),
         },
         "numeric_issues": numeric[:limit],
         "numeric_issue_count": len(numeric),
     }
 
     issue_count = (
-        sum(sections[x]["duplicate_name_group_count"] + sections[x]["missing_external_id_count"] for x in ("customers", "suppliers", "products"))
+        customers["duplicate_name_group_count"]
+        + suppliers["duplicate_name_group_count"]
+        + products["duplicate_name_group_count"]
         + len(missing_sale_invoices)
         + len(missing_purchase_invoices)
         + len(missing_sale_dates)
         + len(missing_purchase_dates)
-        + len(sale_total_issues)
-        + len(purchase_total_issues)
+        + len(sale_totals)
+        + len(purchase_totals)
         + len(numeric)
     )
 
@@ -240,76 +214,15 @@ def audit_data_quality(db: Session, business_id: UUID, limit: int = 50) -> dict:
         "status": "attention_required" if issue_count else "reconciled",
         "summary": {
             "issue_count": issue_count,
-            "duplicate_entity_group_count": sum(sections[x]["duplicate_name_group_count"] for x in ("customers", "suppliers", "products")),
-            "missing_identifier_count": sum(sections[x]["missing_external_id_count"] for x in ("customers", "suppliers", "products")),
+            "duplicate_entity_group_count": (
+                customers["duplicate_name_group_count"]
+                + suppliers["duplicate_name_group_count"]
+                + products["duplicate_name_group_count"]
+            ),
             "missing_document_identity_count": len(missing_sale_invoices) + len(missing_purchase_invoices),
             "missing_transaction_date_count": len(missing_sale_dates) + len(missing_purchase_dates),
-            "document_total_mismatch_count": len(sale_total_issues) + len(purchase_total_issues),
+            "document_total_mismatch_count": len(sale_totals) + len(purchase_totals),
             "numeric_issue_count": len(numeric),
         },
         "sections": sections,
     }
-
-
-def _sale_total_mismatches_for_business(db, business_id):
-    rows = db.execute(
-        select(
-            SaleModel.invoice_number, SaleModel.total_amount, SaleModel.tax_amount,
-            SaleModel.discount_amount,
-            func.coalesce(func.sum(SaleLineModel.quantity * SaleLineModel.unit_price), 0),
-        )
-        .outerjoin(SaleLineModel, SaleLineModel.sale_id == SaleModel.id)
-        .where(SaleModel.business_id == business_id)
-        .group_by(SaleModel.id, SaleModel.invoice_number, SaleModel.total_amount, SaleModel.tax_amount, SaleModel.discount_amount)
-    ).all()
-    issues = []
-    for invoice, total, tax, discount, subtotal in rows:
-        expected = Decimal(str(subtotal)) + Decimal(str(tax)) - Decimal(str(discount))
-        actual = Decimal(str(total))
-        if abs(actual - expected) > Decimal("0.01"):
-            issues.append({"invoice_number": invoice, "expected_total_from_lines": float(expected), "recorded_total": float(actual), "difference": float(actual - expected)})
-    return issues
-
-
-def _purchase_total_mismatches_for_business(db, business_id):
-    rows = db.execute(
-        select(
-            PurchaseModel.invoice_number, PurchaseModel.total_amount,
-            func.coalesce(func.sum(PurchaseLineModel.net_amount), 0),
-        )
-        .outerjoin(PurchaseLineModel, PurchaseLineModel.purchase_id == PurchaseModel.id)
-        .where(PurchaseModel.business_id == business_id)
-        .group_by(PurchaseModel.id, PurchaseModel.invoice_number, PurchaseModel.total_amount)
-    ).all()
-    issues = []
-    for invoice, total, net_amount in rows:
-        expected = Decimal(str(net_amount))
-        actual = Decimal(str(total))
-        if abs(actual - expected) > Decimal("0.01"):
-            issues.append({"invoice_number": invoice, "expected_total_from_lines": float(expected), "recorded_total": float(actual), "difference": float(actual - expected)})
-    return issues
-
-
-def _numeric_issues_for_business(db, business_id):
-    issues = []
-    sale_lines = db.execute(
-        select(SaleModel.invoice_number, SaleLineModel.quantity, SaleLineModel.unit_price)
-        .join(SaleLineModel, SaleLineModel.sale_id == SaleModel.id)
-        .where(SaleModel.business_id == business_id)
-    ).all()
-    for invoice, quantity, unit_price in sale_lines:
-        if Decimal(str(quantity)) <= 0:
-            issues.append({"type": "sale_line_quantity", "invoice_number": invoice, "value": float(quantity)})
-        if Decimal(str(unit_price)) < 0:
-            issues.append({"type": "sale_line_unit_price", "invoice_number": invoice, "value": float(unit_price)})
-    purchase_lines = db.execute(
-        select(PurchaseModel.invoice_number, PurchaseLineModel.quantity, PurchaseLineModel.unit_cost)
-        .join(PurchaseLineModel, PurchaseLineModel.purchase_id == PurchaseModel.id)
-        .where(PurchaseModel.business_id == business_id)
-    ).all()
-    for invoice, quantity, unit_cost in purchase_lines:
-        if Decimal(str(quantity)) <= 0:
-            issues.append({"type": "purchase_line_quantity", "invoice_number": invoice, "value": float(quantity)})
-        if Decimal(str(unit_cost)) < 0:
-            issues.append({"type": "purchase_line_unit_cost", "invoice_number": invoice, "value": float(unit_cost)})
-    return issues
