@@ -63,7 +63,7 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
                 answer += f" Recently resolved: {top.get('title', 'a tracked situation')}."
         else:
             grounded = True
-            answer = "No business situations have been tracked yet."
+            answer = "There are no tracked business situations yet."
 
     elif intent == "decision_support":
         if decision_actions:
