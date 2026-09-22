@@ -19,6 +19,14 @@ def classify_intent(question: str) -> str:
         return "situation_history"
     if any(term in text for term in ("how is my business", "business doing", "overall performance", "overall health")):
         return "business_health"
+    if any(term in text for term in ("why", "reason", "caused", "cause")) and any(
+        term in text for term in (
+            "margin", "profit", "profitability", "revenue", "sales", "expense",
+            "expenses", "customer", "supplier", "purchase", "inventory", "stock",
+            "receivable", "payable",
+        )
+    ):
+        return "root_cause"
     if any(term in text for term in ("margin", "profit", "profitability", "gross profit")):
         return "margin_analysis"
     if any(term in text for term in ("receivable", "outstanding payment", "who owes me", "customers owe me", "unpaid invoice", "money owed to me", "collections")):
