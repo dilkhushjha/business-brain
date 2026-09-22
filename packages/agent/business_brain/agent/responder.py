@@ -20,9 +20,35 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
     evidence = context.get("evidence", [])
     signals = context.get("signals", [])
     recommendations = context.get("recommendations", [])
+    decision_actions = context.get("decision_actions", [])
     situations = context.get("situations", [])
     analyses = context.get("analyses", [])
     grounded = False
+
+    if intent == "decision_support":
+        if decision_actions:
+            grounded = True
+            top = decision_actions[0]
+            answer = (
+                f"Based on the current business evidence, the next action to consider is: "
+                f"{top.get('title', 'review the highest-priority issue')}."
+            )
+            why_now = top.get("why_now")
+            if why_now:
+                answer += f" Why now: {why_now}"
+            actions = top.get("actions") or []
+            if actions:
+                answer += " Suggested checks: " + " ".join(
+                    f"{idx + 1}) {item}" for idx, item in enumerate(actions[:3])
+                ) + "."
+        elif situations:
+            grounded = True
+            answer = (
+                "Business Brain has identified a situation that needs review, "
+                f"but it does not yet have a specific action plan for {situations[0].get('title', 'it')}."
+            )
+        else:
+            answer = "I don't have enough evidence to recommend a specific business action yet."
 
     if intent == "business_health":
         revenue = _evidence_for(evidence, "revenue")
