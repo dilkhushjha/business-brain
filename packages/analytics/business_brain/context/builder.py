@@ -21,6 +21,7 @@ from packages.analytics.business_brain.prioritization import prioritize_situatio
 from packages.analytics.business_brain.decision_support import build_decision_actions
 from packages.analytics.business_brain.history import record_situation_history
 from packages.analytics.business_brain.recommendations.rules import generate_recommendations
+from packages.analytics.business_brain.business_integrity import audit_business_integrity
 from packages.analytics.business_brain.recommendations.models import RecommendationContext
 
 
@@ -28,6 +29,7 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
     """Assemble the evidence-first context the agent answers from."""
     kpis = monthly_sales_kpis(db, business_id, as_of)
     signals = detect_signals(db, business_id, as_of)
+    integrity = audit_business_integrity(db, business_id)
     evidence = [
         Evidence(
             source="kpi_engine",
@@ -143,4 +145,5 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
         priorities=priorities,
         decision_actions=decision_actions,
         situation_history=situation_history,
+        integrity=integrity,
     )
