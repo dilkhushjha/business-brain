@@ -9,7 +9,10 @@
       "id": "clean",
       "name": "Clean baseline",
       "purpose": "Healthy operating baseline with no overdue balances and no cost shock.",
-      "expected_situations": []
+      "expected_situations": [],
+      "expected_signals": [],
+      "expected_actions": [],
+      "expected_root_causes": []
     },
     {
       "id": "margin_supplier_pressure",
@@ -17,8 +20,7 @@
       "purpose": "A supplier doubles the purchase cost of the same product and the business continues selling below the new procurement cost.",
       "expected_signals": [
         "PRODUCT_MARGIN_DETERIORATION",
-        "SUPPLIER_PRICE_INCREASE",
-        "SUPPLIER_CONCENTRATION"
+        "SUPPLIER_PRICE_INCREASE"
       ],
       "expected_situations": [
         "MARGIN_PRESSURE",
@@ -27,6 +29,10 @@
       "expected_actions": [
         "INVESTIGATE_MARGIN_PRESSURE",
         "REDUCE_SUPPLIER_DEPENDENCY"
+      ],
+      "expected_root_causes": [
+        "SUPPLIER_COST_PRESSURE",
+        "CONCENTRATED_SUPPLIER"
       ]
     },
     {
@@ -42,6 +48,9 @@
       ],
       "expected_actions": [
         "REVIEW_WORKING_CAPITAL_PRESSURE"
+      ],
+      "expected_root_causes": [
+        "DUAL_WORKING_CAPITAL_PRESSURE"
       ]
     }
   ]
