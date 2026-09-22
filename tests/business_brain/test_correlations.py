@@ -108,7 +108,7 @@ def test_working_capital_situation_uses_state_totals_when_available():
 
 def test_procurement_demand_pressure_requires_both_signals():
     signals = [
-        signal("SUPPLIER_SPEND_SPIKE", evidence={"supplier": "Supplier A"}),
+        signal("SUPPLIER_SPEND_SPIKE", evidence={"supplier": "Supplier A", "product": "Cable"}),
         signal("DEMAND_SPIKE", evidence={"product": "Cable"}),
     ]
 
@@ -117,6 +117,15 @@ def test_procurement_demand_pressure_requires_both_signals():
     assert len(situations) == 1
     assert situations[0].code == "PROCUREMENT_DEMAND_PRESSURE"
     assert situations[0].confidence == Decimal("0.82")
+
+
+def test_procurement_demand_pressure_does_not_cross_products():
+    signals = [
+        signal("SUPPLIER_SPEND_SPIKE", evidence={"supplier": "Supplier A", "product": "Cable"}),
+        signal("DEMAND_SPIKE", evidence={"product": "Connector"}),
+    ]
+
+    assert correlate_signals(signals) == []
 
 
 def test_profitability_pressure_links_margin_and_expense_signals():
