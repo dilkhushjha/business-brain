@@ -59,6 +59,7 @@ def test_agent_answers_from_continuous_business_brain_state(db_session, seeder):
     )
 
     assert result.intent == "root_cause"
+    assert "margin" in result.answer.lower()
     assert result.confidence != "unknown"
     assert result.evidence
     assert result.signals
