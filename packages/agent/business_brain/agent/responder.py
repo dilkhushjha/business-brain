@@ -140,7 +140,7 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
                     parts.append(f"Next step: {action.get('title', 'review the highest-priority action')}.")
             answer = " ".join(parts)
         else:
-            answer = "I don't have enough evidence to assess overall business health yet."
+            answer = "I don't have enough sales evidence to assess overall business health yet."
 
     elif intent == "sales_performance":
         revenue = _evidence_for(evidence, "revenue")
