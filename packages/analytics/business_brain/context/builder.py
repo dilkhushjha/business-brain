@@ -23,6 +23,7 @@ from packages.analytics.business_brain.history import record_situation_history
 from packages.analytics.business_brain.recommendations.rules import generate_recommendations
 from packages.analytics.business_brain.business_integrity import audit_business_integrity
 from packages.analytics.business_brain.qualification import qualify_situations
+from packages.analytics.business_brain.risk import detect_business_risks
 from packages.analytics.business_brain.recommendations.models import RecommendationContext
 
 
@@ -117,6 +118,7 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
         signals=signals,
     )
 
+    risks = detect_business_risks(signals, integrity)
     situations = correlate_signals(signals, state)
     situations = qualify_situations(situations, integrity)
     analyses = [analyze_situation(situation, state) for situation in situations]
@@ -151,4 +153,5 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
         decision_actions=decision_actions,
         situation_history=situation_history,
         integrity=integrity,
+        risks=risks,
     )
