@@ -13,6 +13,10 @@ def classify_intent(question: str) -> str:
     text = question.lower().strip()
     if any(term in text for term in ("what should i do", "what should we do", "next step", "next steps", "what action", "what actions", "how should i respond", "how can i fix", "how do i fix")):
         return "decision_support"
+    if any(term in text for term in ("data quality", "data integrity", "is my data clean", "can i trust the data", "integrity issues", "data issues")):
+        return "data_integrity"
+    if any(term in text for term in ("what changed", "what has changed", "what is getting worse", "what improved", "resolved issue", "resolved issues", "business history")):
+        return "situation_history"
     if any(term in text for term in ("how is my business", "business doing", "overall performance", "overall health")):
         return "business_health"
     if any(term in text for term in ("margin", "profit", "profitability", "gross profit")):
