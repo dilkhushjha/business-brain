@@ -65,3 +65,4 @@ def test_golden_dataset_builds_coherent_business_context(db_session):
     assert isinstance(context.priorities, list)
     assert isinstance(context.decision_actions, list)
     assert isinstance(context.situation_history, list)
+    assert isinstance(context.risks, list)
