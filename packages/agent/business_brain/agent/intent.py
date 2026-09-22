@@ -23,7 +23,7 @@ def classify_intent(question: str) -> str:
         return "margin_analysis"
     if any(term in text for term in ("receivable", "outstanding payment", "who owes me", "customers owe me", "unpaid invoice", "money owed to me", "collections")):
         return "receivables_analysis"
-    if any(term in text for term in ("payable", "what do i owe", "bills due", "bills", "supplier payment", "vendor payment", "money i owe")):
+    if any(term in text for term in ("payable", "what do i owe", "owe suppliers", "owe supplier", "bills due", "bills", "supplier payment", "vendor payment", "money i owe")):
         return "payables_analysis"
     if any(term in text for term in ("supplier", "vendor", "procurement", "purchase cost")):
         return "supplier_analysis"
