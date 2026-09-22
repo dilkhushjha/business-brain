@@ -13,7 +13,7 @@ def test_supplier_intelligence_respects_context_as_of_date(db_session, seeder):
         [
             {
                 "invoice_number": "P-HIST",
-                "transaction_date": "2026-01-10",
+                "transaction_date": "2026-04-10",
                 "product_name": "Cable",
                 "supplier_name": "Prime Cables",
                 "quantity": 10,
