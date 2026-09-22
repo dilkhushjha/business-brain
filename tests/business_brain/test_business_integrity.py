@@ -13,7 +13,7 @@ def test_business_integrity_reconciled_for_clean_business(db_session, seeder):
 def test_business_integrity_surfaces_data_quality_issues(db_session, seeder):
     business = seeder.business()
     product = seeder.product(business.id, "Cable")
-    sale = seeder.sale_with_line(business.id, product, quantity=2, unit_price=100)
+    sale = seeder.sale_with_line(business.id, product.id, quantity=2, unit_price=100)
     sale.total_amount = 250
     db_session.commit()
 
