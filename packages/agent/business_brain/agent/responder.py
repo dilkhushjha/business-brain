@@ -117,20 +117,52 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
 
     elif intent == "business_health":
         revenue = _evidence_for(evidence, "revenue")
-        if revenue:
+        margin = _evidence_for(evidence, "gross_margin_pct")
+        state = context.get("state") or {}
+        if revenue or margin or situations:
             grounded = True
-            change = revenue.get("metadata", {}).get("change")
-            answer = f"Your current-month revenue is {_money(revenue.get('value'))}."
-            if change is not None:
-                answer += f" Compared with the baseline period, it changed by {Decimal(str(change)):.1f}%."
+            parts = []
+            if revenue:
+                change = revenue.get("metadata", {}).get("change")
+                text = f"Current-month revenue is {_money(revenue.get('value'))}"
+                if change is not None:
+                    text += f" ({Decimal(str(change)):+.1f}% vs baseline)"
+                parts.append(text + ".")
+            if margin:
+                parts.append(f"Trailing 30-day gross margin is {Decimal(str(margin.get('value'))):.1f}%.")
+            if state.get("operating_surplus") is not None:
+                parts.append(f"Operating surplus is {_money(state.get('operating_surplus'))}.")
+            if situations:
+                top = situations[0]
+                parts.append(f"The main issue to review is {top.get('title', 'an identified business situation')}.")
+                action = decision_actions[0] if decision_actions else None
+                if action:
+                    parts.append(f"Next step: {action.get('title', 'review the highest-priority action')}.")
+            answer = " ".join(parts)
         else:
-            answer = "I don't have enough sales evidence to assess overall business health yet."
+            answer = "I don't have enough evidence to assess overall business health yet."
 
     elif intent == "sales_performance":
         revenue = _evidence_for(evidence, "revenue")
         if revenue:
             grounded = True
+            change = revenue.get("metadata", {}).get("change")
             answer = f"Current-month revenue is {_money(revenue.get('value'))}."
+            if change is not None:
+                answer += f" It changed by {Decimal(str(change)):+.1f}% versus the baseline."
+            sales_signals = _signals_with_codes(
+                signals,
+                {"CUSTOMER_REVENUE_DECLINE", "REVENUE_DECLINE", "DEMAND_SPIKE"},
+            )
+            if sales_signals:
+                evidence_items = []
+                for signal in sales_signals[:3]:
+                    item = signal.get("evidence", {})
+                    entity = item.get("customer") or item.get("product") or item.get("metric")
+                    if entity:
+                        evidence_items.append(str(entity))
+                if evidence_items:
+                    answer += f" Relevant sales movement: {', '.join(evidence_items)}."
         else:
             answer = "I don't have enough sales evidence yet."
 
