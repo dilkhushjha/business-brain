@@ -274,6 +274,13 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
     else:
         answer = "I can answer this once the relevant business evidence is available."
 
+    integrity = context.get("integrity") or {}
+    if integrity.get("status") == "attention_required" and intent != "data_integrity":
+        domains = integrity.get("affected_domains") or []
+        answer += (
+            " Data-quality caveat: unresolved integrity issues affect "
+            f"{\", \".join(domains) if domains else \"part of the data\"}; treat this conclusion as provisional."
+        )
     if signals:
         answer += f" I detected {len(signals)} business signal(s) that may need attention."
     if situations:
