@@ -5,8 +5,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from packages.shared.database.models import PurchaseModel, SupplierModel
 
-def supplier_spend_risk(db: Session, business_id: UUID, days: int = 90) -> dict:
-    end=date.today(); start=end-timedelta(days=days-1); prev_start=start-timedelta(days=days)
+def supplier_spend_risk(db: Session, business_id: UUID, days: int = 90, as_of: date | None = None) -> dict:
+    end=as_of or date.today(); start=end-timedelta(days=days-1); prev_start=start-timedelta(days=days)
     rows=db.execute(select(SupplierModel.name, func.coalesce(func.sum(PurchaseModel.total_amount),0))
         .join(PurchaseModel, PurchaseModel.supplier_id==SupplierModel.id)
         .where(PurchaseModel.business_id==business_id,PurchaseModel.transaction_date.between(start,end))
