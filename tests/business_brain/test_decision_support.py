@@ -64,3 +64,29 @@ def test_decision_actions_preserve_evidence_and_confidence():
     assert actions[0].confidence == Decimal("0.85")
     assert actions[0].why_now.startswith("Attention attention is warranted")
     assert len(actions[0].actions) == 3
+
+
+def test_qualified_situation_requires_validation_before_action():
+    situation = SimpleNamespace(
+        code="MARGIN_PRESSURE",
+        title="Margin pressure",
+        confidence=Decimal("0.50"),
+        severity="warning",
+        evidence={
+            "products": ["Cable"],
+            "integrity_status": "attention_required",
+            "integrity_domains": ["data_quality"],
+        },
+        recommended_next_step="Review supplier pricing.",
+    )
+    priority = SimpleNamespace(
+        situation_code="MARGIN_PRESSURE",
+        level="attention",
+        score=Decimal("49"),
+    )
+
+    actions = build_decision_actions([situation], [priority], [])
+
+    assert actions[0].title == "Validate data before acting on this situation"
+    assert actions[0].actions[0].startswith("Validate and reconcile")
+    assert actions[0].confidence == Decimal("0.50")
