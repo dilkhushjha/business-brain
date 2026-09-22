@@ -15,7 +15,10 @@ def classify_intent(question: str) -> str:
     # metric handlers (for example, "why is my margin down?" should explain
     # contributing factors rather than only report the margin percentage).
     causal = any(term in text for term in ("why ", "why is", "why are", "reason", "caused", "cause of", "what caused"))
-    if causal:
+    causal_business_metric = any(
+        term in text for term in ("margin", "profit", "profitability", "revenue", "sales", "turnover", "business health")
+    )
+    if causal and causal_business_metric:
         return "root_cause"
     if any(term in text for term in ("what should i do", "what should we do", "next step", "next steps", "what action", "what actions", "how should i respond", "how can i fix", "how do i fix", "should i ", "do i need to ", "is it worth ", "how can i improve", "how can i reduce", "how can i increase", "how can i prevent", "what needs my attention", "what needs attention", "what should i pay attention to", "what should i focus on", "what is the biggest issue", "biggest problem", "main issue")):
         return "decision_support"
