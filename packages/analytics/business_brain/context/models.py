@@ -37,3 +37,4 @@ class BusinessContext:
     decision_actions: list[Any] = field(default_factory=list)
     situation_history: list[Any] = field(default_factory=list)
     integrity: dict[str, Any] = field(default_factory=dict)
+    risks: list[Any] = field(default_factory=list)
