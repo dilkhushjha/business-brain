@@ -78,7 +78,7 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
             metadata={"top_customers": concentration["top_customers"], "risk": concentration["risk"]},
         ))
 
-    supplier_conc = supplier_concentration(db, business_id)
+    supplier_conc = supplier_concentration(db, business_id, as_of=as_of)
     if supplier_conc["top_suppliers"]:
         evidence.append(Evidence(
             source="supplier_risk_engine", metric="supplier_concentration_top_share_pct",
@@ -86,7 +86,7 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
             metadata={"top_suppliers": supplier_conc["top_suppliers"], "risk": supplier_conc["risk"]},
         ))
 
-    purchase_risk = supplier_spend_risk(db, business_id)
+    purchase_risk = supplier_spend_risk(db, business_id, as_of=as_of)
     if purchase_risk["total_spend"]:
         evidence.append(Evidence(
             source="purchase_risk_engine", metric="supplier_spend_concentration_pct",
