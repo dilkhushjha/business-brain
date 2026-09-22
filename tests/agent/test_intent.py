@@ -60,3 +60,10 @@ def test_margin_takes_priority_over_root_cause_for_why_questions():
     question, not fall through to the generic root_cause bucket -- more
     specific categories are checked first."""
     assert classify_intent("Why is my margin so thin this month?") == "margin_analysis"
+
+
+def test_action_oriented_questions_hit_decision_support():
+    assert classify_intent("Should I raise prices?") == "decision_support"
+    assert classify_intent("Do I need to reduce supplier dependency?") == "decision_support"
+    assert classify_intent("How can I improve my margin?") == "decision_support"
+    assert classify_intent("Is it worth buying from another supplier?") == "decision_support"
