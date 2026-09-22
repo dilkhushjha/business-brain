@@ -31,6 +31,9 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
     kpis = monthly_sales_kpis(db, business_id, as_of)
     signals = detect_signals(db, business_id, as_of)
     integrity = audit_business_integrity(db, business_id)
+    # Integrity qualification is applied before any situation-derived
+    # recommendation/action is created, so downstream reasoning cannot treat
+    # questionable data as equally trustworthy.
     evidence = [
         Evidence(
             source="kpi_engine",
