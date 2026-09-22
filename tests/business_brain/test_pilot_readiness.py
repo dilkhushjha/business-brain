@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from packages.analytics.business_brain.pilot_readiness import audit_pilot_readiness
 from packages.data.business_brain.ingestion.repository import persist_sales
+from packages.data.business_brain.ingestion.purchase_repository import persist_purchases
 from packages.shared.database.models import BusinessModel
 
 
@@ -22,6 +23,19 @@ def test_pilot_readiness_accepts_reconciled_sales_business(db_session, seeder):
     product = seeder.product(business.id, "Cable")
     seeder.customer(business.id, "Customer")
     seeder.supplier(business.id, "Supplier")
+    persist_purchases(
+        db_session,
+        business.id,
+        [{
+            "invoice_number": "PILOT-PUR-001",
+            "transaction_date": "2026-09-20",
+            "product_name": product.name,
+            "supplier_name": "Supplier",
+            "quantity": 10,
+            "unit_price": 50,
+            "total_amount": 500,
+        }],
+    )
     persist_sales(
         db_session,
         business.id,
