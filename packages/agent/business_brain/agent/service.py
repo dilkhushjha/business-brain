@@ -22,5 +22,6 @@ def answer(db: Session, business_id: UUID, question: str, as_of: date) -> AgentR
         decision_actions=context.get("decision_actions", []),
         situation_history=context.get("situation_history", []),
         integrity=context.get("integrity", {}),
+        risks=context.get("risks", []),
         confidence=confidence,
     )
