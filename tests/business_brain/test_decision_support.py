@@ -62,7 +62,7 @@ def test_decision_actions_preserve_evidence_and_confidence():
 
     assert actions[0].evidence == situation.evidence
     assert actions[0].confidence == Decimal("0.85")
-    assert actions[0].why_now.startswith("Attention attention is warranted")
+    assert actions[0].why_now.startswith("Attention level attention is warranted")
     assert len(actions[0].actions) == 3
 
 
