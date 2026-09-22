@@ -20,6 +20,8 @@ type Context = {
   evidence?: Evidence[];
   signals?: Array<Record<string, unknown>>;
   recommendations?: Array<Record<string, unknown>>;
+  situations?: Array<Record<string, unknown>>;
+  priorities?: Array<Record<string, unknown>>;
 };
 type KPI = { name: string; value: string | null; change?: string | null; period?: string };
 type Anomaly = { name: string; change_pct: number; severity: string };
@@ -168,8 +170,21 @@ export default function Home() {
   const revenueChange = rk?.change ?? (revenue?.metadata?.change != null ? revenue.metadata.change * 100 : null);
   const prioritySignals = (context?.signals || []).filter((s) => isPrioritySeverity(String(s.severity || "")));
   const positiveSignals = (context?.signals || []).filter((s) => isPositiveSeverity(String(s.severity || "")));
-  const highSignals = prioritySignals;
-  const health = highSignals.length >= 2 ? "Needs attention" : highSignals.length === 1 ? "Watch closely" : "On track";
+
+  // Business Health is a business-level summary. Prefer correlated situations
+  // and their explainable priorities over counting every underlying signal;
+  // otherwise one situation can be represented by several raw signals.
+  const prioritySituations = (context?.situations || []).filter((s) => {
+    const severity = String(s.severity || "");
+    const priority = (context?.priorities || []).find(
+      (p) => String(p.situation_code || "") === String(s.code || "")
+    );
+    const level = String(priority?.level || "").toLowerCase();
+    return isPrioritySeverity(severity) || level === "immediate" || level === "attention";
+  });
+  const healthConcernItems = prioritySituations.length > 0 ? prioritySituations : prioritySignals;
+  const healthConcernCount = healthConcernItems.length;
+  const health = healthConcernCount >= 2 ? "Needs attention" : healthConcernCount === 1 ? "Watch closely" : "On track";
   const healthText = health === "Needs attention" ? "A few issues deserve attention today." : health === "Watch closely" ? "Performance is mixed. Review the highlighted signals." : "No major warning signals are currently visible.";
   const healthIcon = health === "Needs attention" ? "alert" : health === "Watch closely" ? "pulse" : "check";
   const healthTone = health === "Needs attention" ? "danger" : health === "Watch closely" ? "amber" : "success";
@@ -226,7 +241,7 @@ export default function Home() {
       <section className="dashboardIntro"><div><span className="eyebrow">OVERVIEW</span><h2>Good morning, {user?.username || "there"}.</h2><p>{businessName} · Here's the current picture of your business.</p></div><div className="freshStatus"><span className={`freshDot ${live ? "live" : ""}`} /> {loading ? "Refreshing data" : live ? "Data is up to date" : "Live data unavailable"}</div></section>
       <section className="dashboardSection"><div className="sectionHeading sectionHeadingLarge"><span>BUSINESS HEALTH</span><small>At-a-glance signals that deserve your attention</small></div><div className="healthLiteGrid">
         <div className={`healthLiteMain tone-${healthTone}`} onClick={explainHealth} role="button" tabIndex={0}><div className="healthLiteIcon"><Icon name={healthIcon} className="icon" /></div><div><span className="eyebrow">CURRENT STATUS</span><h3>{health}</h3><p>{healthText}</p></div><span className="cardArrow">→</span></div>
-        <Metric label="Priority concerns" value={String(highSignals.length)} change="" note="signals requiring review" icon="alert" tone="danger" onClick={() => setActiveSection("insights")} />
+        <Metric label="Priority concerns" value={String(healthConcernCount)} change="" note="signals requiring review" icon="alert" tone="danger" onClick={() => setActiveSection("insights")} />
         <Metric label="Positive / notable signals" value={String(positiveSignals.length)} change="" note="positive or informational movements" icon="check" tone="success" onClick={() => setActiveSection("insights")} />
       </div></section>
       <section className="dashboardSection"><div className="sectionHeading sectionHeadingLarge"><span>BUSINESS OVERVIEW</span><small>Core numbers from your imported business data</small></div><div className="metrics">
