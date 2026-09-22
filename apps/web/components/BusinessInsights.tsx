@@ -10,6 +10,7 @@ type InsightContext = {
   decision_actions?: Array<Record<string, unknown>>;
   situation_history?: Array<Record<string, unknown>>;
   integrity?: Record<string, unknown>;
+  risks?: Array<Record<string, unknown>>;
 };
 
 type Anomaly = { name: string; change_pct: number; severity: string };
@@ -64,6 +65,7 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
   const situationHistory = context?.situation_history || [];
   const integrity = context?.integrity || {};
   const integrityAttention = integrity.status === "attention_required";
+  const risks = [...(context?.risks || [])].sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
   const priorityByCode = new Map(
     (context?.priorities || []).map((p) => [String(p.situation_code || ""), p])
   );
@@ -190,6 +192,20 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
         </main>
 
         <aside className="insightRail">
+          {risks.length > 0 && <section className="insightSideCard">
+            <div className="insightSideHead"><div><span className="eyebrow">RISK DETECTION</span><h3>Current business risks</h3></div><span className="insightCount">{risks.length}</span></div>
+            {risks.slice(0, 5).map((risk, i) => (
+              <div className="recommendationItem" key={String(risk.code || i)}>
+                <span className="recommendationNo">{i + 1}</span>
+                <div>
+                  <b>{String(risk.title || "Business risk")}</b>
+                  <p>{String(risk.explanation || "Current signals indicate an area requiring review.")}</p>
+                  <small>{String(risk.level || "medium")} · score {Number(risk.score || 0).toFixed(1)} · {Math.round(Number(risk.confidence || 0) * 100)}% confidence</small>
+                </div>
+              </div>
+            ))}
+          </section>}
+
           <section className="insightSideCard">
             <div className="insightSideHead"><div><span className="eyebrow">DECISION SUPPORT</span><h3>Recommended actions</h3></div><span className="insightCount">{decisionActions.length || recommendations.length}</span></div>
             {decisionActions.length ? decisionActions.slice(0, 5).map((a, i) => (
