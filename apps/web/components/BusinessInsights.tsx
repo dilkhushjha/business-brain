@@ -9,6 +9,7 @@ type InsightContext = {
   priorities?: Array<Record<string, unknown>>;
   decision_actions?: Array<Record<string, unknown>>;
   situation_history?: Array<Record<string, unknown>>;
+  integrity?: Record<string, unknown>;
 };
 
 type Anomaly = { name: string; change_pct: number; severity: string };
@@ -61,6 +62,8 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
   const recommendations = context?.recommendations || [];
   const decisionActions = context?.decision_actions || [];
   const situationHistory = context?.situation_history || [];
+  const integrity = context?.integrity || {};
+  const integrityAttention = integrity.status === "attention_required";
   const priorityByCode = new Map(
     (context?.priorities || []).map((p) => [String(p.situation_code || ""), p])
   );
@@ -83,6 +86,12 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
           <span>{attention === 1 ? "priority signal" : "priority signals"}</span>
         </div>
       </div>
+
+      {integrityAttention && <div className="integrityNotice">
+        <strong>Data integrity needs review</strong>
+        <span>{String(integrity.conclusion_note || "Some business conclusions may be affected by unresolved data issues.")}</span>
+        <small>{Array.isArray(integrity.affected_domains) ? integrity.affected_domains.join(" · ") : ""}</small>
+      </div>}
 
       {(context?.situations || []).length > 0 && <section className="businessSituations">
         <div className="situationsHead">
