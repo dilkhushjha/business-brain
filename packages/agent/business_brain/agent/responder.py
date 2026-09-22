@@ -25,6 +25,45 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
     analyses = context.get("analyses", [])
     grounded = False
 
+    if intent == "data_integrity":
+        integrity = context.get("integrity") or {}
+        if integrity.get("status") == "attention_required":
+            grounded = True
+            domains = integrity.get("affected_domains") or []
+            issue_count = int(integrity.get("issue_count") or 0)
+            answer = (
+                f"Business data has {issue_count} integrity issue(s) affecting: "
+                f"{', '.join(domains) if domains else 'one or more domains'}. "
+                "I would resolve these exceptions before relying on affected cross-domain conclusions."
+            )
+        elif integrity:
+            grounded = True
+            answer = "The current integrity audits found no unresolved data-quality, inventory, or financial-linkage exceptions."
+        else:
+            answer = "I don't have an integrity audit available for this business yet."
+
+    elif intent == "situation_history":
+        history = context.get("situation_history", [])
+        active = [item for item in history if item.get("status") == "active"]
+        resolved = [item for item in history if item.get("status") == "resolved"]
+        if history:
+            grounded = True
+            answer = (
+                f"I have {len(history)} tracked business situation(s): "
+                f"{len(active)} active and {len(resolved)} resolved."
+            )
+            if active:
+                top = active[0]
+                answer += (
+                    f" Active: {top.get('title', 'an identified situation')} "
+                    f"({top.get('trend', 'stable')})."
+                )
+            if resolved:
+                top = resolved[0]
+                answer += f" Recently resolved: {top.get('title', 'a tracked situation')}."
+        else:
+            answer = "No business situations have been tracked yet."
+
     if intent == "decision_support":
         if decision_actions:
             grounded = True
