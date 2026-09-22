@@ -9,8 +9,8 @@ from packages.data.business_brain.ingestion.repository import persist_sales
 
 def _scenario_dates() -> tuple[str, str, str, date]:
     today = date.today()
-    historical = today - timedelta(days=55)
-    current = today - timedelta(days=25)
+    historical = today - timedelta(days=50)
+    current = today - timedelta(days=10)
     sale = today - timedelta(days=20)
     return historical.isoformat(), current.isoformat(), sale.isoformat(), today
 
