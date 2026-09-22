@@ -37,6 +37,7 @@ from apps.api.app.api.routes.purchases import router as purchases_router
 from apps.api.app.api.routes.payments import router as payments_router
 from apps.api.app.api.routes.financial_integrity import router as financial_integrity_router
 from apps.api.app.api.routes.data_integrity import router as data_integrity_router
+from apps.api.app.api.routes.pilot import router as pilot_router
 from apps.api.app.core.config import settings
 from packages.shared.database.session import engine
 
@@ -131,5 +132,6 @@ for router in (
     payments_router,
     financial_integrity_router,
     data_integrity_router,
+    pilot_router,
 ):
     app.include_router(router, prefix="/api")
