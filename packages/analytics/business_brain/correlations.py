@@ -122,23 +122,22 @@ def correlate_signals(signals: list[Any], state: Any | None = None) -> list[Busi
         # A supplier spending increase and a demand increase are only a
         # coherent procurement-demand situation when they concern the same
         # product. Otherwise the two movements can be unrelated.
-        if not product_overlap:
-            return situations
-
-        related = [
+        if product_overlap:
+            related = [
             s for s in purchase_spikes + demand
             if _signal_evidence(s, "product") in product_overlap
         ]
-        evidence = {
-            "products": product_overlap,
-            "supplier_spend_spikes": len(purchase_spikes),
-            "demand_spikes": len(demand),
-        }
-        if state is not None and getattr(state, "purchase_spend", None) is not None:
-            evidence["purchase_spend"] = str(state.purchase_spend)
+        if product_overlap:
+            evidence = {
+                "products": product_overlap,
+                "supplier_spend_spikes": len(purchase_spikes),
+                "demand_spikes": len(demand),
+            }
+            if state is not None and getattr(state, "purchase_spend", None) is not None:
+                evidence["purchase_spend"] = str(state.purchase_spend)
 
-        situations.append(BusinessSituation(
-            code="PROCUREMENT_DEMAND_PRESSURE",
+            situations.append(BusinessSituation(
+                code="PROCUREMENT_DEMAND_PRESSURE",
             title="Purchasing and demand are both increasing",
             severity="warning",
             confidence=Decimal("0.82"),
