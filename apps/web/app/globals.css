@@ -3122,3 +3122,48 @@ button:disabled {
   .integrityNotice { align-items:flex-start; flex-direction:column; gap:4px; }
   .integrityNotice small { margin-left:0; white-space:normal; }
 }
+
+.integrityCenter{display:flex;flex-direction:column;gap:16px}
+.integrityHero{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:20px;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:var(--shadow-sm)}
+.integrityHero h2{margin:5px 0 0;font-size:22px;letter-spacing:-.03em}
+.integrityHero p{max-width:700px;margin:7px 0 0;color:var(--text-muted);font-size:11px;line-height:1.6}
+.integrityHealth{min-width:150px;padding:12px 14px;border:1px solid var(--border);border-radius:11px;text-align:right;background:var(--surface-2)}
+.integrityHealth strong{display:block;font-size:22px;line-height:1}
+.integrityHealth span{display:block;margin-top:5px;color:var(--text-muted);font-size:9px}
+.integrityHealth.needsAttention strong{color:var(--danger)}
+.integrityHealth.clear strong{color:var(--success)}
+.integritySummary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 1.8fr;gap:10px}
+.integritySummary>div{min-height:76px;padding:14px;border:1px solid var(--border);border-radius:11px;background:var(--surface);box-shadow:var(--shadow-sm)}
+.integritySummary b{display:block;font-size:18px}
+.integritySummary span{display:block;margin-top:5px;color:var(--text-muted);font-size:9px}
+.integritySummaryNote{display:flex;flex-direction:column;justify-content:center}
+.integritySummaryNote b{font-size:11px}
+.integrityError{display:flex;align-items:center;gap:9px;padding:11px 13px;border:1px solid #ead2d2;border-radius:10px;background:#fffafa;color:var(--danger);font-size:10px}
+.integrityError .icon{width:14px;height:14px}
+.integrityGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.integrityCard{min-width:0;padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-sm)}
+.integrityCardHead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.integrityCardHead h3{margin:5px 0 0;font-size:13px}
+.integrityCard>p{min-height:50px;margin:10px 0;color:var(--text-muted);font-size:10px;line-height:1.55}
+.integrityStatus{padding:4px 7px;border-radius:999px;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.integrityStatus.ok{background:#ecfdf3;color:#16754a}
+.integrityStatus.attention{background:var(--danger-tint);color:var(--danger)}
+.integrityStatus.loading{background:var(--surface-2);color:var(--text-faint)}
+.integrityMetric{display:flex;align-items:baseline;gap:7px;padding:12px 0;border-top:1px solid var(--border-soft);border-bottom:1px solid var(--border-soft)}
+.integrityMetric strong{font-size:24px;letter-spacing:-.04em}
+.integrityMetric span{color:var(--text-muted);font-size:9px}
+.integrityDetails{display:grid;grid-template-columns:1fr 1fr;margin-top:11px;border:1px solid var(--border-soft);border-radius:9px;overflow:hidden}
+.integrityDetails>div{display:flex;justify-content:space-between;gap:8px;padding:8px 9px;border-right:1px solid var(--border-soft);border-bottom:1px solid var(--border-soft)}
+.integrityDetails>div:nth-child(2n){border-right:0}
+.integrityDetails>div:nth-last-child(-n+2){border-bottom:0}
+.integrityDetails span{color:var(--text-muted);font-size:8px;text-transform:capitalize}
+.integrityDetails b{font-size:9px}
+.integrityReadOnly{display:block;margin-top:11px;color:var(--text-faint);font-size:8px}
+.integrityPrinciples{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.integrityPrinciples>div{display:flex;gap:9px;align-items:flex-start;padding:13px;border:1px solid var(--border);border-radius:11px;background:var(--surface-2)}
+.integrityPrinciples .icon{width:15px;height:15px;flex:none;color:var(--text-muted)}
+.integrityPrinciples b{display:block;font-size:10px}
+.integrityPrinciples span{display:block;margin-top:4px;color:var(--text-muted);font-size:9px;line-height:1.45}
+@media(max-width:900px){.integrityGrid{grid-template-columns:1fr 1fr}.integritySummary{grid-template-columns:1fr 1fr}.integritySummaryNote{grid-column:1/-1}.integrityPrinciples{grid-template-columns:1fr}}
+@media(max-width:650px){.integrityHero{flex-direction:column}.integrityHealth{width:100%;text-align:left;min-width:0}.integrityGrid{grid-template-columns:1fr}.integritySummary{grid-template-columns:1fr 1fr}}
+@media(max-width:420px){.integritySummary{grid-template-columns:1fr}}
