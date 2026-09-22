@@ -148,3 +148,38 @@ def test_margin_answer_explains_cross_domain_driver():
     assert confidence == "grounded"
     assert "cross-domain signal" in answer.lower()
     assert "supplier pricing is increasing" in answer.lower()
+
+
+def test_decision_support_selects_action_relevant_to_question():
+    context = {
+        "evidence": [],
+        "signals": [],
+        "situations": [],
+        "recommendations": [],
+        "decision_actions": [
+            {
+                "code": "INVESTIGATE_MARGIN_PRESSURE",
+                "situation_code": "MARGIN_PRESSURE",
+                "title": "Investigate procurement-driven margin pressure",
+                "why_now": "Supplier costs are affecting product margins.",
+                "actions": ["Review supplier pricing."],
+            },
+            {
+                "code": "REDUCE_SUPPLIER_DEPENDENCY",
+                "situation_code": "SUPPLIER_DEPENDENCY_PRESSURE",
+                "title": "Review concentrated supplier dependency",
+                "why_now": "A large share of purchasing depends on one supplier.",
+                "actions": ["Identify viable secondary suppliers."],
+            },
+        ],
+    }
+
+    answer, confidence = render_grounded_response(
+        "Should I find another supplier?",
+        "decision_support",
+        context,
+    )
+
+    assert confidence == "grounded"
+    assert "supplier dependency" in answer.lower()
+    assert "secondary suppliers" in answer.lower()
