@@ -50,6 +50,7 @@ def test_golden_intelligence_scenario_produces_explainable_chain(db_session, see
             "quantity": 60,
             "unit_price": 75,
             "total_amount": 4500,
+            "cost_price": 80,
         }
     ]
 
