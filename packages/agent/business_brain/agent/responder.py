@@ -82,13 +82,17 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
             if worst:
                 product = worst[0].get("evidence", {}).get("product", "one product")
                 answer += f" {product} in particular is selling at or below an acceptable margin."
-            discount_issues = _signals_with_codes(signals, {"DISCOUNT_ANOMALY"})
-            if discount_issues:
-                customer = discount_issues[0].get("evidence", {}).get("customer", "one customer")
-                answer += f" Also worth checking: an unusually large discount was given to {customer}."
+            pressure = next(
+                (item for item in situations if item.get("code") in {"MARGIN_PRESSURE", "PROFITABILITY_PRESSURE", "REVENUE_COST_SQUEEZE"}),
+                None,
+            )
+            if pressure:
+                answer += f" Cross-domain signal: {pressure.get('title', 'margin pressure')}."
+                analysis = next((item for item in analyses if item.get("situation_code") == pressure.get("code")), None)
+                if analysis and analysis.get("root_causes"):
+                    answer += f" Likely contributing factor: {analysis['root_causes'][0].get('title', 'a detected factor')}."
         else:
             answer = "I don't have enough cost data to assess margin yet."
-
     elif intent == "receivables_analysis":
         receivables = _evidence_for(evidence, "receivables_outstanding")
         if receivables:
