@@ -13,7 +13,20 @@ def supplier_concentration(db: Session, business_id: UUID, top_n: int = 5, as_of
     how much of total purchase spend is concentrated in a small number of
     suppliers -- a business over-reliant on one supplier has real risk if
     that supplier raises prices, has a stock-out, or the relationship sours."""
-    end = as_of or date.today()\n    rows = db.execute(select(SupplierModel.name, func.sum(PurchaseModel.total_amount).label("spend")).join(PurchaseModel, PurchaseModel.supplier_id == SupplierModel.id).where(PurchaseModel.business_id == business_id, PurchaseModel.transaction_date <= end).group_by(SupplierModel.id, SupplierModel.name).order_by(func.sum(PurchaseModel.total_amount).desc())).all()
+    end = as_of or date.today()
+    rows = db.execute(
+        select(
+            SupplierModel.name,
+            func.sum(PurchaseModel.total_amount).label("spend"),
+        )
+        .join(PurchaseModel, PurchaseModel.supplier_id == SupplierModel.id)
+        .where(
+            PurchaseModel.business_id == business_id,
+            PurchaseModel.transaction_date <= end,
+        )
+        .group_by(SupplierModel.id, SupplierModel.name)
+        .order_by(func.sum(PurchaseModel.total_amount).desc())
+    ).all()
     total = sum(float(r.spend or 0) for r in rows)
     top = [{"name": r.name, "spend": float(r.spend or 0), "share_pct": round(float(r.spend or 0)/total*100, 2) if total else 0} for r in rows[:top_n]]
     top_share = round(sum(x["share_pct"] for x in top), 2)
