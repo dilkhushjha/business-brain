@@ -1,0 +1,48 @@
+{
+  "business": {
+    "name": "Golden SME Scenario Lab",
+    "industry": "distribution",
+    "as_of": "2026-09-20"
+  },
+  "scenarios": [
+    {
+      "id": "clean",
+      "name": "Clean baseline",
+      "purpose": "Healthy operating baseline with no overdue balances and no cost shock.",
+      "expected_situations": []
+    },
+    {
+      "id": "margin_supplier_pressure",
+      "name": "Margin and supplier pressure",
+      "purpose": "A supplier doubles the purchase cost of the same product and the business continues selling below the new procurement cost.",
+      "expected_signals": [
+        "PRODUCT_MARGIN_DETERIORATION",
+        "SUPPLIER_PRICE_INCREASE",
+        "SUPPLIER_CONCENTRATION"
+      ],
+      "expected_situations": [
+        "MARGIN_PRESSURE",
+        "SUPPLIER_DEPENDENCY_PRESSURE"
+      ],
+      "expected_actions": [
+        "INVESTIGATE_MARGIN_PRESSURE",
+        "REDUCE_SUPPLIER_DEPENDENCY"
+      ]
+    },
+    {
+      "id": "working_capital_pressure",
+      "name": "Working-capital pressure",
+      "purpose": "A materially overdue customer receivable coincides with an overdue supplier payable.",
+      "expected_signals": [
+        "RECEIVABLE_OVERDUE",
+        "PAYABLE_OVERDUE"
+      ],
+      "expected_situations": [
+        "WORKING_CAPITAL_PRESSURE"
+      ],
+      "expected_actions": [
+        "REVIEW_WORKING_CAPITAL_PRESSURE"
+      ]
+    }
+  ]
+}
