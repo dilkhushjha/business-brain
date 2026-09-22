@@ -11,7 +11,7 @@ def classify_intent(question: str) -> str:
     understanding -- a question that doesn't use any of these words won't
     be recognized even if a human would obviously know what it's asking."""
     text = question.lower().strip()
-        if any(term in text for term in ("what should i do", "what should we do", "next step", "next steps", "what action", "what actions", "how should i respond", "how can i fix", "how do i fix", "should i ", "do i need to ", "is it worth ", "how can i improve", "how can i reduce", "how can i increase", "how can i prevent", "what needs my attention", "what needs attention", "what should i pay attention to", "what should i focus on", "what is the biggest issue", "biggest problem", "main issue")):
+    if any(term in text for term in ("what should i do", "what should we do", "next step", "next steps", "what action", "what actions", "how should i respond", "how can i fix", "how do i fix", "should i ", "do i need to ", "is it worth ", "how can i improve", "how can i reduce", "how can i increase", "how can i prevent", "what needs my attention", "what needs attention", "what should i pay attention to", "what should i focus on", "what is the biggest issue", "biggest problem", "main issue")):
         return "decision_support"
     if any(term in text for term in ("data quality", "data integrity", "is my data clean", "can i trust the data", "integrity issues", "data issues")):
         return "data_integrity"
