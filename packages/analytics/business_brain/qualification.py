@@ -22,6 +22,18 @@ _SITUATION_DOMAINS = {
 _QUALIFIED_CONFIDENCE_CAP = Decimal("0.65")
 
 
+def _quality_confidence_cap(integrity: dict[str, Any], relevant: set[str]) -> Decimal:
+    issue_count = sum(
+        int((integrity.get("audits", {}).get(domain, {}).get("summary", {}) or {}).get("issue_count", 0))
+        for domain in relevant
+    )
+    if issue_count >= 5:
+        return Decimal("0.40")
+    if issue_count >= 2:
+        return Decimal("0.50")
+    return _QUALIFIED_CONFIDENCE_CAP
+
+
 def qualify_situations(
     situations: list[Any],
     integrity: dict[str, Any] | None,
@@ -49,7 +61,7 @@ def qualify_situations(
         evidence["integrity_domains"] = sorted(relevant)
 
         confidence = Decimal(str(getattr(situation, "confidence", "0")))
-        confidence = min(confidence, _QUALIFIED_CONFIDENCE_CAP)
+        confidence = min(confidence, _quality_confidence_cap(integrity, relevant))
 
         explanation = str(getattr(situation, "explanation", ""))
         caveat = (
