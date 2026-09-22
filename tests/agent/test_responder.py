@@ -195,3 +195,31 @@ def test_product_analysis_mentions_stockout_risk():
     assert confidence == "grounded"
     assert "LED Bulb 9W" in answer
     assert "running out" in answer.lower() or "run out" in answer.lower()
+
+
+def test_grounded_answer_surfaces_integrity_caveat():
+    context = {
+        "evidence": [{"metric": "revenue", "value": "10000", "metadata": {}}],
+        "signals": [],
+        "integrity": {"status": "attention_required", "affected_domains": ["data_quality"]},
+    }
+    answer, confidence = render_grounded_response("What's my revenue?", "sales_performance", context)
+    assert confidence == "grounded"
+    assert "data-quality caveat" in answer.lower()
+    assert "provisional" in answer.lower()
+
+
+def test_decision_support_prefers_concrete_action():
+    context = {
+        "decision_actions": [{
+            "title": "Review concentrated supplier dependency",
+            "why_now": "One supplier accounts for most purchase spend.",
+            "actions": ["Identify a viable secondary supplier."],
+        }],
+        "signals": [],
+        "situations": [],
+    }
+    answer, confidence = render_grounded_response("What should I do?", "decision_support", context)
+    assert confidence == "grounded"
+    assert "Review concentrated supplier dependency" in answer
+    assert "Identify a viable secondary supplier" in answer
