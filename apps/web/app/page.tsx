@@ -9,6 +9,7 @@ import PayablesIntelligence from "../components/PayablesIntelligence";
 import InventoryIntelligence from "../components/InventoryIntelligence";
 import PurchaseIntelligence from "../components/PurchaseIntelligence";
 import BusinessInsights from "../components/BusinessInsights";
+import DataIntegrityCenter from "../components/DataIntegrityCenter";
 import ConnectGate from "../components/ConnectGate";
 import DashboardReasoningOverlay from "../components/DashboardReasoningOverlay";
 import { ApiAuthError, apiFetch, clearSession, getBusinessId, getCurrentUser, hasToken, type SessionUser } from "../lib/api";
@@ -233,7 +234,10 @@ export default function Home() {
       { id: "insights", label: "Business Insights", icon: "sparkle" as IconName },
       { id: "reports", label: "Reports", icon: "trend" as IconName },
     ]},
-    { label: "DATA", items: [{ id: "imports", label: "Data & Imports", icon: "arrow" as IconName }] },
+    { label: "DATA", items: [
+      { id: "integrity", label: "Data Integrity", icon: "alert" as IconName },
+      { id: "imports", label: "Data & Imports", icon: "arrow" as IconName },
+    ] },
   ];
 
   function renderSection() {
@@ -259,6 +263,7 @@ export default function Home() {
     if (activeSection === "financials") return <section className="contentSection"><SectionTitle title="FINANCIALS" subtitle="Profitability, margins, cash position and receivables" /><div className="statGrid"><MarginIntelligence onExplain={setSelectedReasoning} /><ReceivablesIntelligence onExplain={setSelectedReasoning} /><PayablesIntelligence /></div></section>;
     if (activeSection === "operations") return <section className="contentSection"><SectionTitle title="OPERATIONS" subtitle="Inventory health and operational intelligence" /><InventoryIntelligence onExplain={setSelectedReasoning} /></section>;
     if (activeSection === "insights") return <BusinessInsights context={context} anomalies={anomalies} />;
+    if (activeSection === "integrity") return <section className="contentSection"><SectionTitle title="DATA INTEGRITY" subtitle="Reconciliation and data-quality checks protecting Business Brain conclusions" /><DataIntegrityCenter dataVersion={dataVersion} /></section>;
     if (activeSection === "reports") return (
       <section className="contentSection">
         <SectionTitle title="REPORTS" subtitle="Reporting and analysis workspace" />
