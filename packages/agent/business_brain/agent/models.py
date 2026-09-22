@@ -19,4 +19,5 @@ class AgentResponse:
     decision_actions: list[dict[str, Any]] = field(default_factory=list)
     situation_history: list[dict[str, Any]] = field(default_factory=list)
     integrity: dict[str, Any] = field(default_factory=dict)
+    risks: list[dict[str, Any]] = field(default_factory=list)
     confidence: str = "unknown"
