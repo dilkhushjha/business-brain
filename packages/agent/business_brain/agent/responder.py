@@ -15,6 +15,27 @@ def _signals_with_codes(signals: list[dict], codes: set[str]) -> list[dict]:
     return [s for s in signals if s.get("code") in codes]
 
 
+def _select_action(question: str, actions: list[dict]) -> dict | None:
+    """Choose the most relevant already-grounded action for the user's question."""
+    if not actions:
+        return None
+    text = question.lower()
+    topic_codes = []
+    if any(term in text for term in ("supplier", "vendor", "procurement", "buying")):
+        topic_codes.append("SUPPLIER_DEPENDENCY_PRESSURE")
+    if any(term in text for term in ("margin", "price", "pricing", "profit", "profitable")):
+        topic_codes.extend(("MARGIN_PRESSURE", "PROFITABILITY_PRESSURE", "REVENUE_COST_SQUEEZE"))
+    if any(term in text for term in ("cash", "working capital", "receivable", "payable", "owe", "collection")):
+        topic_codes.append("WORKING_CAPITAL_PRESSURE")
+    if any(term in text for term in ("demand", "stock", "inventory", "reorder", "purchase more")):
+        topic_codes.append("PROCUREMENT_DEMAND_PRESSURE")
+    if topic_codes:
+        for action in actions:
+            if action.get("situation_code") in topic_codes:
+                return action
+    return actions[0]
+
+
 def render_grounded_response(question: str, intent: str, context: dict) -> tuple[str, str]:
     """Return an evidence-first answer with explicit cause-vs-impact separation."""
     evidence = context.get("evidence", [])
@@ -68,7 +89,7 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
     elif intent == "decision_support":
         if decision_actions:
             grounded = True
-            top = decision_actions[0]
+            top = _select_action(question, decision_actions)
             answer = (
                 f"Based on the current business evidence, the next action to consider is: "
                 f"{top.get('title', 'review the highest-priority issue')}."
@@ -135,7 +156,7 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
             if situations:
                 top = situations[0]
                 parts.append(f"The main issue to review is {top.get('title', 'an identified business situation')}.")
-                action = decision_actions[0] if decision_actions else None
+                action = _select_action(question, decision_actions)
                 if action:
                     parts.append(f"Next step: {action.get('title', 'review the highest-priority action')}.")
             answer = " ".join(parts)
