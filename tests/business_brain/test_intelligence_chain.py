@@ -111,3 +111,40 @@ def test_recommendation_preserves_situation_confidence_and_evidence():
     assert recommendations[0].priority == "high"
     assert recommendations[0].confidence == Decimal("0.86")
     assert recommendations[0].evidence == situations[0].evidence
+
+
+def test_margin_answer_explains_cross_domain_driver():
+    context = {
+        "evidence": [{
+            "metric": "gross_margin_pct",
+            "value": "8.0",
+            "metadata": {"revenue": "10000", "cost": "9200"},
+        }],
+        "signals": [{
+            "code": "PRODUCT_MARGIN_DETERIORATION",
+            "evidence": {"product": "HDMI Cable"},
+        }],
+        "situations": [{
+            "code": "MARGIN_PRESSURE",
+            "title": "Procurement-driven margin pressure",
+        }],
+        "analyses": [{
+            "situation_code": "MARGIN_PRESSURE",
+            "root_causes": [{
+                "title": "Supplier pricing is increasing",
+                "evidence": {"supplier": "Prime Cables"},
+            }],
+            "impacts": [],
+        }],
+        "recommendations": [],
+    }
+
+    answer, confidence = render_grounded_response(
+        "Why is my margin under pressure?",
+        "margin_analysis",
+        context,
+    )
+
+    assert confidence == "grounded"
+    assert "cross-domain signal" in answer.lower()
+    assert "supplier pricing is increasing" in answer.lower()
