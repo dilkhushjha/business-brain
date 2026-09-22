@@ -113,6 +113,9 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
                 {priorityByCode.get(String(s.code || ""))?.level && (
                   <small>Attention {String(priorityByCode.get(String(s.code || ""))?.level)}</small>
                 )}
+                {s.evidence && typeof s.evidence === "object" && (s.evidence as Record<string, unknown>).integrity_status === "attention_required" && (
+                  <small className="integrityBadge">Qualified by data integrity</small>
+                )}
               </div>
             </article>;
           })}
