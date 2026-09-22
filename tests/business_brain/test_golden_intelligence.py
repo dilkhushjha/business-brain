@@ -184,3 +184,44 @@ def test_golden_working_capital_scenario_tracks_pressure_and_resolution(db_sessi
     )
     assert resolved.status == "resolved"
     assert resolved.resolved_at == date.today()
+
+
+def test_integrity_exceptions_qualify_business_conclusions(db_session, seeder):
+    business = seeder.business(name="Golden Integrity Qualification", industry="distribution")
+    seeder.product(business.id, "HDMI Cable 2M")
+    seeder.customer(business.id, "Customer")
+
+    persist_purchases(db_session, business.id, [{
+        "invoice_number": "P-QUAL-001",
+        "transaction_date": date.today().isoformat(),
+        "product_name": "HDMI Cable 2M",
+        "supplier_name": "Prime Cables",
+        "quantity": 10,
+        "unit_price": 80,
+        "total_amount": 800,
+    }])
+    persist_sales(db_session, business.id, [{
+        "invoice_number": "S-QUAL-001",
+        "transaction_date": date.today().isoformat(),
+        "product_name": "HDMI Cable 2M",
+        "customer_name": "Customer",
+        "quantity": 5,
+        "unit_price": 75,
+        "total_amount": 375,
+        "cost_price": 80,
+    }])
+
+    from packages.shared.database.models import ProductModel
+    db_session.add(ProductModel(business_id=business.id, name=" hdmi  cable  2m "))
+    db_session.commit()
+
+    context = build_business_context(db_session, business.id, date.today())
+
+    assert context.integrity["status"] == "attention_required"
+    assert "data_quality" in context.integrity["affected_domains"]
+
+    for situation in context.situations:
+        if situation.code in {"MARGIN_PRESSURE", "PROFITABILITY_PRESSURE", "REVENUE_COST_SQUEEZE"}:
+            assert situation.confidence <= 0.65
+            assert situation.evidence["integrity_status"] == "attention_required"
+            assert "integrity issues" in situation.explanation
