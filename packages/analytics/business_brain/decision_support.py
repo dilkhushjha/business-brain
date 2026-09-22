@@ -74,7 +74,7 @@ def _why_now(situation: Any, priority: Any, analysis: Any | None) -> str:
     score = getattr(priority, "score", None) if priority else None
     confidence = getattr(situation, "confidence", Decimal("0"))
 
-    parts = [f"{str(level).capitalize()} attention is warranted"]
+    parts = [f"{str(level).capitalize()} level attention is warranted"]
     if score is not None:
         parts.append(f"on an explainable priority score of {Decimal(str(score)):.1f}")
     parts.append(f"with {Decimal(str(confidence)) * 100:.0f}% situation confidence")
@@ -126,14 +126,28 @@ def build_decision_actions(
         if not action_list:
             action_list = [str(getattr(situation, "recommended_next_step", "Review the supporting evidence."))]
 
-        actions.append(DecisionAction(
-            code=recommendation_code or f"REVIEW_{code}",
-            situation_code=code,
-            title=(
+        # Never turn a conclusion built on unresolved source-data exceptions
+        # into an unconditional business action.
+        situation_evidence = dict(getattr(situation, "evidence", {}) or {})
+        integrity_domains = situation_evidence.get("integrity_domains") or []
+        if situation_evidence.get("integrity_status") == "attention_required":
+            domain_text = ", ".join(map(str, integrity_domains)) or "source-data"
+            action_list = [
+                f"Validate and reconcile the affected {domain_text} data before acting on this situation.",
+                *action_list,
+            ]
+            title = "Validate data before acting on this situation"
+        else:
+            title = (
                 str(getattr(recommendation, "title", "Review business situation"))
                 if recommendation is not None
                 else str(getattr(situation, "title", "Review business situation"))
-            ),
+            )
+
+        actions.append(DecisionAction(
+            code=recommendation_code or f"REVIEW_{code}",
+            situation_code=code,
+            title=title,
             priority_level=str(getattr(priority, "level", "monitor")),
             priority_score=Decimal(str(getattr(priority, "score", "0"))),
             confidence=Decimal(str(getattr(situation, "confidence", "0"))),
