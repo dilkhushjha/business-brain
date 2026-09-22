@@ -10,7 +10,7 @@ def test_sales_performance_intent():
 
 
 def test_margin_analysis_intent():
-    assert classify_intent("Why is my margin so low?") == "margin_analysis"
+    assert classify_intent("What is my margin this month?") == "margin_analysis"
     assert classify_intent("What's my profitability like?") == "margin_analysis"
 
 
@@ -55,11 +55,9 @@ def test_general_business_fallback():
     assert classify_intent("What's the weather like today?") == "general_business"
 
 
-def test_margin_takes_priority_over_root_cause_for_why_questions():
-    """'why is my margin low' should be recognized specifically as a margin
-    question, not fall through to the generic root_cause bucket -- more
-    specific categories are checked first."""
-    assert classify_intent("Why is my margin so thin this month?") == "margin_analysis"
+def test_core_metric_causal_questions_use_root_cause():
+    assert classify_intent("Why is my margin so thin this month?") == "root_cause"
+    assert classify_intent("Why did revenue fall this month?") == "root_cause"
 
 
 def test_action_oriented_questions_hit_decision_support():
