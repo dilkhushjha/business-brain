@@ -90,6 +90,31 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
         else:
             answer = "I don't have enough evidence to recommend a specific business action yet."
 
+    elif intent == "general_business":
+        # Give broad questions a useful executive answer instead of falling
+        # through to the generic insufficient-context response.
+        state = context.get("state") or {}
+        if situations or decision_actions or evidence:
+            grounded = True
+            parts = []
+            revenue = _evidence_for(evidence, "revenue")
+            margin = _evidence_for(evidence, "gross_margin_pct")
+            if revenue:
+                parts.append(f"Revenue is {_money(revenue.get('value'))}.")
+            if margin:
+                parts.append(f"Gross margin is {Decimal(str(margin.get('value'))):.1f}%.")
+            if situations:
+                top = situations[0]
+                parts.append(
+                    f"The main cross-domain situation to review is {top.get('title', 'an identified business situation')}."
+                )
+            if decision_actions:
+                action = decision_actions[0]
+                parts.append(f"Suggested next step: {action.get('title', 'review the highest-priority action')}.")
+            answer = " ".join(parts)
+        else:
+            answer = "I don't have enough business evidence yet to summarize what needs attention."
+
     elif intent == "business_health":
         revenue = _evidence_for(evidence, "revenue")
         if revenue:
