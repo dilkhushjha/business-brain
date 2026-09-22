@@ -11,6 +11,8 @@ def classify_intent(question: str) -> str:
     understanding -- a question that doesn't use any of these words won't
     be recognized even if a human would obviously know what it's asking."""
     text = question.lower().strip()
+    if any(term in text for term in ("what should i do", "what should we do", "next step", "next steps", "what action", "what actions", "how should i respond", "how can i fix", "how do i fix")):
+        return "decision_support"
     if any(term in text for term in ("how is my business", "business doing", "overall performance", "overall health")):
         return "business_health"
     if any(term in text for term in ("margin", "profit", "profitability", "gross profit")):
