@@ -23,7 +23,7 @@ def test_pilot_readiness_accepts_reconciled_sales_business(db_session, seeder):
     seeder.supplier(business.id, "Supplier")
     seeder.sale_with_line(
         business.id,
-        product,
+        product.id,
         quantity=2,
         unit_price=100,
     )
