@@ -149,3 +149,19 @@ def test_dead_stock_question_is_grounded_from_real_data(db_session, seeder):
     assert result.intent == "product_analysis"
     assert result.confidence == "grounded"
     assert "Forgotten Item" in result.answer
+
+
+def test_data_integrity_question_is_grounded(db_session, seeder):
+    business = seeder.business()
+    result = answer(db_session, business.id, "Can I trust the data?", date.today())
+    assert result.intent == "data_integrity"
+    assert result.confidence == "grounded"
+    assert "integrity audits" in result.answer
+
+
+def test_situation_history_question_is_grounded(db_session, seeder):
+    business = seeder.business()
+    result = answer(db_session, business.id, "What changed in my business?", date.today())
+    assert result.intent == "situation_history"
+    assert result.confidence == "grounded"
+    assert "tracked business situation" in result.answer
