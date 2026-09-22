@@ -50,7 +50,7 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
         else:
             answer = "I don't have enough evidence to recommend a specific business action yet."
 
-    if intent == "business_health":
+    elif intent == "business_health":
         revenue = _evidence_for(evidence, "revenue")
         if revenue:
             grounded = True
