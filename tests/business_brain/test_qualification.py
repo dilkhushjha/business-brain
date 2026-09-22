@@ -66,3 +66,9 @@ def test_clean_integrity_does_not_change_situations():
     )
 
     assert result[0] == situation
+
+
+def test_many_integrity_issues_lower_confidence_further():
+    situation = _situation("MARGIN_PRESSURE")
+    result = qualify_situations([situation], {"status": "attention_required", "affected_domains": ["data_quality"], "audits": {"data_quality": {"summary": {"issue_count": 5}}}})
+    assert result[0].confidence == Decimal("0.40")
