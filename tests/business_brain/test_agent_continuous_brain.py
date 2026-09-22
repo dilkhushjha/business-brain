@@ -54,7 +54,7 @@ def test_agent_answers_from_continuous_business_brain_state(db_session, seeder):
     result = answer(
         db_session,
         business.id,
-        "Why is my margin under pressure?",
+        "What is causing my margin pressure?",
         today,
     )
 
