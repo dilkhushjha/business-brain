@@ -8,12 +8,12 @@ from sqlalchemy.orm import Session
 from packages.shared.database.models import ProductModel, PurchaseLineModel, PurchaseModel, SupplierModel
 
 
-def supplier_concentration(db: Session, business_id: UUID, top_n: int = 5) -> dict[str, Any]:
+def supplier_concentration(db: Session, business_id: UUID, top_n: int = 5, as_of: date | None = None) -> dict[str, Any]:
     """Mirrors customer_risk.customer_concentration(), on the spend side:
     how much of total purchase spend is concentrated in a small number of
     suppliers -- a business over-reliant on one supplier has real risk if
     that supplier raises prices, has a stock-out, or the relationship sours."""
-    rows = db.execute(select(SupplierModel.name, func.sum(PurchaseModel.total_amount).label("spend")).join(PurchaseModel, PurchaseModel.supplier_id == SupplierModel.id).where(PurchaseModel.business_id == business_id).group_by(SupplierModel.id, SupplierModel.name).order_by(func.sum(PurchaseModel.total_amount).desc())).all()
+    end = as_of or date.today()\n    rows = db.execute(select(SupplierModel.name, func.sum(PurchaseModel.total_amount).label("spend")).join(PurchaseModel, PurchaseModel.supplier_id == SupplierModel.id).where(PurchaseModel.business_id == business_id, PurchaseModel.transaction_date <= end).group_by(SupplierModel.id, SupplierModel.name).order_by(func.sum(PurchaseModel.total_amount).desc())).all()
     total = sum(float(r.spend or 0) for r in rows)
     top = [{"name": r.name, "spend": float(r.spend or 0), "share_pct": round(float(r.spend or 0)/total*100, 2) if total else 0} for r in rows[:top_n]]
     top_share = round(sum(x["share_pct"] for x in top), 2)
@@ -21,13 +21,13 @@ def supplier_concentration(db: Session, business_id: UUID, top_n: int = 5) -> di
     return {"total_spend": total, "top_suppliers": top, "top_n": top_n, "top_share_pct": top_share, "risk": level}
 
 
-def supplier_price_increases(db: Session, business_id: UUID, days: int = 30, threshold: float = 15, limit: int = 10) -> list[dict[str, Any]]:
+def supplier_price_increases(db: Session, business_id: UUID, days: int = 30, threshold: float = 15, limit: int = 10, as_of: date | None = None) -> list[dict[str, Any]]:
     """Products whose quantity-weighted average purchase cost from a given
     supplier has increased materially vs. the prior period of equal
     length -- the purchase-side mirror of customer_risk.declining_customers()'s
     current-vs-previous-window comparison, applied to unit_cost instead of
     revenue."""
-    end = date.today(); cur_start = end - timedelta(days=days - 1)
+    end = as_of or date.today(); cur_start = end - timedelta(days=days - 1)
     prev_end = cur_start - timedelta(days=1); prev_start = prev_end - timedelta(days=days - 1)
 
     def weighted_avg_cost(lo: date, hi: date) -> dict[tuple[str, str], Decimal]:
