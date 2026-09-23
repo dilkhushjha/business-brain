@@ -44,7 +44,7 @@ export default function ResetPasswordPage() {
           <button className="connectPrimary" disabled={busy || !token}>{busy ? "Updating…" : "Update password →"}</button>
         </form>
         {error && <div className="connectError">{error}</div>}
-        {message && <div className="connectSuccess">{message} You can now return to the sign-in screen.</div>}
+        {message && <div className="connectError" style={{ borderColor: "rgba(34,197,94,.35)" }}>{message} You can now return to the sign-in screen.</div>}
       </section>
     </main>
   );
