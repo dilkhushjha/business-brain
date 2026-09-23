@@ -13,6 +13,7 @@ import pytest
 from apps.api.app.api.routes.agent import router as agent_router
 from apps.api.app.api.routes.auth import router as auth_router
 from apps.api.app.api.routes.connectors import router as connectors_router
+from apps.api.app.api.routes.context import router as context_router
 from apps.api.app.api.routes.kpis import router as kpis_router
 from apps.api.app.api.routes.discounts import router as discounts_router
 from apps.api.app.api.routes.expenses import router as expenses_router
@@ -28,7 +29,7 @@ from packages.shared.database.session import get_db
 def client(db_session):
     app = FastAPI()
     for router in (
-        auth_router, connectors_router, kpis_router, signals_router, agent_router,
+        auth_router, connectors_router, kpis_router, context_router, signals_router, agent_router,
         payables_router, discounts_router, expenses_router, ingestion_router,
         inventory_router, supplier_risk_router,
     ):
@@ -239,3 +240,30 @@ def test_sales_import_persists_new_and_reimported_invoices(client, seeder):
     payload = {item["name"]: item for item in kpis.json()}
     assert payload["total_revenue"]["value"] == "3500.00"
     assert payload["total_invoice_count"]["value"] == "2"
+
+
+def test_business_context_requires_user_auth_and_returns_intelligence_layers(client, db_session, seeder):
+    business = seeder.business("Context Business")
+    product = seeder.product(business.id, "Cable")
+    seeder.sale_with_line(business.id, product.id, quantity=2, unit_price=100)
+
+    assert client.get(f"/api/context/{business.id}").status_code == 401
+
+    token = _user_token(client, db_session, business.id)
+    response = client.get(
+        f"/api/context/{business.id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+
+    assert payload["business_id"] == str(business.id)
+    assert isinstance(payload["evidence"], list)
+    assert isinstance(payload["signals"], list)
+    assert isinstance(payload["situations"], list)
+    assert isinstance(payload["analyses"], list)
+    assert isinstance(payload["priorities"], list)
+    assert isinstance(payload["decision_actions"], list)
+    assert isinstance(payload["situation_history"], list)
+    assert isinstance(payload["integrity"], dict)
+    assert isinstance(payload["risks"], list)
