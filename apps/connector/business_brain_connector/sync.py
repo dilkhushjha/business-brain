@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 
 from apps.connector.business_brain_connector.config import ConnectorConfig
+from apps.connector.business_brain_connector import __version__
 from apps.connector.business_brain_connector.fingerprint import fingerprint
 from apps.connector.business_brain_connector.state import SyncState
 from apps.connector.business_brain_connector.uploader import UploadError, send_heartbeat, upload_file
@@ -81,7 +82,7 @@ def send_heartbeat_safely(config: ConnectorConfig) -> None:
     if not config.api_token:
         return
     try:
-        send_heartbeat(config.api_base_url, config.api_token)
+        send_heartbeat(config.api_base_url, config.api_token, __version__)
         logger.debug("Heartbeat sent")
     except UploadError as exc:
         logger.warning("Heartbeat failed: %s", exc)
