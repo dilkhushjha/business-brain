@@ -5,10 +5,11 @@ import {
   completeBusinessOnboarding,
   login,
   register,
+  requestPasswordReset,
   type SessionUser,
 } from "../lib/api";
 
-type AuthMode = "login" | "register" | "onboarding";
+type AuthMode = "login" | "register" | "forgot" | "onboarding";
 
 export default function ConnectGate({ onConnected }: { onConnected: () => void }) {
   const [mode, setMode] = useState<AuthMode>("login");
@@ -40,6 +41,12 @@ export default function ConnectGate({ onConnected }: { onConnected: () => void }
     setError("");
 
     try {
+      if (mode === "forgot") {
+        await requestPasswordReset(identifier.trim());
+        setError("If an account matches, a password reset link has been sent.");
+        return;
+      }
+
       if (mode === "login") {
         const result = await login(identifier.trim(), password);
         if (result.user.business.onboarding_completed) onConnected();
@@ -117,6 +124,21 @@ export default function ConnectGate({ onConnected }: { onConnected: () => void }
                 </label>
                 <button className="connectPrimary" disabled={busy}>
                   {busy ? "Signing in…" : "Sign in →"}
+                </button>
+                <button type="button" className="authModeSwitch" onClick={() => { setMode("forgot"); setError(""); }}>
+                  Forgot password?
+                </button>
+              </>
+            )}
+
+            {mode === "forgot" && (
+              <>
+                <label className="connectField">
+                  <span>Email, username or phone</span>
+                  <input value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="you@example.com" autoComplete="username" autoFocus />
+                </label>
+                <button className="connectPrimary" disabled={busy}>
+                  {busy ? "Sending…" : "Send reset link →"}
                 </button>
               </>
             )}
@@ -208,7 +230,7 @@ export default function ConnectGate({ onConnected }: { onConnected: () => void }
             className="authModeSwitch"
             onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}
           >
-            {mode === "login" ? "New to Business Brain? Create an account" : "Already have an account? Sign in"}
+            {mode === "login" ? "New to Business Brain? Create an account" : mode === "forgot" ? "Back to sign in" : "Already have an account? Sign in"}
           </button>
         )}
 
