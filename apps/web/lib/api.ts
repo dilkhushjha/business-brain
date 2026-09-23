@@ -88,6 +88,33 @@ export function login(identifier: string, password: string) {
   return authRequest("/auth/login", { identifier, password });
 }
 
+export function requestPasswordReset(identifier: string) {
+  if (!API_BASE_URL) throw new Error("NEXT_PUBLIC_API_URL is not configured.");
+  return fetch(API_BASE_URL + "/auth/password-reset/request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ identifier }),
+  }).then(async (response) => {
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail || "Unable to request a password reset.");
+    return data as { detail: string };
+  });
+}
+
+export async function confirmPasswordReset(token: string, password: string) {
+  if (!API_BASE_URL) throw new Error("NEXT_PUBLIC_API_URL is not configured.");
+  const response = await fetch(API_BASE_URL + "/auth/password-reset/confirm", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ token, password }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.detail || "Unable to reset your password.");
+  return data as { detail: string };
+}
+
 export function register(payload: {
   username: string;
   email?: string;
