@@ -25,6 +25,11 @@ class BusinessModel(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     industry: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, server_default=sa.func.current_timestamp(), nullable=False)
+    currency_code: Mapped[str] = mapped_column(String(3), default="INR", server_default="INR", nullable=False)
+    timezone: Mapped[str] = mapped_column(String(64), default="Asia/Kolkata", server_default="Asia/Kolkata", nullable=False)
+    fiscal_year_start_month: Mapped[int] = mapped_column(default=4, server_default="4", nullable=False)
+    onboarding_completed: Mapped[bool] = mapped_column(default=False, server_default=sa.false(), nullable=False)
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class UserModel(Base):
