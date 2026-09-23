@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -18,6 +19,10 @@ from packages.shared.database.models import BusinessModel
 from packages.shared.database.session import get_db
 
 router = APIRouter(prefix="/connectors", tags=["connectors"])
+
+
+class ConnectorHeartbeatRequest(BaseModel):
+    version: str | None = Field(default=None, max_length=32)
 logger = logging.getLogger(__name__)
 
 
@@ -51,8 +56,24 @@ def register_connector(
 
 
 @router.post("/heartbeat")
-def heartbeat(connector: dict = Depends(require_connector)):
-    return {"status": "connected", "connector_id": str(connector["id"]), "business_id": str(connector["business_id"])}
+def heartbeat(
+    payload: ConnectorHeartbeatRequest | None = None,
+    connector: dict = Depends(require_connector),
+    db: Session = Depends(get_db),
+):
+    version = payload.version.strip() if payload and payload.version else None
+    if version:
+        db.execute(
+            text("UPDATE business_brain_connectors SET version=:version WHERE id=:id"),
+            {"version": version, "id": str(connector["id"])},
+        )
+        db.commit()
+    return {
+        "status": "connected",
+        "connector_id": str(connector["id"]),
+        "business_id": str(connector["business_id"]),
+        "version": version,
+    }
 
 
 @router.post("/import/{business_id}")
@@ -101,6 +122,61 @@ def connector_import(
     finally:
         if temp_path:
             Path(temp_path).unlink(missing_ok=True)
+
+
+@router.post("/rotate/{business_id}")
+def rotate_connector(
+    business_id: UUID,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(require_business_access),
+):
+    row = db.execute(
+        text("""
+            SELECT id FROM business_brain_connectors
+            WHERE business_id=:business_id AND status='active'
+            ORDER BY created_at DESC LIMIT 1
+        """),
+        {"business_id": str(business_id)},
+    ).mappings().first()
+    if row:
+        db.execute(
+            text("""
+                UPDATE business_brain_connectors
+                SET status='revoked', last_error='Credential rotated'
+                WHERE id=:id
+            """),
+            {"id": str(row["id"])},
+        )
+        db.commit()
+    connector_id, token = create_connector(db, business_id)
+    return {
+        "connector_id": str(connector_id),
+        "business_id": str(business_id),
+        "token": token,
+        "warning": "The previous connector credential has been revoked. Store this token securely; it is shown only once.",
+    }
+
+
+@router.post("/revoke/{business_id}")
+def revoke_connector(
+    business_id: UUID,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(require_business_access),
+):
+    result = db.execute(
+        text("""
+            UPDATE business_brain_connectors
+            SET status='revoked', last_error='Credential revoked by business owner'
+            WHERE business_id=:business_id AND status='active'
+        """),
+        {"business_id": str(business_id)},
+    )
+    db.commit()
+    return {
+        "status": "revoked",
+        "business_id": str(business_id),
+        "revoked_count": result.rowcount or 0,
+    }
 
 
 @router.get("/status/{business_id}")
