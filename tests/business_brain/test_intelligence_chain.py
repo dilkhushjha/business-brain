@@ -183,3 +183,51 @@ def test_decision_support_selects_action_relevant_to_question():
     assert confidence == "grounded"
     assert "supplier dependency" in answer.lower()
     assert "secondary suppliers" in answer.lower()
+
+
+def test_customer_answer_does_not_invent_customer_identity():
+    context = {
+        "evidence": [],
+        "signals": [{
+            "code": "CUSTOMER_REVENUE_DECLINE",
+            "severity": "warning",
+            "evidence": {"change_pct": "-42.0"},
+        }],
+        "situations": [],
+        "recommendations": [],
+    }
+
+    answer, confidence = render_grounded_response(
+        "Which customers are at risk?",
+        "customer_analysis",
+        context,
+    )
+
+    assert confidence == "grounded"
+    assert "does not identify the affected customer" in answer.lower()
+    assert "customer a" not in answer.lower()
+    assert "acme" not in answer.lower()
+
+
+def test_root_cause_does_not_invent_customer_from_generic_signal():
+    context = {
+        "evidence": [],
+        "signals": [{
+            "code": "CUSTOMER_REVENUE_DECLINE",
+            "severity": "warning",
+            "evidence": {"change_pct": "-42.0"},
+        }],
+        "situations": [],
+        "recommendations": [],
+    }
+
+    answer, confidence = render_grounded_response(
+        "Why is this happening to my business?",
+        "root_cause",
+        context,
+    )
+
+    assert confidence == "grounded"
+    assert "detected issue" in answer.lower() or "candidate factors" in answer.lower()
+    assert "customer a" not in answer.lower()
+    assert "acme" not in answer.lower()
