@@ -154,7 +154,9 @@ def _user_row(db: Session, user_id: UUID):
     return db.execute(
         text("""
             SELECT u.id, u.username, u.email, u.phone, u.is_active,
-                   ub.business_id, ub.role, b.name AS business_name, b.industry
+                   ub.business_id, ub.role, b.name AS business_name, b.industry,
+                   b.currency_code, b.timezone, b.fiscal_year_start_month,
+                   b.onboarding_completed, b.onboarding_completed_at
             FROM users u
             JOIN user_businesses ub ON ub.user_id = u.id
             JOIN businesses b ON b.id = ub.business_id
@@ -177,6 +179,11 @@ def _public_user(row) -> dict:
             "name": row["business_name"],
             "industry": row["industry"],
             "role": row["role"],
+            "currency_code": row["currency_code"],
+            "timezone": row["timezone"],
+            "fiscal_year_start_month": int(row["fiscal_year_start_month"]),
+            "onboarding_completed": bool(row["onboarding_completed"]),
+            "onboarding_completed_at": row["onboarding_completed_at"].isoformat() if row["onboarding_completed_at"] else None,
         },
     }
 
