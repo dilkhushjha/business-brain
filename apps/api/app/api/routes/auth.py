@@ -61,6 +61,12 @@ def _token_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def _as_datetime(value) -> datetime:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    return datetime.fromisoformat(str(value).replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
 def _create_access_token(user_id: UUID) -> str:
     now = datetime.now(timezone.utc)
     payload = {
@@ -116,7 +122,7 @@ def _rotate_refresh_token(db: Session, raw_token: str) -> tuple[UUID, str] | Non
         {"token_hash": _token_hash(raw_token)},
     ).mappings().first()
     now = datetime.now(timezone.utc)
-    if not row or row["revoked_at"] is not None or row["expires_at"] <= now:
+    if not row or row["revoked_at"] is not None or _as_datetime(row["expires_at"]) <= now:
         return None
 
     new_id = uuid4()
@@ -365,8 +371,8 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
         {"key": key},
     ).mappings().first()
     now = datetime.now(timezone.utc)
-    if failure_count and failure_count["window_started_at"] > now - RATE_LIMIT_WINDOW and int(failure_count["failed_attempts"]) >= MAX_LOGIN_FAILURES:
-        retry_after = max(1, int((failure_count["window_started_at"] + RATE_LIMIT_WINDOW - now).total_seconds()))
+    if failure_count and _as_datetime(failure_count["window_started_at"]) > now - RATE_LIMIT_WINDOW and int(failure_count["failed_attempts"]) >= MAX_LOGIN_FAILURES:
+        retry_after = max(1, int((_as_datetime(failure_count["window_started_at"]) + RATE_LIMIT_WINDOW - now).total_seconds()))
         raise HTTPException(429, "Too many failed login attempts. Try again later.", headers={"Retry-After": str(retry_after)})
 
     user = _find_user(db, payload.identifier)
