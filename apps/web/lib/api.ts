@@ -1,1 +1,159 @@
-// Shared authenticated API access for the dashboard.\n// Human users authenticate with a username/email/phone + password.\n// Connector credentials never enter the browser dashboard flow.\n\nexport const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (\n  process.env.NODE_ENV === "development" ? "http://localhost:8000/api" : ""\n);\n\nconst AUTH_MARKER_KEY = "bb_authenticated";\nconst BUSINESS_KEY = "bb_business_context";\nlet accessToken: string | null = null;\n\nexport type SessionUser = {\n  id: string;\n  username: string;\n  email: string | null;\n  phone: string | null;\n  business: {\n    id: string;\n    name: string;\n    industry: string;\n    role: string;\n  };\n};\n\nfunction readStorage(key: string): string | null {\n  if (typeof window === "undefined") return null;\n  try { return window.sessionStorage.getItem(key); } catch { return null; }\n}\n\nfunction writeStorage(key: string, value: string) {\n  if (typeof window === "undefined") return;\n  try { window.sessionStorage.setItem(key, value); } catch { /* non-fatal */ }\n}\n\nfunction removeStorage(key: string) {\n  if (typeof window === "undefined") return;\n  try { window.sessionStorage.removeItem(key); } catch { /* non-fatal */ }\n}\n\nfunction markAuthenticated() {\n  writeStorage(AUTH_MARKER_KEY, "1");\n}\n\nexport function getToken(): string | null {\n  return accessToken;\n}\n\nexport function setSession(token: string, user: SessionUser) {\n  accessToken = token || null;\n  markAuthenticated();\n  writeStorage(BUSINESS_KEY, user.business.id);\n}\n\nexport function getBusinessId(): string {\n  return readStorage(BUSINESS_KEY) || "";\n}\n\nexport function hasToken(): boolean {\n  // Only a non-secret marker survives page reload. The access token itself stays in memory.\n  return Boolean(accessToken) || readStorage(AUTH_MARKER_KEY) === "1";\n}\n\nexport function clearSession() {\n  accessToken = null;\n  removeStorage(AUTH_MARKER_KEY);\n  removeStorage(BUSINESS_KEY);\n}\n\nexport class ApiAuthError extends Error {}\n\nasync function authRequest(path: string, body: unknown) {\n  if (!API_BASE_URL) throw new Error("NEXT_PUBLIC_API_URL is not configured.");\n  const response = await fetch(API_BASE_URL + path, {\n    method: "POST",\n    headers: { "Content-Type": "application/json" },\n    credentials: "include",\n    body: JSON.stringify(body),\n  });\n  const data = await response.json().catch(() => ({}));\n  if (!response.ok) throw new Error(data.detail || "Authentication failed (" + response.status + ")");\n  if (!data.access_token || !data.user) throw new Error("Authentication response was incomplete.");\n  setSession(data.access_token, data.user);\n  return data as { access_token: string; token_type: string; user: SessionUser };\n}\n\nexport function login(identifier: string, password: string) {\n  return authRequest("/auth/login", { identifier, password });\n}\n\nexport function register(payload: {\n  username: string;\n  email?: string;\n  phone?: string;\n  password: string;\n  business_name: string;\n  industry: string;\n}) {\n  return authRequest("/auth/register", payload);\n}\n\nexport async function logout(): Promise<void> {\n  if (!API_BASE_URL) {\n    clearSession();\n    return;\n  }\n  try {\n    await fetch(API_BASE_URL + "/auth/logout", { method: "POST", credentials: "include" });\n  } finally {\n    clearSession();\n  }\n}\n\nasync function refreshSession(): Promise<boolean> {\n  if (!API_BASE_URL) return false;\n  const response = await fetch(API_BASE_URL + "/auth/refresh", {\n    method: "POST",\n    credentials: "include",\n  });\n  if (!response.ok) return false;\n  const data = await response.json().catch(() => ({}));\n  if (!data.access_token || !data.user) return false;\n  setSession(data.access_token, data.user);\n  return true;\n}\n\nexport async function getCurrentUser(): Promise<SessionUser> {\n  const response = await apiFetch("/auth/me");\n  if (!response.ok) throw new ApiAuthError("Authentication required (" + response.status + ")");\n  const user = await response.json() as SessionUser;\n  setSession(accessToken || "", user);\n  return user;\n}\n\nexport async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {\n  if (!API_BASE_URL) throw new Error("NEXT_PUBLIC_API_URL is not configured.");\n\n  const doFetch = () => {\n    const token = getToken();\n    const headers = new Headers(options.headers);\n    if (token) headers.set("Authorization", "Bearer " + token);\n    return fetch(API_BASE_URL + path, {\n      ...options,\n      headers,\n      credentials: "include",\n      cache: "no-store",\n    });\n  };\n\n  let response = await doFetch();\n  if (response.status === 401 && path !== "/auth/refresh" && path !== "/auth/logout") {\n    if (await refreshSession()) response = await doFetch();\n  }\n\n  if (response.status === 401 || response.status === 403) {\n    throw new ApiAuthError("Authentication required (" + response.status + ")");\n  }\n  return response;\n}\n
+// Shared authenticated API access for the dashboard.
+// Human users authenticate with a username/email/phone + password.
+// Connector credentials never enter the browser dashboard flow.
+
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (
+  process.env.NODE_ENV === "development" ? "http://localhost:8000/api" : ""
+);
+
+const AUTH_MARKER_KEY = "bb_authenticated";
+const BUSINESS_KEY = "bb_business_context";
+let accessToken: string | null = null;
+
+export type SessionUser = {
+  id: string;
+  username: string;
+  email: string | null;
+  phone: string | null;
+  business: {
+    id: string;
+    name: string;
+    industry: string;
+    role: string;
+  };
+};
+
+function readStorage(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try { return window.sessionStorage.getItem(key); } catch { return null; }
+}
+
+function writeStorage(key: string, value: string) {
+  if (typeof window === "undefined") return;
+  try { window.sessionStorage.setItem(key, value); } catch { /* non-fatal */ }
+}
+
+function removeStorage(key: string) {
+  if (typeof window === "undefined") return;
+  try { window.sessionStorage.removeItem(key); } catch { /* non-fatal */ }
+}
+
+function markAuthenticated() {
+  writeStorage(AUTH_MARKER_KEY, "1");
+}
+
+export function getToken(): string | null {
+  return accessToken;
+}
+
+export function setSession(token: string, user: SessionUser) {
+  accessToken = token || null;
+  markAuthenticated();
+  writeStorage(BUSINESS_KEY, user.business.id);
+}
+
+export function getBusinessId(): string {
+  return readStorage(BUSINESS_KEY) || "";
+}
+
+export function hasToken(): boolean {
+  // Only a non-secret marker survives page reload. The access token itself stays in memory.
+  return Boolean(accessToken) || readStorage(AUTH_MARKER_KEY) === "1";
+}
+
+export function clearSession() {
+  accessToken = null;
+  removeStorage(AUTH_MARKER_KEY);
+  removeStorage(BUSINESS_KEY);
+}
+
+export class ApiAuthError extends Error {}
+
+async function authRequest(path: string, body: unknown) {
+  if (!API_BASE_URL) throw new Error("NEXT_PUBLIC_API_URL is not configured.");
+  const response = await fetch(API_BASE_URL + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.detail || "Authentication failed (" + response.status + ")");
+  if (!data.access_token || !data.user) throw new Error("Authentication response was incomplete.");
+  setSession(data.access_token, data.user);
+  return data as { access_token: string; token_type: string; user: SessionUser };
+}
+
+export function login(identifier: string, password: string) {
+  return authRequest("/auth/login", { identifier, password });
+}
+
+export function register(payload: {
+  username: string;
+  email?: string;
+  phone?: string;
+  password: string;
+  business_name: string;
+  industry: string;
+}) {
+  return authRequest("/auth/register", payload);
+}
+
+export async function logout(): Promise<void> {
+  if (!API_BASE_URL) {
+    clearSession();
+    return;
+  }
+  try {
+    await fetch(API_BASE_URL + "/auth/logout", { method: "POST", credentials: "include" });
+  } finally {
+    clearSession();
+  }
+}
+
+async function refreshSession(): Promise<boolean> {
+  if (!API_BASE_URL) return false;
+  const response = await fetch(API_BASE_URL + "/auth/refresh", {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!response.ok) return false;
+  const data = await response.json().catch(() => ({}));
+  if (!data.access_token || !data.user) return false;
+  setSession(data.access_token, data.user);
+  return true;
+}
+
+export async function getCurrentUser(): Promise<SessionUser> {
+  const response = await apiFetch("/auth/me");
+  if (!response.ok) throw new ApiAuthError("Authentication required (" + response.status + ")");
+  const user = await response.json() as SessionUser;
+  setSession(accessToken || "", user);
+  return user;
+}
+
+export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
+  if (!API_BASE_URL) throw new Error("NEXT_PUBLIC_API_URL is not configured.");
+
+  const doFetch = () => {
+    const token = getToken();
+    const headers = new Headers(options.headers);
+    if (token) headers.set("Authorization", "Bearer " + token);
+    return fetch(API_BASE_URL + path, {
+      ...options,
+      headers,
+      credentials: "include",
+      cache: "no-store",
+    });
+  };
+
+  let response = await doFetch();
+  if (response.status === 401 && path !== "/auth/refresh" && path !== "/auth/logout") {
+    if (await refreshSession()) response = await doFetch();
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    throw new ApiAuthError("Authentication required (" + response.status + ")");
+  }
+  return response;
+}
