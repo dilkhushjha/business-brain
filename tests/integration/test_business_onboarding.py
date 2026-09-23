@@ -106,3 +106,57 @@ def test_business_onboarding_requires_auth(db_session):
         "/api/businesses",
         json={"name": "No Auth", "industry": "retail"},
     ).status_code == 401
+
+
+def test_new_business_starts_incomplete_and_can_complete_onboarding(db_session):
+    client = _client(db_session)
+    session = _register(client, f"onboard_{uuid4().hex[:8]}", "Fresh Electricals")
+    token = session["access_token"]
+    business_id = session["user"]["business"]["id"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    profile = client.get(f"/api/businesses/{business_id}", headers=headers)
+    assert profile.status_code == 200
+    assert profile.json()["onboarding_completed"] is False
+    assert profile.json()["currency_code"] == "INR"
+    assert profile.json()["timezone"] == "Asia/Kolkata"
+    assert profile.json()["fiscal_year_start_month"] == 4
+
+    completed = client.post(
+        f"/api/businesses/{business_id}/onboarding",
+        headers=headers,
+        json={
+            "name": "Fresh Electricals Pvt Ltd",
+            "industry": "distribution",
+            "currency_code": "INR",
+            "timezone": "Asia/Kolkata",
+            "fiscal_year_start_month": 4,
+        },
+    )
+    assert completed.status_code == 200, completed.text
+    assert completed.json()["onboarding_completed"] is True
+    assert completed.json()["onboarding_completed_at"] is not None
+
+    refreshed = client.get(f"/api/businesses/{business_id}", headers=headers)
+    assert refreshed.status_code == 200
+    assert refreshed.json()["name"] == "Fresh Electricals Pvt Ltd"
+    assert refreshed.json()["onboarding_completed"] is True
+
+
+def test_onboarding_is_tenant_scoped(db_session):
+    client = _client(db_session)
+    first = _register(client, f"first_{uuid4().hex[:8]}", "First")
+    second = _register(client, f"second_{uuid4().hex[:8]}", "Second")
+
+    response = client.post(
+        f"/api/businesses/{second['user']['business']['id']}/onboarding",
+        headers={"Authorization": f"Bearer {first["access_token"]}"},
+        json={
+            "name": "Hijacked",
+            "industry": "retail",
+            "currency_code": "INR",
+            "timezone": "Asia/Kolkata",
+            "fiscal_year_start_month": 4,
+        },
+    )
+    assert response.status_code == 404
