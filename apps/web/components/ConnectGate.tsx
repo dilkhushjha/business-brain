@@ -1,10 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { login, register } from "../lib/api";
+import { login, register, requestPasswordReset } from "../lib/api";
 
 export default function ConnectGate({ onConnected }: { onConnected: () => void }) {
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
   const [identifier, setIdentifier] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -22,6 +22,10 @@ export default function ConnectGate({ onConnected }: { onConnected: () => void }
     try {
       if (mode === "login") {
         await login(identifier.trim(), password);
+        onConnected();
+      } else if (mode === "forgot") {
+        await requestPasswordReset(identifier.trim());
+        setError("If an account matches, a password reset link has been sent.");
       } else {
         await register({
           username: username.trim(),
@@ -31,8 +35,8 @@ export default function ConnectGate({ onConnected }: { onConnected: () => void }
           business_name: businessName.trim(),
           industry: industry.trim(),
         });
+        onConnected();
       }
-      onConnected();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to authenticate.");
     } finally {
@@ -71,6 +75,19 @@ export default function ConnectGate({ onConnected }: { onConnected: () => void }
                 </label>
                 <button className="connectPrimary" disabled={busy}>
                   {busy ? "Signing in…" : "Sign in →"}
+                </button>
+                <button type="button" className="authModeSwitch" onClick={() => { setMode("forgot"); setError(""); }}>
+                  Forgot password?
+                </button>
+              </>
+            ) : mode === "forgot" ? (
+              <>
+                <label className="connectField">
+                  <span>Email, username or phone</span>
+                  <input value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="you@example.com" autoComplete="username" autoFocus />
+                </label>
+                <button className="connectPrimary" disabled={busy}>
+                  {busy ? "Sending…" : "Send reset link →"}
                 </button>
               </>
             ) : (
@@ -114,7 +131,7 @@ export default function ConnectGate({ onConnected }: { onConnected: () => void }
           className="authModeSwitch"
           onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}
         >
-          {mode === "login" ? "New to Business Brain? Create an account" : "Already have an account? Sign in"}
+          {mode === "login" ? "New to Business Brain? Create an account" : mode === "forgot" ? "Back to sign in" : "Already have an account? Sign in"}
         </button>
 
         <p className="connectFootnote">

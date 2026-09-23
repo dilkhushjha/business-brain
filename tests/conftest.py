@@ -73,6 +73,55 @@ def db_session():
         connection.execute(text(
             "CREATE INDEX ix_business_brain_connectors_status ON business_brain_connectors (status)"
         ))
+        connection.execute(text("""
+            CREATE TABLE auth_refresh_tokens (
+                id UUID PRIMARY KEY,
+                user_id UUID NOT NULL,
+                token_hash VARCHAR(64) NOT NULL UNIQUE,
+                expires_at TIMESTAMP NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                revoked_at TIMESTAMP,
+                replaced_by_id UUID
+            )
+        """))
+        connection.execute(text("CREATE INDEX ix_auth_refresh_tokens_user_id ON auth_refresh_tokens (user_id)"))
+        connection.execute(text("CREATE INDEX ix_auth_refresh_tokens_expires_at ON auth_refresh_tokens (expires_at)"))
+        connection.execute(text("""
+            CREATE TABLE password_reset_tokens (
+                id UUID PRIMARY KEY,
+                user_id UUID NOT NULL,
+                token_hash VARCHAR(64) NOT NULL UNIQUE,
+                expires_at TIMESTAMP NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                used_at TIMESTAMP
+            )
+        """))
+        connection.execute(text("CREATE INDEX ix_password_reset_tokens_user_id ON password_reset_tokens (user_id)"))
+        connection.execute(text("CREATE INDEX ix_password_reset_tokens_expires_at ON password_reset_tokens (expires_at)"))
+        connection.execute(text("""
+            CREATE TABLE auth_rate_limits (
+                key VARCHAR(128) PRIMARY KEY,
+                window_started_at TIMESTAMP NOT NULL,
+                failed_attempts INTEGER NOT NULL DEFAULT 0
+            )
+        """))
+        connection.execute(text("""
+            CREATE TABLE security_events (
+                id UUID PRIMARY KEY,
+                user_id UUID,
+                business_id UUID,
+                event_type VARCHAR(64) NOT NULL,
+                success BOOLEAN NOT NULL,
+                ip_address VARCHAR(64),
+                user_agent VARCHAR(512),
+                metadata TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        connection.execute(text("CREATE INDEX ix_security_events_user_id ON security_events (user_id)"))
+        connection.execute(text("CREATE INDEX ix_security_events_business_id ON security_events (business_id)"))
+        connection.execute(text("CREATE INDEX ix_security_events_event_type ON security_events (event_type)"))
+        connection.execute(text("CREATE INDEX ix_security_events_created_at ON security_events (created_at)"))
     session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
     session = session_factory()
     try:

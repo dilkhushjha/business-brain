@@ -6,8 +6,9 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (
   process.env.NODE_ENV === "development" ? "http://localhost:8000/api" : ""
 );
 
-const TOKEN_KEY = "bb_user_session";
+const AUTH_MARKER_KEY = "bb_authenticated";
 const BUSINESS_KEY = "bb_business_context";
+let accessToken: string | null = null;
 
 export type SessionUser = {
   id: string;
@@ -37,12 +38,17 @@ function removeStorage(key: string) {
   try { window.sessionStorage.removeItem(key); } catch { /* non-fatal */ }
 }
 
+function markAuthenticated() {
+  writeStorage(AUTH_MARKER_KEY, "1");
+}
+
 export function getToken(): string | null {
-  return readStorage(TOKEN_KEY);
+  return accessToken;
 }
 
 export function setSession(token: string, user: SessionUser) {
-  writeStorage(TOKEN_KEY, token);
+  accessToken = token || null;
+  markAuthenticated();
   writeStorage(BUSINESS_KEY, user.business.id);
 }
 
@@ -51,11 +57,13 @@ export function getBusinessId(): string {
 }
 
 export function hasToken(): boolean {
-  return Boolean(getToken());
+  // Only a non-secret marker survives page reload. The access token itself stays in memory.
+  return Boolean(accessToken) || readStorage(AUTH_MARKER_KEY) === "1";
 }
 
 export function clearSession() {
-  removeStorage(TOKEN_KEY);
+  accessToken = null;
+  removeStorage(AUTH_MARKER_KEY);
   removeStorage(BUSINESS_KEY);
 }
 
@@ -63,13 +71,14 @@ export class ApiAuthError extends Error {}
 
 async function authRequest(path: string, body: unknown) {
   if (!API_BASE_URL) throw new Error("NEXT_PUBLIC_API_URL is not configured.");
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(API_BASE_URL + path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(body),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.detail || `Authentication failed (${response.status})`);
+  if (!response.ok) throw new Error(data.detail || "Authentication failed (" + response.status + ")");
   if (!data.access_token || !data.user) throw new Error("Authentication response was incomplete.");
   setSession(data.access_token, data.user);
   return data as { access_token: string; token_type: string; user: SessionUser };
@@ -77,6 +86,33 @@ async function authRequest(path: string, body: unknown) {
 
 export function login(identifier: string, password: string) {
   return authRequest("/auth/login", { identifier, password });
+}
+
+export function requestPasswordReset(identifier: string) {
+  if (!API_BASE_URL) throw new Error("NEXT_PUBLIC_API_URL is not configured.");
+  return fetch(API_BASE_URL + "/auth/password-reset/request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ identifier }),
+  }).then(async (response) => {
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail || "Unable to request a password reset.");
+    return data as { detail: string };
+  });
+}
+
+export async function confirmPasswordReset(token: string, password: string) {
+  if (!API_BASE_URL) throw new Error("NEXT_PUBLIC_API_URL is not configured.");
+  const response = await fetch(API_BASE_URL + "/auth/password-reset/confirm", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ token, password }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.detail || "Unable to reset your password.");
+  return data as { detail: string };
 }
 
 export function register(payload: {
@@ -90,22 +126,61 @@ export function register(payload: {
   return authRequest("/auth/register", payload);
 }
 
+export async function logout(): Promise<void> {
+  if (!API_BASE_URL) {
+    clearSession();
+    return;
+  }
+  try {
+    await fetch(API_BASE_URL + "/auth/logout", { method: "POST", credentials: "include" });
+  } finally {
+    clearSession();
+  }
+}
+
+async function refreshSession(): Promise<boolean> {
+  if (!API_BASE_URL) return false;
+  const response = await fetch(API_BASE_URL + "/auth/refresh", {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!response.ok) return false;
+  const data = await response.json().catch(() => ({}));
+  if (!data.access_token || !data.user) return false;
+  setSession(data.access_token, data.user);
+  return true;
+}
+
 export async function getCurrentUser(): Promise<SessionUser> {
   const response = await apiFetch("/auth/me");
-  if (!response.ok) throw new ApiAuthError(`Authentication required (${response.status})`);
+  if (!response.ok) throw new ApiAuthError("Authentication required (" + response.status + ")");
   const user = await response.json() as SessionUser;
-  setSession(getToken() || "", user);
+  setSession(accessToken || "", user);
   return user;
 }
 
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   if (!API_BASE_URL) throw new Error("NEXT_PUBLIC_API_URL is not configured.");
-  const token = getToken();
-  const headers = new Headers(options.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, cache: "no-store" });
+
+  const doFetch = () => {
+    const token = getToken();
+    const headers = new Headers(options.headers);
+    if (token) headers.set("Authorization", "Bearer " + token);
+    return fetch(API_BASE_URL + path, {
+      ...options,
+      headers,
+      credentials: "include",
+      cache: "no-store",
+    });
+  };
+
+  let response = await doFetch();
+  if (response.status === 401 && path !== "/auth/refresh" && path !== "/auth/logout") {
+    if (await refreshSession()) response = await doFetch();
+  }
+
   if (response.status === 401 || response.status === 403) {
-    throw new ApiAuthError(`Authentication required (${response.status})`);
+    throw new ApiAuthError("Authentication required (" + response.status + ")");
   }
   return response;
 }

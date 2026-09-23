@@ -10,6 +10,7 @@ from sqlalchemy import text
 
 import pytest
 
+from apps.api.app.api.routes import auth as auth_module
 from apps.api.app.api.routes.agent import router as agent_router
 from apps.api.app.api.routes.auth import router as auth_router
 from apps.api.app.api.routes.connectors import router as connectors_router
@@ -267,3 +268,152 @@ def test_business_context_requires_user_auth_and_returns_intelligence_layers(cli
     assert isinstance(payload["situation_history"], list)
     assert isinstance(payload["integrity"], dict)
     assert isinstance(payload["risks"], list)
+
+
+def test_login_is_rate_limited_after_repeated_failures(client):
+    client.post("/api/auth/register", json={
+        "username": "ratelimited",
+        "email": "ratelimited@example.com",
+        "password": "StrongPassword!123",
+        "business_name": "Rate Limit Business",
+        "industry": "retail",
+    })
+
+    for _ in range(5):
+        response = client.post(
+            "/api/auth/login",
+            json={"identifier": "ratelimited", "password": "wrong-password"},
+        )
+        assert response.status_code == 401
+
+    blocked = client.post(
+        "/api/auth/login",
+        json={"identifier": "ratelimited", "password": "StrongPassword!123"},
+    )
+    assert blocked.status_code == 429
+    assert blocked.headers.get("Retry-After")
+
+
+def test_refresh_token_rotates_and_revokes_previous_token(client):
+    response = client.post("/api/auth/register", json={
+        "username": "refreshuser",
+        "email": "refresh@example.com",
+        "password": "StrongPassword!123",
+        "business_name": "Refresh Business",
+        "industry": "retail",
+    })
+    assert response.status_code == 200
+    old_refresh = client.cookies.get("bb_refresh_token")
+    assert old_refresh
+
+    refreshed = client.post("/api/auth/refresh")
+    assert refreshed.status_code == 200
+    assert refreshed.json()["access_token"]
+    new_refresh = client.cookies.get("bb_refresh_token")
+    assert new_refresh and new_refresh != old_refresh
+
+    old_token_response = client.post(
+        "/api/auth/refresh",
+        cookies={"bb_refresh_token": old_refresh},
+    )
+    assert old_token_response.status_code == 401
+
+
+def test_logout_revokes_refresh_session(client):
+    response = client.post("/api/auth/register", json={
+        "username": "logoutuser",
+        "email": "logout@example.com",
+        "password": "StrongPassword!123",
+        "business_name": "Logout Business",
+        "industry": "retail",
+    })
+    assert response.status_code == 200
+
+    logged_out = client.post("/api/auth/logout")
+    assert logged_out.status_code == 200
+
+    refreshed = client.post("/api/auth/refresh")
+    assert refreshed.status_code == 401
+
+
+def test_password_reset_is_single_use_and_revokes_sessions(client, monkeypatch):
+    captured = {}
+
+    def capture_email(email: str, token: str) -> None:
+        captured["email"] = email
+        captured["token"] = token
+
+    monkeypatch.setattr(auth_module, "_send_password_reset_email", capture_email)
+
+    registered = client.post("/api/auth/register", json={
+        "username": "resetuser",
+        "email": "reset@example.com",
+        "password": "OldPassword!123",
+        "business_name": "Reset Business",
+        "industry": "retail",
+    })
+    assert registered.status_code == 200
+    old_refresh = client.cookies.get("bb_refresh_token")
+
+    requested = client.post(
+        "/api/auth/password-reset/request",
+        json={"identifier": "reset@example.com"},
+    )
+    assert requested.status_code == 202
+    assert requested.json()["detail"].startswith("If an account matches")
+    assert captured["email"] == "reset@example.com"
+
+    confirmed = client.post(
+        "/api/auth/password-reset/confirm",
+        json={"token": captured["token"], "password": "NewPassword!123"},
+    )
+    assert confirmed.status_code == 200
+
+    old_password = client.post(
+        "/api/auth/login",
+        json={"identifier": "resetuser", "password": "OldPassword!123"},
+    )
+    assert old_password.status_code == 401
+
+    new_password = client.post(
+        "/api/auth/login",
+        json={"identifier": "resetuser", "password": "NewPassword!123"},
+    )
+    assert new_password.status_code == 200
+
+    reused = client.post(
+        "/api/auth/password-reset/confirm",
+        json={"token": captured["token"], "password": "AnotherPassword!123"},
+    )
+    assert reused.status_code == 400
+
+    if old_refresh:
+        revoked = client.post("/api/auth/refresh", cookies={"bb_refresh_token": old_refresh})
+        assert revoked.status_code == 401
+
+
+def test_security_events_record_auth_lifecycle(client, db_session):
+    response = client.post("/api/auth/register", json={
+        "username": "audited",
+        "email": "audited@example.com",
+        "password": "StrongPassword!123",
+        "business_name": "Audited Business",
+        "industry": "retail",
+    })
+    assert response.status_code == 200
+
+    login = client.post(
+        "/api/auth/login",
+        json={"identifier": "audited", "password": "StrongPassword!123"},
+    )
+    assert login.status_code == 200
+
+    client.post("/api/auth/logout")
+
+    events = db_session.execute(
+        text("SELECT event_type, success FROM security_events ORDER BY created_at")
+    ).all()
+    event_types = [row[0] for row in events]
+    assert "account_registered" in event_types
+    assert "login_success" in event_types
+    assert "logout" in event_types
