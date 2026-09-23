@@ -498,7 +498,7 @@ def confirm_password_reset(payload: PasswordResetConfirm, request: Request, resp
         {"token_hash": _token_hash(payload.token)},
     ).mappings().first()
     now = datetime.now(timezone.utc)
-    if not row or row["used_at"] is not None or row["expires_at"] <= now:
+    if not row or row["used_at"] is not None or _as_datetime(row["expires_at"]) <= now:
         _security_event(db, request, "password_reset_confirm", False)
         db.commit()
         raise HTTPException(400, "Invalid or expired password reset link")
