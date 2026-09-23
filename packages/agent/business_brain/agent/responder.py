@@ -15,6 +15,12 @@ def _signals_with_codes(signals: list[dict], codes: set[str]) -> list[dict]:
     return [s for s in signals if s.get("code") in codes]
 
 
+def _evidence_entity(signal: dict, entity_key: str) -> str | None:
+    """Return an entity name only when it is explicitly present in evidence."""
+    value = (signal.get("evidence") or {}).get(entity_key)
+    return str(value).strip() if value is not None and str(value).strip() else None
+
+
 def _select_action(question: str, actions: list[dict]) -> dict | None:
     """Choose the most relevant already-grounded action for the user's question."""
     if not actions:
@@ -202,8 +208,11 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
                 answer += f" {product} in particular is selling at or below an acceptable margin."
             discount_issues = _signals_with_codes(signals, {"DISCOUNT_ANOMALY"})
             if discount_issues:
-                customer = discount_issues[0].get("evidence", {}).get("customer", "one customer")
-                answer += f" Also worth checking: an unusually large discount was given to {customer}."
+                customer = _evidence_entity(discount_issues[0], "customer")
+                if customer:
+                    answer += f" Also worth checking: an unusually large discount was given to {customer}."
+                else:
+                    answer += " Also worth checking: an unusually large discount was detected, but the affected customer is not identified by the available evidence."
             pressure = next(
                 (item for item in situations if item.get("code") in {"MARGIN_PRESSURE", "PROFITABILITY_PRESSURE", "REVENUE_COST_SQUEEZE"}),
                 None,
@@ -281,8 +290,14 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
         concentration = _evidence_for(evidence, "customer_concentration_top_share_pct")
         if customer_signals:
             grounded = True
-            names = sorted({s.get("evidence", {}).get("customer", "a customer") for s in customer_signals})
-            answer = f"{len(customer_signals)} customer-level issue(s) detected, including: {', '.join(names[:3])}."
+            names = sorted({name for s in customer_signals if (name := _evidence_entity(s, "customer"))})
+            if names:
+                answer = f"{len(customer_signals)} customer-level issue(s) detected, including: {', '.join(names[:3])}."
+            else:
+                answer = (
+                    f"{len(customer_signals)} customer-level issue(s) detected, "
+                    "but the available signal evidence does not identify the affected customer(s)."
+                )
         elif concentration:
             grounded = True
             top = concentration.get("metadata", {}).get("top_customers", [])
