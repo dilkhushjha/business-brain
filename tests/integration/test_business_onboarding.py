@@ -150,7 +150,7 @@ def test_onboarding_is_tenant_scoped(db_session):
 
     response = client.post(
         f"/api/businesses/{second['user']['business']['id']}/onboarding",
-        headers={"Authorization": f"Bearer {first["access_token"]}"},
+        headers={"Authorization": f"Bearer {first['access_token']}"},
         json={
             "name": "Hijacked",
             "industry": "retail",
