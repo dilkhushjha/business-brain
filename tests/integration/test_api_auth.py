@@ -128,6 +128,45 @@ def test_connector_registration_still_creates_machine_token(client, db_session, 
     assert kpis.status_code == 200
 
 
+def test_connector_heartbeat_records_version_and_owner_can_rotate_and_revoke(client, db_session, seeder):
+    business = seeder.business("Connector Lifecycle")
+    registered = client.post(f"/api/connectors/register/{business.id}")
+    assert registered.status_code == 200, registered.text
+    old_token = registered.json()["token"]
+
+    heartbeat = client.post(
+        "/api/connectors/heartbeat",
+        json={"version": "1.2.3"},
+        headers={"Authorization": f"Bearer {old_token}"},
+    )
+    assert heartbeat.status_code == 200
+    assert heartbeat.json()["version"] == "1.2.3"
+
+    user_token = _user_token(client, db_session, business.id)
+    headers = {"Authorization": f"Bearer {user_token}"}
+
+    rotated = client.post(f"/api/connectors/rotate/{business.id}", headers=headers)
+    assert rotated.status_code == 200, rotated.text
+    new_token = rotated.json()["token"]
+    assert new_token != old_token
+
+    old_heartbeat = client.post(
+        "/api/connectors/heartbeat",
+        headers={"Authorization": f"Bearer {old_token}"},
+    )
+    assert old_heartbeat.status_code == 401
+
+    revoked = client.post(f"/api/connectors/revoke/{business.id}", headers=headers)
+    assert revoked.status_code == 200
+    assert revoked.json()["revoked_count"] == 1
+
+    new_heartbeat = client.post(
+        "/api/connectors/heartbeat",
+        headers={"Authorization": f"Bearer {new_token}"},
+    )
+    assert new_heartbeat.status_code == 401
+
+
 def test_connector_token_cannot_be_used_as_human_dashboard_auth(client, seeder):
     business = seeder.business()
     connector_token = _connector_token(client, business.id)
