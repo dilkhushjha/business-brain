@@ -85,7 +85,7 @@ def register_connector(
     return _post_json(url, headers, timeout)
 
 
-def send_heartbeat(api_base_url: str, api_token: str, timeout: float = 30.0) -> dict:
+def send_heartbeat(api_base_url: str, api_token: str, version: str | None = None, timeout: float = 30.0) -> dict:
     """Call POST /connectors/heartbeat. A successful upload already refreshes
     the server's last_seen_at (any authenticated call does), so this only
     needs to run when a poll cycle finds nothing new to sync -- otherwise a
@@ -94,8 +94,19 @@ def send_heartbeat(api_base_url: str, api_token: str, timeout: float = 30.0) -> 
     if not api_token:
         raise UploadError("Connector API token is required to send a heartbeat")
     url = f"{api_base_url.rstrip('/')}/connectors/heartbeat"
-    headers = {"Authorization": f"Bearer {api_token}"}
-    return _post_json(url, headers, timeout)
+    headers = {"Authorization": f"Bearer {api_token}", "Content-Type": "application/json"}
+    body = json.dumps({"version": version}).encode("utf-8") if version else b"{}"
+    request = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return _parse_json(response.read())
+    except urllib.error.HTTPError as exc:
+        detail = exc.read()
+        raise UploadError(f"HTTP {exc.code}: {detail.decode("utf-8", errors="replace")}") from exc
+    except urllib.error.URLError as exc:
+        raise UploadError(f"Connection error: {exc.reason}") from exc
+    except TimeoutError as exc:
+        raise UploadError(f"Request timed out after {timeout}s") from exc
 
 
 def _parse_json(raw: bytes) -> dict:
