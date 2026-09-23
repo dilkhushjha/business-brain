@@ -12,7 +12,7 @@ import BusinessInsights from "../components/BusinessInsights";
 import DataIntegrityCenter from "../components/DataIntegrityCenter";
 import ConnectGate from "../components/ConnectGate";
 import DashboardReasoningOverlay from "../components/DashboardReasoningOverlay";
-import { ApiAuthError, apiFetch, clearSession, getBusinessId, getCurrentUser, hasToken, type SessionUser } from "../lib/api";
+import { ApiAuthError, apiFetch, clearSession, getBusinessId, logout as logoutSession, getCurrentUser, hasToken, type SessionUser } from "../lib/api";
 import { buildHealthReasoning, buildMetricReasoning, type ReasoningPayload } from "../lib/reasoning";
 
 type Evidence = { metric?: string; value?: string; metadata?: { change?: number } };
@@ -215,7 +215,7 @@ export default function Home() {
   }
 
   function ask(e: FormEvent) { e.preventDefault(); runQuestion(question); }
-  function logout() { setProfileOpen(false); clearSession(); setUser(null); setConnected(false); setAnswer(""); setQuestion(""); setError(""); }
+  async function logout() { setProfileOpen(false); await logoutSession(); setUser(null); setConnected(false); setAnswer(""); setQuestion(""); setError(""); }
 
   if (checkedAuth && !connected) return <main className="shell"><header className="header"><div className="brand"><span className="brandMark"><Icon name="sparkle" className="icon" /></span><div><span className="eyebrow">BUSINESS BRAIN</span><h1>Your business, understood.</h1></div></div></header><ConnectGate onConnected={() => { setProfileOpen(false); setConnected(true); }} /></main>;
 
