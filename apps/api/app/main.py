@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from apps.api.app.api.routes.health import router as health_router
+from apps.api.app.api.routes.businesses import router as businesses_router
 from apps.api.app.api.routes.auth import router as auth_router
 from apps.api.app.api.routes.ingestion import router as ingestion_router
 from apps.api.app.api.routes.connectors import router as connectors_router
@@ -107,6 +108,7 @@ def readiness():
 for router in (
     health_router,
     auth_router,
+    businesses_router,
     ingestion_router,
     connectors_router,
     kpis_router,
