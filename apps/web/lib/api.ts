@@ -20,8 +20,15 @@ export type SessionUser = {
     name: string;
     industry: string;
     role: string;
+    currency_code: string;
+    timezone: string;
+    fiscal_year_start_month: number;
+    onboarding_completed: boolean;
+    onboarding_completed_at: string | null;
   };
 };
+
+export type BusinessProfile = SessionUser["business"];
 
 function readStorage(key: string): string | null {
   if (typeof window === "undefined") return null;
@@ -54,6 +61,33 @@ export function setSession(token: string, user: SessionUser) {
 
 export function getBusinessId(): string {
   return readStorage(BUSINESS_KEY) || "";
+}
+
+export async function getBusinessProfile(): Promise<BusinessProfile> {
+  const businessId = getBusinessId();
+  if (!businessId) throw new ApiAuthError("Business session is missing.");
+  const response = await apiFetch("/businesses/" + businessId);
+  if (!response.ok) throw new Error("Unable to load business profile (" + response.status + ")");
+  return await response.json() as BusinessProfile;
+}
+
+export async function completeBusinessOnboarding(payload: {
+  name: string;
+  industry: string;
+  currency_code: string;
+  timezone: string;
+  fiscal_year_start_month: number;
+}): Promise<BusinessProfile> {
+  const businessId = getBusinessId();
+  if (!businessId) throw new ApiAuthError("Business session is missing.");
+  const response = await apiFetch("/businesses/" + businessId + "/onboarding", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.detail || "Unable to complete business onboarding.");
+  return data as BusinessProfile;
 }
 
 export function hasToken(): boolean {
