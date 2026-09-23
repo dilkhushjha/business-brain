@@ -102,7 +102,7 @@ def send_heartbeat(api_base_url: str, api_token: str, version: str | None = None
             return _parse_json(response.read())
     except urllib.error.HTTPError as exc:
         detail = exc.read()
-        raise UploadError(f"HTTP {exc.code}: {detail.decode("utf-8", errors="replace")}") from exc
+        raise UploadError(f"HTTP {exc.code}: {detail.decode('utf-8', errors='replace')}") from exc
     except urllib.error.URLError as exc:
         raise UploadError(f"Connection error: {exc.reason}") from exc
     except TimeoutError as exc:
