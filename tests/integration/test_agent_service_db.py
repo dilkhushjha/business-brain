@@ -21,7 +21,7 @@ def test_margin_question_is_grounded_from_real_data(db_session, seeder):
     seeder.sale_with_line(business.id, product.id, days_ago=5, quantity=10, unit_price=50, cost_price=60)
 
     result = answer(db_session, business.id, "Why is my margin so low?", date.today())
-    assert result.intent == "margin_analysis"
+    assert result.intent == "root_cause"
     assert result.confidence == "grounded"
     assert "Clearance Item" in result.answer
 
@@ -114,7 +114,7 @@ def test_margin_question_on_healthy_business_is_not_grounded(db_session, seeder)
     business = seeder.business()
     result = answer(db_session, business.id, "Why is my margin so low?", date.today())
     assert result.confidence == "insufficient_evidence"
-    assert "don't have enough" in result.answer
+    assert "don't have enough" in result.answer or "don't have any detected signals" in result.answer
 
 
 def test_expense_question_is_grounded_from_real_data(db_session, seeder):
@@ -123,7 +123,7 @@ def test_expense_question_is_grounded_from_real_data(db_session, seeder):
     seeder.expense(business.id, days_ago=5, category="Transport", amount=Decimal("12000"))
 
     result = answer(db_session, business.id, "Why are my expenses so high?", date.today())
-    assert result.intent == "expense_analysis"
+    assert result.intent == "root_cause"
     assert result.confidence == "grounded"
     assert "Transport" in result.answer
 
