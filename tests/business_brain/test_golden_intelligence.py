@@ -73,6 +73,10 @@ def test_golden_intelligence_scenario_produces_explainable_chain(db_session, see
 
     assert "INVESTIGATE_MARGIN_PRESSURE" in action_codes
     assert "REDUCE_SUPPLIER_DEPENDENCY" in action_codes
+    risk_codes = {risk.code for risk in context.risks}
+    assert "MARGIN_RISK" in risk_codes
+    assert "SUPPLIER_RISK" in risk_codes
+
 
     margin = next(a for a in context.analyses if a.situation_code == "MARGIN_PRESSURE")
     assert margin.root_causes
