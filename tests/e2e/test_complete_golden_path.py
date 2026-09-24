@@ -105,7 +105,7 @@ def test_complete_golden_path_from_csv_to_business_brain(db_session):
     payload = answer.json()
 
     assert payload["confidence"] == "grounded"
-    assert payload["intent"] == "margin_analysis"
+    assert payload["intent"] == "root_cause"
     assert "HDMI Cable 2M" in payload["answer"]
     assert "MARGIN_PRESSURE" in {
         str(item.get("code"))
