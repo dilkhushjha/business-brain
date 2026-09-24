@@ -231,3 +231,41 @@ def test_root_cause_does_not_invent_customer_from_generic_signal():
     assert "detected issue" in answer.lower() or "candidate factors" in answer.lower()
     assert "customer a" not in answer.lower()
     assert "acme" not in answer.lower()
+
+
+def test_risk_question_returns_ranked_grounded_risks():
+    context = {
+        "evidence": [],
+        "signals": [],
+        "situations": [],
+        "recommendations": [],
+        "risks": [
+            {
+                "code": "MARGIN_RISK",
+                "title": "Margin compression risk",
+                "level": "high",
+                "score": "72",
+                "confidence": "0.88",
+                "explanation": "Supplier costs are putting pressure on margins.",
+            },
+            {
+                "code": "SUPPLIER_RISK",
+                "title": "Supplier dependency risk",
+                "level": "medium",
+                "score": "51",
+                "confidence": "0.80",
+                "explanation": "Purchasing is concentrated with one supplier.",
+            },
+        ],
+    }
+
+    answer, confidence = render_grounded_response(
+        "What are my biggest business risks?",
+        "risk_analysis",
+        context,
+    )
+
+    assert confidence == "grounded"
+    assert "margin compression risk" in answer.lower()
+    assert "supplier dependency risk" in answer.lower()
+    assert "88% confidence" in answer.lower()
