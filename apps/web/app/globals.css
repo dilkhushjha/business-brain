@@ -3103,6 +3103,55 @@ button:disabled {
 @media (max-width:720px){.historyItem{grid-template-columns:1fr}.historyMeta{justify-content:flex-start}}
 
 
+.integrityPanel {
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.integrityPanelHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.integrityPanelHead h3 { margin: 4px 0 5px; font-size: 16px; }
+.integrityPanelHead p { margin: 0; color: var(--text-muted); font-size: 11px; }
+.integrityStatus {
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  white-space: nowrap;
+}
+.integrityStatus.reconciled { background: var(--success-soft); color: var(--success); }
+.integrityStatus.attention { background: var(--danger-soft); color: var(--danger); }
+.integrityAuditGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.integrityAudit {
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 10px;
+}
+.integrityAudit > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.integrityAudit b { font-size: 11px; text-transform: capitalize; }
+.integrityAudit span, .integrityAudit small { color: var(--text-muted); font-size: 9px; }
+.integrityAudit strong { font-size: 20px; line-height: 1; }
+.integrityAudit.needsReview { border-color: var(--danger); }
+.integrityAudit.needsReview strong, .integrityAudit.needsReview span { color: var(--danger); }
+.integrityAudit.clean strong, .integrityAudit.clean span { color: var(--success); }
+.integrityAudit small { grid-column: 1 / -1; }
+
 .integrityNotice {
   display:flex;
   align-items:center;
