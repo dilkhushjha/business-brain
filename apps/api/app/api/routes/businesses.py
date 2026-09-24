@@ -34,6 +34,10 @@ class BusinessOnboardingRequest(BaseModel):
     fiscal_year_start_month: int = Field(default=4, ge=1, le=12)
 
 
+def _iso(value):
+    return value.isoformat() if hasattr(value, "isoformat") else (str(value) if value else None)
+
+
 def _business(row) -> dict:
     return {
         "id": str(row["id"]),
@@ -44,8 +48,8 @@ def _business(row) -> dict:
         "timezone": row["timezone"],
         "fiscal_year_start_month": int(row["fiscal_year_start_month"]),
         "onboarding_completed": bool(row["onboarding_completed"]),
-        "onboarding_completed_at": row["onboarding_completed_at"].isoformat() if row["onboarding_completed_at"] else None,
-        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        "onboarding_completed_at": _iso(row["onboarding_completed_at"]),
+        "created_at": _iso(row["created_at"]),
     }
 
 
