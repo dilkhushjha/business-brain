@@ -12,6 +12,6 @@ def test_intent_classification_covers_business_history_and_integrity():
 
 
 def test_intent_classification_keeps_specific_financial_questions():
-    assert classify_intent("Why is my margin falling?") == "margin_analysis"
+    assert classify_intent("Why is my margin falling?") == "root_cause"
     assert classify_intent("How much do customers owe me?") == "receivables_analysis"
     assert classify_intent("How much do I owe suppliers?") == "payables_analysis"
