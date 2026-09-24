@@ -52,7 +52,23 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
     analyses = context.get("analyses", [])
     grounded = False
 
-    if intent == "data_integrity":
+    if intent == "risk_analysis":
+        risks = context.get("risks", [])
+        if risks:
+            grounded = True
+            top = risks[:3]
+            answer = "Current business risks identified: " + " ".join(
+                f"{idx + 1}) {item.get('title', 'Business risk')} "
+                f"({item.get('level', 'medium')} risk, "
+                f"{Decimal(str(item.get('confidence', 0))) * 100:.0f}% confidence). "
+                f"{item.get('explanation', '')}"
+                for idx, item in enumerate(top)
+            )
+        else:
+            grounded = True
+            answer = "No scored business risks are currently identified from the available evidence."
+
+    elif intent == "data_integrity":
         integrity = context.get("integrity") or {}
         if integrity.get("status") == "attention_required":
             grounded = True
