@@ -3168,6 +3168,8 @@ button:disabled {
 .integrityNotice span { color:var(--text-muted); font-size:11px; line-height:1.5; }
 .integrityNotice small { margin-left:auto; color:var(--danger); font-size:9px; font-weight:750; text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; }
 @media (max-width: 760px) {
+  .integrityPanelHead { flex-direction:column; gap:10px; }
+  .integrityAuditGrid { grid-template-columns:1fr; }
   .integrityNotice { align-items:flex-start; flex-direction:column; gap:4px; }
   .integrityNotice small { margin-left:0; white-space:normal; }
 }
