@@ -13,6 +13,8 @@ def classify_intent(question: str) -> str:
     text = question.lower().strip()
     if any(term in text for term in ("what should i do", "what should we do", "next step", "next steps", "what action", "what actions", "how should i respond", "how can i fix", "how do i fix", "should i ", "do i need to ", "is it worth ", "how can i improve", "how can i reduce", "how can i increase", "how can i prevent", "what needs my attention", "what needs attention", "what should i pay attention to", "what should i focus on", "what is the biggest issue", "biggest problem", "main issue")):
         return "decision_support"
+    if any(term in text for term in ("biggest risk", "biggest risks", "current risk", "current risks", "business risk", "business risks", "what am i at risk of", "what could hurt my business")):
+        return "risk_analysis"
     if any(term in text for term in ("data quality", "data integrity", "is my data clean", "can i trust the data", "integrity issues", "data issues")):
         return "data_integrity"
     if any(term in text for term in ("what changed", "what has changed", "what is getting worse", "what improved", "resolved issue", "resolved issues", "business history")):
