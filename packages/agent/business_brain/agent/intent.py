@@ -25,6 +25,8 @@ def classify_intent(question: str) -> str:
         phrase in text
         for phrase in (
             "what caused", "what is causing", "reason for", "cause of",
+            "why is", "why are", "why did", "why has", "why have",
+            "why was", "why were",
         )
     )
     if causal_phrase and any(
