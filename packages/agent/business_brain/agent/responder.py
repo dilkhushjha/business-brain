@@ -378,7 +378,7 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
                 f"most notably: {top.get('title', 'a detected issue')}."
             )
         else:
-            answer = "I don't have any detected signals to point to a cause yet."
+            answer = "I don't have enough detected evidence to point to a cause yet."
 
     else:
         answer = "I can answer this once the relevant business evidence is available."
