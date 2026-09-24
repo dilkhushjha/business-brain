@@ -95,6 +95,42 @@ export default function BusinessInsights({ context, anomalies }: { context: Insi
         <small>{Array.isArray(integrity.affected_domains) ? integrity.affected_domains.join(" · ") : ""}</small>
       </div>}
 
+      {integrity && Object.keys(integrity).length > 0 && <section className="integrityPanel">
+        <div className="integrityPanelHead">
+          <div>
+            <span className="eyebrow">DATA INTEGRITY</span>
+            <h3>Can the current conclusions be trusted?</h3>
+            <p>Business Brain checks source data before using it for cross-domain conclusions.</p>
+          </div>
+          <span className={"integrityStatus " + (integrityAttention ? "attention" : "reconciled")}>
+            {integrityAttention ? "Review required" : "Reconciled"}
+          </span>
+        </div>
+        <div className="integrityAuditGrid">
+          {["data_quality", "inventory", "financial"].map((domain) => {
+            const audit = integrity.audits && typeof integrity.audits === "object"
+              ? (integrity.audits as Record<string, unknown>)[domain]
+              : null;
+            const record = audit && typeof audit === "object" ? audit as Record<string, unknown> : {};
+            const summary = record.summary && typeof record.summary === "object"
+              ? record.summary as Record<string, unknown>
+              : {};
+            const issueCount = Number(summary.issue_count || 0);
+            const needsReview = record.status === "attention_required";
+            return (
+              <div className={"integrityAudit " + (needsReview ? "needsReview" : "clean")} key={domain}>
+                <div>
+                  <b>{domain.replaceAll("_", " ")}</b>
+                  <span>{needsReview ? "Needs review" : "No exceptions"}</span>
+                </div>
+                <strong>{issueCount}</strong>
+                <small>{issueCount === 1 ? "issue detected" : "issues detected"}</small>
+              </div>
+            );
+          })}
+        </div>
+      </section>}
+
       {(context?.situations || []).length > 0 && <section className="businessSituations">
         <div className="situationsHead">
           <div><span className="eyebrow">CROSS-DOMAIN INTELLIGENCE</span><h3>Business situations</h3><p>Related signals that point to the same underlying business issue.</p></div>
