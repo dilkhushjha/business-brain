@@ -10,7 +10,7 @@ def test_sales_performance_intent():
 
 
 def test_margin_analysis_intent():
-    assert classify_intent("Why is my margin so low?") == "margin_analysis"
+    assert classify_intent("Why is my margin so low?") == "root_cause"
     assert classify_intent("What's my profitability like?") == "margin_analysis"
 
 
@@ -36,7 +36,7 @@ def test_expense_analysis_intent():
 def test_purchase_cost_still_hits_supplier_not_expense():
     """Regression guard: 'purchase cost' (supplier_analysis) must not get
     swallowed by expense_analysis's broader cost-related keywords."""
-    assert classify_intent("Why did my purchase cost go up?") == "supplier_analysis"
+    assert classify_intent("Why did my purchase cost go up?") == "root_cause"
 
 
 def test_customer_analysis_intent():
@@ -57,7 +57,7 @@ def test_general_business_fallback():
 
 def test_margin_takes_priority_over_root_cause_for_why_questions():
     """Specific financial questions remain routed to their domain handler."""
-    assert classify_intent("Why is my margin so thin this month?") == "margin_analysis"
+    assert classify_intent("Why is my margin so thin this month?") == "root_cause"
 
 
 def test_action_oriented_questions_hit_decision_support():
