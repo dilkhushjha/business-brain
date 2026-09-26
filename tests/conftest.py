@@ -30,6 +30,7 @@ from packages.shared.database.models import (
     SupplierModel,
 )
 from packages.shared.database.session import Base
+from packages.shared.database.models import BusinessSituationHistoryModel
 
 
 @pytest.fixture()
