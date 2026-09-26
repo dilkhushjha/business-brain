@@ -287,3 +287,55 @@ def test_working_capital_situation_flows_through_history_and_decision_support(db
     resolved = next(item for item in second.situation_history if item.situation_code == "WORKING_CAPITAL_PRESSURE")
     assert resolved.status == "resolved"
     assert resolved.trend == "resolved"
+
+
+def test_golden_working_capital_scenario_produces_action_chain(db_session, seeder):
+    business = seeder.business(name="Golden Working Capital", industry="distribution")
+
+    purchases = [{
+        "invoice_number": "P-WC-001",
+        "transaction_date": "2026-08-01",
+        "due_date": "2026-08-15",
+        "product_name": "Cable",
+        "supplier_name": "Prime Cables",
+        "quantity": 20,
+        "unit_price": 50,
+        "total_amount": 1000,
+        "paid_amount": 0,
+    }]
+    sales = [{
+        "invoice_number": "S-WC-001",
+        "transaction_date": "2026-08-02",
+        "due_date": "2026-08-16",
+        "product_name": "Cable",
+        "customer_name": "Alpha Traders",
+        "quantity": 10,
+        "unit_price": 100,
+        "total_amount": 1000,
+        "paid_amount": 0,
+    }]
+
+    persist_purchases(db_session, business.id, purchases)
+    persist_sales(db_session, business.id, sales)
+    db_session.commit()
+
+    context = build_business_context(db_session, business.id, date(2026, 9, 20))
+
+    signal_codes = {signal.code for signal in context.signals}
+    situation_codes = {situation.code for situation in context.situations}
+    action_codes = {action.code for action in context.decision_actions}
+
+    assert "RECEIVABLE_OVERDUE" in signal_codes
+    assert "PAYABLE_OVERDUE" in signal_codes
+    assert "WORKING_CAPITAL_PRESSURE" in situation_codes
+    assert "REVIEW_WORKING_CAPITAL_PRESSURE" in action_codes
+
+    situation = next(s for s in context.situations if s.code == "WORKING_CAPITAL_PRESSURE")
+    assert situation.evidence["receivables_outstanding"] == "1000.0"
+    assert situation.evidence["payables_outstanding"] == "1000.0"
+
+    priority = next(p for p in context.priorities if p.situation_code == "WORKING_CAPITAL_PRESSURE")
+    action = next(a for a in context.decision_actions if a.situation_code == "WORKING_CAPITAL_PRESSURE")
+    assert action.priority_score == priority.score
+    assert action.confidence == situation.confidence
+    assert action.actions
