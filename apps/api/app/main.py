@@ -40,6 +40,7 @@ from apps.api.app.api.routes.financial_integrity import router as financial_inte
 from apps.api.app.api.routes.data_integrity import router as data_integrity_router
 from apps.api.app.api.routes.risks import router as risks_router
 from apps.api.app.api.routes.pilot import router as pilot_router
+from apps.api.app.api.routes.readiness import router as readiness_router
 from apps.api.app.core.config import settings
 from packages.shared.database.session import engine
 
@@ -137,5 +138,6 @@ for router in (
     data_integrity_router,
     risks_router,
     pilot_router,
+    readiness_router,
 ):
     app.include_router(router, prefix="/api")
