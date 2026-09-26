@@ -63,7 +63,7 @@ def _user_token(client, db_session, business_id) -> str:
 
 
 def _connector_token(client, business_id) -> str:
-    response = client.post(f"/api/connectors/register/{business_id}")
+    response = client.post(f"/api/connectors/register/{business_id}", headers={"X-Connector-Registration-Key": "test-connector-registration-key"})
     assert response.status_code == 200, response.text
     return response.json()["token"]
 
