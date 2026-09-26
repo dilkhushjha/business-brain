@@ -17,8 +17,8 @@ from packages.shared.database.models import (
 )
 
 
-def _window(days: int) -> tuple[date, date]:
-    end = date.today()
+def _window(days: int, end: date | None = None) -> tuple[date, date]:
+    end = end or date.today()
     return end - timedelta(days=max(1, days) - 1), end
 
 
@@ -113,13 +113,14 @@ def audit_inventory_integrity(
     business_id: UUID,
     days: int = 3650,
     limit: int = 50,
+    as_of: date | None = None,
 ) -> dict:
     """Audit canonical documents against their source-owned inventory ledger.
 
     This is deliberately read-only. Missing or inconsistent data is surfaced
     as an exception rather than inferred or silently repaired.
     """
-    start, end = _window(days)
+    start, end = _window(days, as_of)
     limit = max(1, min(limit, 200))
 
     expected_purchase = _expected_purchase(db, business_id, start, end)
