@@ -129,7 +129,15 @@ def detect_business_risks(
             evidence["integrity_status"] = "attention_required"
             evidence["integrity_domains"] = list(integrity.get("affected_domains") or [])
             affected = set(integrity.get("affected_domains") or [])
-            relevant = {"data_quality", "inventory"} if code in {"INVENTORY_RISK", "MARGIN_RISK", "SUPPLIER_RISK"} else affected
+            relevant_by_risk = {
+                "INVENTORY_RISK": {"data_quality", "inventory"},
+                "MARGIN_RISK": {"data_quality", "inventory", "financial"},
+                "SUPPLIER_RISK": {"data_quality", "supplier", "purchasing"},
+                "CASH_FLOW_RISK": {"data_quality", "financial", "receivables", "payables", "cash"},
+                "CUSTOMER_RISK": {"data_quality", "customer", "receivables"},
+                "DATA_INTEGRITY_RISK": {"data_quality", "inventory", "financial", "supplier", "purchasing", "receivables", "payables"},
+            }
+            relevant = relevant_by_risk.get(code, set())
             if relevant & affected:
                 confidence = min(confidence, Decimal("0.65"))
                 score = min(score, Decimal("69"))
