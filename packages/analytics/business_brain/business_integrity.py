@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 from uuid import UUID
 
@@ -13,11 +14,12 @@ from packages.analytics.business_brain.integrity import audit_inventory_integrit
 def audit_business_integrity(
     db: Session,
     business_id: UUID,
+    as_of: date | None = None,
 ) -> dict[str, Any]:
     """Aggregate read-only integrity audits used to qualify Business Brain conclusions."""
     audits = {
         "data_quality": audit_data_quality(db, business_id),
-        "inventory": audit_inventory_integrity(db, business_id),
+        "inventory": audit_inventory_integrity(db, business_id, as_of=as_of),
         "financial": audit_financial_linkage(db, business_id),
     }
 
