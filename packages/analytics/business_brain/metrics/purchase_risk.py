@@ -16,8 +16,15 @@ def supplier_spend_risk(db: Session, business_id: UUID, days: int = 90, as_of: d
     risks=[]
     for name,amount in rows:
         current=float(amount)
+        supplier_id = db.scalar(
+            select(SupplierModel.id).where(
+                SupplierModel.business_id == business_id,
+                SupplierModel.name == name,
+            )
+        )
         previous=float(db.scalar(select(func.coalesce(func.sum(PurchaseModel.total_amount),0)).where(
-            PurchaseModel.business_id==business_id,PurchaseModel.supplier_id==select(SupplierModel.id).where(SupplierModel.name==name).scalar_subquery(),
+            PurchaseModel.business_id==business_id,
+            PurchaseModel.supplier_id==supplier_id,
             PurchaseModel.transaction_date.between(prev_start,start-timedelta(days=1)))) or 0)
         change=(current-previous)/previous*100 if previous else None
         if change is not None and change>=25:
