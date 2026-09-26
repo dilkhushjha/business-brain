@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from packages.analytics.business_brain.context.builder import build_business_context
 from packages.data.business_brain.ingestion.purchase_repository import persist_purchases
 from packages.data.business_brain.ingestion.repository import persist_sales
+from packages.shared.database.models import PurchaseModel, SaleModel
 
 
 def _scenario_dates() -> tuple[str, str, str, date]:
@@ -271,11 +272,18 @@ def test_working_capital_situation_flows_through_history_and_decision_support(db
     assert history.status == "active"
     assert history.trend == "new"
 
-    # Remove the overdue documents from the current state by settling them.
-    for sale in db_session.query(type(seeder.sale_with_line(business.id, product.id))).filter_by(business_id=business.id).all():
-        if sale.customer_id == customer.id:
-            sale.paid_amount = sale.total_amount
-    for purchase in db_session.query(type(seeder.purchase_with_line(business.id, product.id, supplier_id=supplier.id, invoice_number="PUR-TEMP"))).filter_by(business_id=business.id).all():
-        if purchase.supplier_id == supplier.id:
-            purchase.paid_amount = purchase.total_amount
-    db_session.rollback()
+    # Settle the same documents and refresh Business Brain.
+    db_session.query(SaleModel).filter(
+        SaleModel.business_id == business.id,
+        SaleModel.customer_id == customer.id,
+    ).update({SaleModel.paid_amount: SaleModel.total_amount}, synchronize_session=False)
+    db_session.query(PurchaseModel).filter(
+        PurchaseModel.business_id == business.id,
+        PurchaseModel.supplier_id == supplier.id,
+    ).update({PurchaseModel.paid_amount: PurchaseModel.total_amount}, synchronize_session=False)
+    db_session.commit()
+
+    second = build_business_context(db_session, business.id, date.today())
+    resolved = next(item for item in second.situation_history if item.situation_code == "WORKING_CAPITAL_PRESSURE")
+    assert resolved.status == "resolved"
+    assert resolved.trend == "resolved"
