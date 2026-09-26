@@ -3183,6 +3183,14 @@ button:disabled {
 .integrityHealth span{display:block;margin-top:5px;color:var(--text-muted);font-size:9px}
 .integrityHealth.needsAttention strong{color:var(--danger)}
 .integrityHealth.clear strong{color:var(--success)}
+.pilotReadiness{padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-sm)}
+.pilotReadiness.ready{border-color:#cfe9d9}.pilotReadiness.warning{border-color:#eadfbd}.pilotReadiness.blocked{border-color:#ead2d2}
+.pilotReadinessHead{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.pilotReadinessHead h3{margin:5px 0 0;font-size:14px;letter-spacing:-.02em}.pilotReadinessHead p{max-width:720px;margin:7px 0 0;color:var(--text-muted);font-size:10px;line-height:1.55}
+.pilotReadinessHead>strong{padding:5px 8px;border-radius:999px;font-size:8px;letter-spacing:.06em}.pilotReadiness.ready .pilotReadinessHead>strong{background:#ecfdf3;color:#16754a}.pilotReadiness.warning .pilotReadinessHead>strong{background:#fff8df;color:#8a6812}.pilotReadiness.blocked .pilotReadinessHead>strong{background:var(--danger-tint);color:var(--danger)}
+.pilotReadinessStats{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px;padding-top:12px;border-top:1px solid var(--border-soft)}.pilotReadinessStats span{padding:7px 9px;border:1px solid var(--border-soft);border-radius:8px;color:var(--text-muted);font-size:9px}.pilotReadinessStats b{color:var(--text);margin-right:3px}
+.pilotReadiness>small{display:block;margin-top:11px;color:var(--text-muted);font-size:9px}.pilotReadinessChecks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:11px}.pilotReadinessChecks>div{padding:9px;border-radius:8px;background:var(--surface-2)}.pilotReadinessChecks b{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.04em}.pilotReadinessChecks span{display:block;margin-top:4px;color:var(--text-muted);font-size:9px;line-height:1.4}
+@media(max-width:650px){.pilotReadinessHead{flex-direction:column}.pilotReadinessChecks{grid-template-columns:1fr}}
 .integritySummary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 1.8fr;gap:10px}
 .integritySummary>div{min-height:76px;padding:14px;border:1px solid var(--border);border-radius:11px;background:var(--surface);box-shadow:var(--shadow-sm)}
 .integritySummary b{display:block;font-size:18px}
