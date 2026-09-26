@@ -45,7 +45,7 @@ _RISK_RULES = {
     },
     "SUPPLIER_RISK": {
         "title": "Supplier risk",
-        "signals": {"SUPPLIER_PRICE_INCREASE", "SUPPLIER_DEPENDENCY", "SUPPLIER_SPEND_SPIKE"},
+        "signals": {"SUPPLIER_PRICE_INCREASE", "SUPPLIER_CONCENTRATION", "SUPPLIER_SPEND_SPIKE"},
         "base": Decimal("35"),
         "step": "Review supplier dependency, pricing changes and viable alternatives.",
     },
@@ -128,6 +128,11 @@ def detect_business_risks(
         if integrity.get("status") == "attention_required":
             evidence["integrity_status"] = "attention_required"
             evidence["integrity_domains"] = list(integrity.get("affected_domains") or [])
+            affected = set(integrity.get("affected_domains") or [])
+            relevant = {"data_quality", "inventory"} if code in {"INVENTORY_RISK", "MARGIN_RISK", "SUPPLIER_RISK"} else affected
+            if relevant & affected:
+                confidence = min(confidence, Decimal("0.65"))
+                score = min(score, Decimal("69"))
 
         risks.append(
             BusinessRisk(
