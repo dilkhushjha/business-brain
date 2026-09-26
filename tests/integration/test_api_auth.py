@@ -113,7 +113,10 @@ def test_login_rejects_invalid_password(client):
 
 def test_connector_registration_still_creates_machine_token(client, db_session, seeder):
     business = seeder.business("Acme Electricals", "distribution")
-    response = client.post(f"/api/connectors/register/{business.id}")
+    response = client.post(
+        f"/api/connectors/register/{business.id}",
+        headers={"X-Connector-Registration-Key": "test-connector-registration-key"},
+    )
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["business_id"] == str(business.id)
