@@ -74,7 +74,7 @@ def test_root_cause_response_does_not_claim_proven_causality():
     )
 
     assert confidence == "grounded"
-    assert "not a proven single cause" in answer
+    assert "can't call this a proven single cause" in answer
     assert "Supplier cost increase" in answer
     assert "HDMI Cable 2M" in answer
 
