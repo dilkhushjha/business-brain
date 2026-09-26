@@ -123,6 +123,19 @@ def build_business_context(db: Session, business_id: UUID, as_of: date) -> Busin
     situations = qualify_situations(situations, integrity)
     analyses = [analyze_situation(situation, state) for situation in situations]
     priorities = prioritize_situations(situations, analyses)
+    priority_by_code = {item.situation_code: item for item in priorities}
+    # Keep the context's primary situation ordering aligned with the
+    # explainable priority engine so the agent/UI lead with what needs the
+    # most attention rather than correlation discovery order.
+    situations = sorted(
+        situations,
+        key=lambda item: (
+            -priority_by_code.get(item.code).score
+            if priority_by_code.get(item.code) is not None
+            else Decimal("0"),
+            item.code,
+        ),
+    )
     recommendations = generate_recommendations(
         RecommendationContext(signals=signals, drivers=situations)
     )
