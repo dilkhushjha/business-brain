@@ -65,3 +65,39 @@ def test_inventory_integrity_detects_orphan_and_negative_balance(db_session, see
     assert result["summary"]["orphan_movement_count"] == 1
     assert result["summary"]["negative_balance_count"] == 1
     assert result["status"] == "attention_required"
+
+
+def test_inventory_integrity_respects_as_of_date(db_session, seeder):
+    business = seeder.business()
+    product = seeder.product(business.id, "Cable")
+    purchase = seeder.purchase_with_line(
+        business.id, product.id, quantity=10, unit_cost=50, invoice_number="PUR-ASOF"
+    )
+    movement(
+        db_session,
+        business.id,
+        product.id,
+        "purchase",
+        10,
+        purchase.invoice_number,
+    )
+
+    future = InventoryMovementModel(
+        business_id=business.id,
+        product_id=product.id,
+        movement_date=date.today(),
+        movement_type="sale",
+        quantity=2,
+        reference="FUTURE-SALE",
+    )
+    db_session.add(future)
+    db_session.commit()
+
+    result = audit_inventory_integrity(
+        db_session,
+        business.id,
+        as_of=date.today().replace(day=max(1, date.today().day - 1)),
+    )
+
+    assert result["summary"]["orphan_movement_count"] == 0
+    assert result["summary"]["sale_line_mismatch_count"] == 0
