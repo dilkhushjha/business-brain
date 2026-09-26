@@ -112,10 +112,16 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
         if decision_actions:
             grounded = True
             top = _select_action(question, decision_actions)
+            priority = top.get("priority_level")
+            confidence = top.get("confidence")
             answer = (
                 f"Based on the current business evidence, the next action to consider is: "
                 f"{top.get('title', 'review the highest-priority issue')}."
             )
+            if priority:
+                answer += f" Priority: {priority}."
+            if confidence is not None:
+                answer += f" Confidence: {Decimal(str(confidence)) * 100:.0f}%."
             why_now = top.get("why_now")
             if why_now:
                 answer += f" Why now: {why_now}"
@@ -124,6 +130,15 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
                 answer += " Suggested checks: " + " ".join(
                     f"{idx + 1}) {item}" for idx, item in enumerate(actions[:3])
                 ) + "."
+            evidence = top.get("evidence") or {}
+            if evidence:
+                visible = [
+                    f"{str(key).replace('_', ' ')}: {value}"
+                    for key, value in list(evidence.items())[:3]
+                    if value is not None and value != ""
+                ]
+                if visible:
+                    answer += " Evidence: " + "; ".join(visible) + "."
         elif situations:
             grounded = True
             answer = (
