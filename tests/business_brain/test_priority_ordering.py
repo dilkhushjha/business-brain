@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tests.business_brain.test_golden_intelligence import _scenario_dates
+from datetime import date, timedelta
 from packages.analytics.business_brain.context.builder import build_business_context
 from packages.data.business_brain.ingestion.purchase_repository import persist_purchases
 from packages.data.business_brain.ingestion.repository import persist_sales
@@ -8,7 +8,7 @@ from packages.data.business_brain.ingestion.repository import persist_sales
 
 def test_business_context_orders_situations_by_priority(db_session, seeder):
     business = seeder.business(name="Golden Priority Ordering", industry="distribution")
-    historical_date, current_date, sale_date, as_of = _scenario_dates()
+    as_of = date.today()\n    historical_date = (as_of - timedelta(days=50)).isoformat()\n    current_date = (as_of - timedelta(days=10)).isoformat()\n    sale_date = (as_of - timedelta(days=20)).isoformat()
 
     persist_purchases(db_session, business.id, [
         {"invoice_number": "P-H-1", "transaction_date": historical_date, "product_name": "HDMI", "supplier_name": "Prime", "quantity": 10, "unit_price": 40, "total_amount": 400},
