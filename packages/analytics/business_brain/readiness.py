@@ -51,6 +51,9 @@ def build_business_readiness(db: Session, business_id: UUID, as_of: date | None 
     if not has_transaction_data:
         status = "insufficient_data"
         headline = "Import business transactions before relying on Business Brain."
+    elif integrity["status"] == "attention_required" and purchase_count == 0 and sales_count > 0:
+        status = "partial"
+        headline = "Sales data is usable, but inventory and cost conclusions are incomplete without purchase or opening-stock data."
     elif integrity["status"] == "attention_required":
         status = "review_required"
         headline = "Business data is available, but source exceptions should be reviewed."
@@ -103,7 +106,7 @@ def build_business_readiness(db: Session, business_id: UUID, as_of: date | None 
             else (
                 ["Sales data is missing, so revenue and sales-performance conclusions will be limited."]
                 if sales_count == 0
-                else []
+                else (["Purchase or opening-stock data is missing, so inventory and cost conclusions are incomplete."] if purchase_count == 0 else [])
             )
         ),
     }
