@@ -229,3 +229,53 @@ def test_integrity_exceptions_qualify_business_conclusions(db_session, seeder):
             assert situation.confidence <= 0.65
             assert situation.evidence["integrity_status"] == "attention_required"
             assert "integrity issues" in situation.explanation
+
+
+def test_working_capital_situation_flows_through_history_and_decision_support(db_session, seeder):
+    business = seeder.business(name="Golden Working Capital", industry="distribution")
+    customer = seeder.customer(business.id, "Alpha Traders")
+    supplier = seeder.supplier(business.id, "Prime Cables")
+    product = seeder.product(business.id, "HDMI Cable 2M")
+
+    seeder.sale_with_line(
+        business.id,
+        product.id,
+        customer_id=customer.id,
+        days_ago=45,
+        quantity=10,
+        unit_price=100,
+        due_days_ago=30,
+        paid_amount=0,
+    )
+    seeder.purchase_with_line(
+        business.id,
+        product.id,
+        supplier_id=supplier.id,
+        days_ago=45,
+        quantity=20,
+        unit_cost=50,
+        due_days_ago=30,
+        paid_amount=0,
+        invoice_number="PUR-WC-001",
+    )
+    db_session.commit()
+
+    first = build_business_context(db_session, business.id, date.today())
+    situation_codes = {item.code for item in first.situations}
+    action_codes = {item.code for item in first.decision_actions}
+
+    assert "WORKING_CAPITAL_PRESSURE" in situation_codes
+    assert "REVIEW_WORKING_CAPITAL_PRESSURE" in action_codes
+
+    history = next(item for item in first.situation_history if item.situation_code == "WORKING_CAPITAL_PRESSURE")
+    assert history.status == "active"
+    assert history.trend == "new"
+
+    # Remove the overdue documents from the current state by settling them.
+    for sale in db_session.query(type(seeder.sale_with_line(business.id, product.id))).filter_by(business_id=business.id).all():
+        if sale.customer_id == customer.id:
+            sale.paid_amount = sale.total_amount
+    for purchase in db_session.query(type(seeder.purchase_with_line(business.id, product.id, supplier_id=supplier.id, invoice_number="PUR-TEMP"))).filter_by(business_id=business.id).all():
+        if purchase.supplier_id == supplier.id:
+            purchase.paid_amount = purchase.total_amount
+    db_session.rollback()
