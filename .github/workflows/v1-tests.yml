@@ -7,6 +7,25 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: business_brain
+          POSTGRES_PASSWORD: business_brain
+          POSTGRES_DB: business_brain
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U business_brain -d business_brain"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://business_brain:business_brain@localhost:5432/business_brain
+      APP_ENV: test
+      JWT_SECRET_KEY: test-secret-key-for-ci-only-1234567890
+      ENABLE_API_DOCS: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,6 +43,9 @@ jobs:
 
       - name: Compile
         run: python -m compileall apps packages tests
+
+      - name: Apply database migrations
+        run: alembic upgrade head
 
       - name: Tests
         run: pytest -q
