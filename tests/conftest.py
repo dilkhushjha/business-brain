@@ -18,6 +18,7 @@ from sqlalchemy.pool import StaticPool
 
 from packages.shared.database.models import (
     BusinessModel,
+    BusinessSituationHistoryModel,
     CustomerModel,
     ExpenseModel,
     InventorySnapshotModel,
