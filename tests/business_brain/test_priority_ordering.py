@@ -8,7 +8,10 @@ from packages.data.business_brain.ingestion.repository import persist_sales
 
 def test_business_context_orders_situations_by_priority(db_session, seeder):
     business = seeder.business(name="Golden Priority Ordering", industry="distribution")
-    as_of = date.today()\n    historical_date = (as_of - timedelta(days=50)).isoformat()\n    current_date = (as_of - timedelta(days=10)).isoformat()\n    sale_date = (as_of - timedelta(days=20)).isoformat()
+    as_of = date.today()
+    historical_date = (as_of - timedelta(days=50)).isoformat()
+    current_date = (as_of - timedelta(days=10)).isoformat()
+    sale_date = (as_of - timedelta(days=20)).isoformat()
 
     persist_purchases(db_session, business.id, [
         {"invoice_number": "P-H-1", "transaction_date": historical_date, "product_name": "HDMI", "supplier_name": "Prime", "quantity": 10, "unit_price": 40, "total_amount": 400},
