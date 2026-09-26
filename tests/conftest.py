@@ -52,7 +52,7 @@ def db_session():
         poolclass=StaticPool,
     )
     Base.metadata.create_all(engine)
-    with engine.begin() as connection:
+    # Keep the test schema aligned with the current production model metadata.\n    # In particular, Business Brain history is persisted by context refreshes.\n    with engine.begin() as connection:
         connection.execute(text("""
             CREATE TABLE business_brain_connectors (
                 id UUID PRIMARY KEY,
