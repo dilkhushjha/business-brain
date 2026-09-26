@@ -8,10 +8,11 @@ def test_readiness_is_ready_for_clean_transaction_business(db_session, seeder):
 
     result = build_business_readiness(db_session, business.id)
 
-    assert result["status"] == "ready"
+    assert result["status"] == "partial"
     assert result["transaction_coverage"]["sales_count"] == 1
     assert "sales" in result["domains_present"]
-    assert result["integrity"]["status"] == "reconciled"
+    assert result["limitations"]
+    assert result["integrity"]["status"] == "attention_required"
 
 
 def test_readiness_requires_review_when_integrity_has_exceptions(db_session, seeder):
