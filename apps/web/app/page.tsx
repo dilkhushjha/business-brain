@@ -322,11 +322,12 @@ function ImportWorkspace({ businessName, onImported, onDone }: { businessName: s
   }
 
   function applyFiles(selected: File[]) {
-    const accepted = selected.filter((file) => /\.(csv|xlsx?|xls)$/i.test(file.name));
+    const supported = selected.filter((file) => /\.(csv|xlsx?|xls)$/i.test(file.name));
+    const accepted = isExpense ? supported.slice(0, 1) : supported;
     setFiles(accepted);
     setPreview(null);
     setResult(null);
-    setError(accepted.length === selected.length ? "" : "Only CSV, XLSX or XLS files can be uploaded.");
+    setError(accepted.length === selected.length ? "" : isExpense && supported.length > 1 ? "Expense imports currently support one file at a time. The first supported file was selected." : "Only CSV, XLSX or XLS files can be uploaded.");
   }
 
   function chooseFile(event: ChangeEvent<HTMLInputElement>) {
@@ -406,7 +407,7 @@ function ImportWorkspace({ businessName, onImported, onDone }: { businessName: s
       <div className={`uploadZone ${dragging ? "dragging" : ""}`} onClick={() => document.getElementById("businessBrainFileInput")?.click()} onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); setDragging(true); }} onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); setDragging(true); }} onDragLeave={(event) => { event.preventDefault(); event.stopPropagation(); if (event.currentTarget === event.target) setDragging(false); }} onDrop={handleDrop} role="button" tabIndex={0} aria-label={`Upload ${dataLabel} files`}>
         <input id="businessBrainFileInput" className="uploadInput" type="file" multiple={!isExpense} accept=".csv,.xlsx,.xls" onClick={(event) => { event.stopPropagation(); event.currentTarget.value = ""; }} onChange={chooseFile} />
         <div className="uploadIcon"><Icon name="arrow" className="icon" /></div>
-        <div className="uploadCopy"><strong>{dragging ? `Release to add your ${dataLabel} files` : `Drop your ${dataLabel} files here`}</strong><span>or click to browse from your computer</span><small>CSV, XLSX or XLS · Multiple files supported</small></div>
+        <div className="uploadCopy"><strong>{dragging ? `Release to add your ${dataLabel} files` : `Drop your ${dataLabel} files here`}</strong><span>or click to browse from your computer</span><small>CSV, XLSX or XLS · {isExpense ? "One file at a time" : "Multiple files supported"}</small></div>
         <span className="uploadBrowse">Choose files</span>
       </div>
 
@@ -448,7 +449,7 @@ function ImportWorkspace({ businessName, onImported, onDone }: { businessName: s
       <span className="eyebrow">IMPORT COMPLETE · {isPurchase ? "PURCHASES" : isExpense ? "EXPENSES" : "SALES"}</span>
       <h3>Data committed successfully.</h3>
       <div className="importSummary">
-        <span className="importSummaryItem"><strong>{result.file_count || 0}</strong><small>file{result.file_count === 1 ? "" : "s"} imported</small></span>
+        <span className="importSummaryItem"><strong>{result.file_count ?? (isExpense ? 1 : 0)}</strong><small>file{result.file_count === 1 ? "" : "s"} imported</small></span>
         <span className="importSummaryItem"><strong>{isPurchase ? (result.purchases_created?.toLocaleString?.() || 0) : isExpense ? (result.expenses_created?.toLocaleString?.() || 0) : (result.sales_created?.toLocaleString?.() || 0)}</strong><small>{isExpense ? "expenses created" : "new invoices"}</small></span>
         {!isExpense && <span className="importSummaryItem"><strong>{isPurchase ? (result.purchases_reconciled?.toLocaleString?.() || 0) : (result.sales_reconciled?.toLocaleString?.() || 0)}</strong><small>updated</small></span>}
         <span className="importSummaryItem"><strong>{result.rows_rejected || 0}</strong><small>rejected</small></span>
