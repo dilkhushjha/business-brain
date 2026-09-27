@@ -305,6 +305,40 @@ def record_purchase_ingestion_run(
             Path(temp_path).unlink(missing_ok=True)
 
 
+
+@router.post("/preview-expenses/{business_id}")
+def preview_expense_ingestion(
+    business_id: UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _auth: dict = Depends(require_business_access),
+):
+    """Validate an expense register without committing expense data."""
+    result, prepared, temp_path = _prepare_upload(
+        file, business_id, db, prepare_fn=prepare_expense_file
+    )
+    try:
+        columns = list(prepared[0].values.keys()) if prepared else []
+        return {
+            "files": [{
+                "source": result.source.name,
+                "checksum": result.source.checksum,
+                "columns": columns,
+                "mapping": [m.__dict__ for m in suggest_mapping(columns)],
+                "rows_read": result.rows_read,
+                "rows_accepted": result.rows_accepted,
+                "rows_rejected": result.rows_rejected,
+                "issues": [issue.__dict__ for issue in result.issues[:100]],
+            }],
+            "file_count": 1,
+            "rows_read": result.rows_read,
+            "rows_accepted": result.rows_accepted,
+            "rows_rejected": result.rows_rejected,
+        }
+    finally:
+        Path(temp_path).unlink(missing_ok=True)
+
+
 @router.post("/import-expenses/{business_id}")
 def record_expense_ingestion_run(
     business_id: UUID,
