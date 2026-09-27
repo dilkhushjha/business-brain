@@ -8,6 +8,7 @@ type Audit = {
   status?: string;
   summary?: Record<string, number>;
   issue_count?: number;
+  [key: string]: unknown;
 };
 
 type Readiness = {
@@ -31,6 +32,52 @@ const audits: AuditCard[] = [
   { key: "inventory", label: "INVENTORY", title: "Inventory ledger", description: "Purchase/sale movement reconciliation, orphan movements and negative balances.", endpoint: "/inventory" },
   { key: "financial", label: "FINANCIAL LINKAGE", title: "Payments & documents", description: "Document paid amounts compared with linked payment ledger entries and unlinked payments.", endpoint: "/financial-integrity" },
 ];
+
+function issueExamples(key: AuditCard["key"], audit: Audit | null): string[] {
+  if (!audit) return [];
+  const sections = (audit.sections || {}) as Record<string, any>;
+  const candidates: unknown[] = key === "data"
+    ? [
+        ...(sections.sales?.total_mismatches || []),
+        ...(sections.purchases?.total_mismatches || []),
+        ...(sections.customers?.duplicate_name_groups || []),
+        ...(sections.suppliers?.duplicate_name_groups || []),
+        ...(sections.products?.duplicate_name_groups || []),
+        ...(sections.numeric_issues || []),
+        ...(sections.sales?.missing_invoice_numbers || []),
+        ...(sections.purchases?.missing_invoice_numbers || []),
+      ]
+    : key === "inventory"
+      ? [
+          ...(audit.purchase_line_mismatches as unknown[] || []),
+          ...(audit.sale_line_mismatches as unknown[] || []),
+          ...(audit.inventory_movement_orphans as unknown[] || []),
+          ...(audit.negative_movement_balances as unknown[] || []),
+        ]
+      : [
+          ...(audit.receivable_payment_mismatches as unknown[] || []),
+          ...(audit.payable_payment_mismatches as unknown[] || []),
+          ...(audit.unlinked_payments as unknown[] || []),
+        ];
+
+  return candidates.slice(0, 4).map((item) => {
+    if (!item || typeof item !== "object") return String(item);
+    const row = item as Record<string, unknown>;
+    const label = String(row.invoice_number || row.product || row.normalized_name || row.type || row.reference || "Data exception");
+    const detail = row.difference !== undefined
+      ? `difference ${String(row.difference)}`
+      : row.expected_quantity !== undefined
+        ? `expected ${String(row.expected_quantity)}, recorded ${String(row.actual_quantity)}`
+        : row.count !== undefined
+          ? `${String(row.count)} matching records`
+          : row.amount !== undefined
+            ? `amount ${String(row.amount)}`
+            : row.value !== undefined
+              ? `value ${String(row.value)}`
+              : "";
+    return detail ? `${label} · ${detail}` : label;
+  });
+}
 
 const issueCount = (audit: Audit | null) => {
   if (!audit) return null;
@@ -146,6 +193,13 @@ export default function DataIntegrityCenter({ dataVersion = 0 }: { dataVersion?:
                   {Object.entries(card.result.summary).slice(0, 4).map(([key, value]) => (
                     <div key={key}><span>{key.replaceAll("_", " ")}</span><b>{String(value)}</b></div>
                   ))}
+                </div>
+              )}
+              {card.issues !== null && card.issues > 0 && (
+                <div className="integrityExceptions">
+                  <b>Examples to review</b>
+                  {issueExamples(card.key, card.result).map((item, index) => <span key={index}>{item}</span>)}
+                  {card.issues > 4 && <small>Showing up to 4 examples. Open the detailed audit endpoint for the full list.</small>}
                 </div>
               )}
               <small className="integrityReadOnly">Read-only audit · source data unchanged</small>
