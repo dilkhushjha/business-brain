@@ -223,3 +223,35 @@ def test_decision_support_prefers_concrete_action():
     assert confidence == "grounded"
     assert "Review concentrated supplier dependency" in answer
     assert "Identify a viable secondary supplier" in answer
+
+
+def test_risk_analysis_without_any_context_is_not_grounded():
+    answer, confidence = render_grounded_response(
+        "What are my biggest business risks?", "risk_analysis", {}
+    )
+    assert confidence == "insufficient_evidence"
+    assert "can't assess business risk yet" in answer.lower()
+    assert "risk-free" not in answer.lower()
+
+
+def test_risk_analysis_with_evaluated_signals_can_report_no_scored_risks():
+    context = {"signals": [{"code": "DEMAND_SPIKE"}], "risks": [], "integrity": {}}
+    answer, confidence = render_grounded_response(
+        "What are my biggest business risks?", "risk_analysis", context
+    )
+    assert confidence == "grounded"
+    assert "no scored business risks" in answer.lower()
+
+
+def test_risk_analysis_discloses_integrity_exceptions_even_without_scored_risks():
+    context = {
+        "signals": [],
+        "risks": [],
+        "integrity": {"status": "attention_required", "affected_domains": ["inventory"]},
+    }
+    answer, confidence = render_grounded_response(
+        "What are my biggest business risks?", "risk_analysis", context
+    )
+    assert confidence == "grounded"
+    assert "integrity audit" in answer.lower()
+    assert "unresolved exceptions" in answer.lower()
