@@ -269,3 +269,60 @@ def test_risk_question_returns_ranked_grounded_risks():
     assert "margin compression risk" in answer.lower()
     assert "supplier dependency risk" in answer.lower()
     assert "88% confidence" in answer.lower()
+
+
+def test_business_health_uses_highest_priority_situation_not_input_order():
+    context = {
+        "evidence": [],
+        "signals": [],
+        "situations": [
+            {"code": "WORKING_CAPITAL_PRESSURE", "title": "Working capital pressure"},
+            {"code": "MARGIN_PRESSURE", "title": "Margin pressure"},
+        ],
+        "priorities": [
+            {"situation_code": "WORKING_CAPITAL_PRESSURE", "score": "48"},
+            {"situation_code": "MARGIN_PRESSURE", "score": "82"},
+        ],
+        "decision_actions": [
+            {
+                "situation_code": "MARGIN_PRESSURE",
+                "title": "Investigate procurement-driven margin pressure",
+                "actions": ["Review supplier pricing."],
+            }
+        ],
+    }
+
+    answer, confidence = render_grounded_response(
+        "How is my business doing?",
+        "business_health",
+        context,
+    )
+
+    assert confidence == "grounded"
+    assert "highest-priority issue to review is margin pressure" in answer.lower()
+    assert "investigate procurement-driven margin pressure" in answer.lower()
+
+
+def test_general_business_answer_uses_highest_priority_situation():
+    context = {
+        "evidence": [],
+        "signals": [],
+        "situations": [
+            {"code": "WORKING_CAPITAL_PRESSURE", "title": "Working capital pressure"},
+            {"code": "MARGIN_PRESSURE", "title": "Margin pressure"},
+        ],
+        "priorities": [
+            {"situation_code": "WORKING_CAPITAL_PRESSURE", "score": "48"},
+            {"situation_code": "MARGIN_PRESSURE", "score": "82"},
+        ],
+        "decision_actions": [],
+    }
+
+    answer, confidence = render_grounded_response(
+        "Give me a business summary",
+        "general_business",
+        context,
+    )
+
+    assert confidence == "grounded"
+    assert "highest-priority cross-domain situation to review is margin pressure" in answer.lower()
