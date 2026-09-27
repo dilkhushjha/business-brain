@@ -300,7 +300,7 @@ export default function Home() {
 }
 
 function ImportWorkspace({ businessName, onImported, onDone }: { businessName: string; onImported: () => void; onDone: () => void }) {
-  const [mode, setMode] = useState<"sales" | "purchases">("sales");
+  const [mode, setMode] = useState<"sales" | "purchases" | "expenses">("sales");
   const [files, setFiles] = useState<File[]>([]);
   const [preview, setPreview] = useState<any | null>(null);
   const [result, setResult] = useState<any | null>(null);
@@ -309,6 +309,8 @@ function ImportWorkspace({ businessName, onImported, onDone }: { businessName: s
   const [dragging, setDragging] = useState(false);
 
   const isPurchase = mode === "purchases";
+  const isExpense = mode === "expenses";
+  const dataLabel = isPurchase ? "purchase" : isExpense ? "expense" : "sales";
 
   function resetImport(nextMode = mode) {
     setMode(nextMode);
@@ -339,16 +341,18 @@ function ImportWorkspace({ businessName, onImported, onDone }: { businessName: s
   }
 
   async function send(action: "preview" | "import") {
-    if (!files.length) throw new Error(`Choose at least one ${isPurchase ? "purchase" : "sales"} CSV or Excel file first.`);
+    if (!files.length) throw new Error(`Choose at least one ${dataLabel} CSV or Excel file first.`);
     const businessId = getBusinessId();
     if (!businessId) throw new Error("Your business session is missing. Please sign in again.");
 
     const endpoint = isPurchase
       ? action === "preview" ? "preview-purchases" : "import-purchases"
-      : action === "preview" ? "preview" : "record-run";
+      : isExpense
+        ? action === "preview" ? "preview-expenses" : "import-expenses"
+        : action === "preview" ? "preview" : "record-run";
 
     const form = new FormData();
-    files.forEach((selectedFile) => form.append("files", selectedFile));
+    files.forEach((selectedFile) => form.append(isExpense ? "file" : "files", selectedFile));
     const response = await apiFetch(`/ingestion/${endpoint}/${businessId}`, { method: "POST", body: form });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.detail || `Import service returned ${response.status}`);
@@ -387,8 +391,8 @@ function ImportWorkspace({ businessName, onImported, onDone }: { businessName: s
       <div className="importCardHead">
         <div>
           <span className="eyebrow">DATA & IMPORTS</span>
-          <h3>{isPurchase ? "Bring your purchase data into Business Brain" : "Bring your sales data into Business Brain"}</h3>
-          <p>{isPurchase ? "Upload purchase-register CSV or Excel exports. Purchases are kept separate from sales and flow into supplier, inventory and cost intelligence." : "Upload sales-register CSV or Excel exports. Sales flow into revenue, customer, inventory and commercial intelligence."}</p>
+          <h3>{isPurchase ? "Bring your purchase data into Business Brain" : isExpense ? "Bring your expense data into Business Brain" : "Bring your sales data into Business Brain"}</h3>
+          <p>{isPurchase ? "Upload purchase-register CSV or Excel exports. Purchases are kept separate from sales and flow into supplier, inventory and cost intelligence." : isExpense ? "Upload an expense or voucher register. Expenses flow into operating-cost and profitability intelligence. Import one file at a time." : "Upload sales-register CSV or Excel exports. Sales flow into revenue, customer, inventory and commercial intelligence."}</p>
         </div>
         <span className="status">Workspace · {businessName}</span>
       </div>
@@ -396,12 +400,13 @@ function ImportWorkspace({ businessName, onImported, onDone }: { businessName: s
       <div className="importTypeSwitch" role="tablist" aria-label="Import data type">
         <button type="button" className={mode === "sales" ? "active" : ""} onClick={() => resetImport("sales")}>Sales data</button>
         <button type="button" className={mode === "purchases" ? "active" : ""} onClick={() => resetImport("purchases")}>Purchase data</button>
+        <button type="button" className={mode === "expenses" ? "active" : ""} onClick={() => resetImport("expenses")}>Expense data</button>
       </div>
 
-      <div className={`uploadZone ${dragging ? "dragging" : ""}`} onClick={() => document.getElementById("businessBrainFileInput")?.click()} onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); setDragging(true); }} onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); setDragging(true); }} onDragLeave={(event) => { event.preventDefault(); event.stopPropagation(); if (event.currentTarget === event.target) setDragging(false); }} onDrop={handleDrop} role="button" tabIndex={0} aria-label={`Upload ${isPurchase ? "purchase" : "sales"} files`}>
-        <input id="businessBrainFileInput" className="uploadInput" type="file" multiple accept=".csv,.xlsx,.xls" onClick={(event) => { event.stopPropagation(); event.currentTarget.value = ""; }} onChange={chooseFile} />
+      <div className={`uploadZone ${dragging ? "dragging" : ""}`} onClick={() => document.getElementById("businessBrainFileInput")?.click()} onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); setDragging(true); }} onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); setDragging(true); }} onDragLeave={(event) => { event.preventDefault(); event.stopPropagation(); if (event.currentTarget === event.target) setDragging(false); }} onDrop={handleDrop} role="button" tabIndex={0} aria-label={`Upload ${dataLabel} files`}>
+        <input id="businessBrainFileInput" className="uploadInput" type="file" multiple={!isExpense} accept=".csv,.xlsx,.xls" onClick={(event) => { event.stopPropagation(); event.currentTarget.value = ""; }} onChange={chooseFile} />
         <div className="uploadIcon"><Icon name="arrow" className="icon" /></div>
-        <div className="uploadCopy"><strong>{dragging ? `Release to add your ${isPurchase ? "purchase" : "sales"} files` : `Drop your ${isPurchase ? "purchase" : "sales"} files here`}</strong><span>or click to browse from your computer</span><small>CSV, XLSX or XLS · Multiple files supported</small></div>
+        <div className="uploadCopy"><strong>{dragging ? `Release to add your ${dataLabel} files` : `Drop your ${dataLabel} files here`}</strong><span>or click to browse from your computer</span><small>CSV, XLSX or XLS · Multiple files supported</small></div>
         <span className="uploadBrowse">Choose files</span>
       </div>
 
@@ -424,7 +429,7 @@ function ImportWorkspace({ businessName, onImported, onDone }: { businessName: s
     {error && <div className="errorBox">{error}</div>}
 
     {preview && !result && <section className="card resultCard">
-      <span className="eyebrow">VALIDATION PREVIEW · {isPurchase ? "PURCHASES" : "SALES"}</span>
+      <span className="eyebrow">VALIDATION PREVIEW · {isPurchase ? "PURCHASES" : isExpense ? "EXPENSES" : "SALES"}</span>
       <h3>{preview.file_count} file{preview.file_count === 1 ? "" : "s"} ready to import</h3>
       <div className="metrics">
         <Metric label="Rows read" value={String(preview.rows_read)} change="" note="" icon="invoice" />
@@ -436,22 +441,22 @@ function ImportWorkspace({ businessName, onImported, onDone }: { businessName: s
         {filePreview.mapping?.length > 0 && <div className="issues compact"><b>Detected columns</b>{filePreview.mapping.map((m: any, j: number) => <span key={j}><strong>{m.canonical}</strong> ← {m.source} · {Math.round(m.confidence * 100)}%</span>)}</div>}
         {filePreview.issues?.length > 0 && <div className="issues"><b>Validation issues</b>{filePreview.issues.slice(0, 20).map((issue: any, j: number) => <p key={j}>Row {issue.row ?? "—"} · {issue.column ?? "file"}: {issue.message ?? "Validation issue"}</p>)}</div>}
       </div>)}</div>
-      <button onClick={importFile} disabled={busy || preview.rows_accepted === 0}>{busy ? "Importing…" : `Import ${isPurchase ? "purchase" : "sales"} data →`}</button>
+      <button onClick={importFile} disabled={busy || preview.rows_accepted === 0}>{busy ? "Importing…" : `Import ${dataLabel} data →`}</button>
     </section>}
 
     {result && <section className="card resultCard success">
-      <span className="eyebrow">IMPORT COMPLETE · {isPurchase ? "PURCHASES" : "SALES"}</span>
+      <span className="eyebrow">IMPORT COMPLETE · {isPurchase ? "PURCHASES" : isExpense ? "EXPENSES" : "SALES"}</span>
       <h3>Data committed successfully.</h3>
       <div className="importSummary">
         <span className="importSummaryItem"><strong>{result.file_count || 0}</strong><small>file{result.file_count === 1 ? "" : "s"} imported</small></span>
-        <span className="importSummaryItem"><strong>{isPurchase ? (result.purchases_created?.toLocaleString?.() || 0) : (result.sales_created?.toLocaleString?.() || 0)}</strong><small>new invoices</small></span>
-        <span className="importSummaryItem"><strong>{isPurchase ? (result.purchases_reconciled?.toLocaleString?.() || 0) : (result.sales_reconciled?.toLocaleString?.() || 0)}</strong><small>updated</small></span>
+        <span className="importSummaryItem"><strong>{isPurchase ? (result.purchases_created?.toLocaleString?.() || 0) : isExpense ? (result.expenses_created?.toLocaleString?.() || 0) : (result.sales_created?.toLocaleString?.() || 0)}</strong><small>{isExpense ? "expenses created" : "new invoices"}</small></span>
+        {!isExpense && <span className="importSummaryItem"><strong>{isPurchase ? (result.purchases_reconciled?.toLocaleString?.() || 0) : (result.sales_reconciled?.toLocaleString?.() || 0)}</strong><small>updated</small></span>}
         <span className="importSummaryItem"><strong>{result.rows_rejected || 0}</strong><small>rejected</small></span>
       </div>
-      <div className="importVerification">
+      {!isExpense && <div className="importVerification">
         <span className="importStat"><small>{isPurchase ? "Purchase value after import" : "Revenue after import"}</small><strong>{money(isPurchase ? result.total_purchase_amount_after_import : result.total_revenue_after_import)}</strong></span>
         <span className="importStat"><small>{isPurchase ? "Purchase invoices after import" : "Sales invoices after import"}</small><strong>{isPurchase ? (result.total_purchase_invoice_count_after_import ?? "—") : (result.total_invoice_count_after_import ?? "—")}</strong></span>
-      </div>
+      </div> }
       <button className="dashboardReturnButton" onClick={onDone}>← Back to Dashboard</button>
     </section>}
   </div>;
