@@ -70,6 +70,32 @@ def audit_pilot_readiness(
             "threshold_days": 90,
         })
 
+    future_sales_count = db.scalar(
+        select(func.count(SaleModel.id)).where(
+            SaleModel.business_id == business_id,
+            SaleModel.transaction_date > as_of,
+        )
+    ) or 0
+    future_purchase_count = db.scalar(
+        select(func.count(PurchaseModel.id)).where(
+            PurchaseModel.business_id == business_id,
+            PurchaseModel.transaction_date > as_of,
+        )
+    ) or 0
+    future_document_count = future_sales_count + future_purchase_count
+    if future_document_count:
+        checks.append({
+            "code": "FUTURE_DATED_DOCUMENTS",
+            "status": "warning",
+            "message": (
+                f"{future_document_count} sales or purchase document(s) are dated after the "
+                "assessment date. Confirm whether these are valid future-dated records or import/date errors."
+            ),
+            "sales_count": future_sales_count,
+            "purchase_count": future_purchase_count,
+            "assessment_date": as_of.isoformat(),
+        })
+
     if counts["sales"] == 0:
         checks.append({
             "code": "NO_SALES_DATA",
