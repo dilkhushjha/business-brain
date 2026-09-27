@@ -65,8 +65,25 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
                 for idx, item in enumerate(top)
             )
         else:
-            grounded = True
-            answer = "No scored business risks are currently identified from the available evidence."
+            # An empty risk list is meaningful only when the risk engine had
+            # source signals or an integrity audit to evaluate. An empty
+            # context must not be presented as a clean bill of health.
+            integrity = context.get("integrity") or {}
+            if signals or integrity:
+                grounded = True
+                if integrity.get("status") == "attention_required":
+                    answer = (
+                        "No signal-derived business risk is currently scored, "
+                        "but the data-integrity audit has unresolved exceptions. "
+                        "Resolve those before treating the business as risk-free."
+                    )
+                else:
+                    answer = "No scored business risks are currently identified from the available evidence."
+            else:
+                answer = (
+                    "I can't assess business risk yet because no risk signals or "
+                    "integrity-audit results are available."
+                )
 
     elif intent == "data_integrity":
         integrity = context.get("integrity") or {}
