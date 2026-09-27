@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -52,6 +52,23 @@ def audit_pilot_readiness(
     }
 
     checks: list[dict[str, Any]] = []
+    latest_sale_date = db.scalar(
+        select(func.max(SaleModel.transaction_date)).where(SaleModel.business_id == business_id)
+    )
+    sales_age_days = (as_of - latest_sale_date).days if latest_sale_date is not None else None
+
+    if counts["sales"] > 0 and sales_age_days is not None and sales_age_days > 90:
+        checks.append({
+            "code": "STALE_SALES_DATA",
+            "status": "warning",
+            "message": (
+                f"The latest sales document is {sales_age_days} days before the assessment date. "
+                "Confirm that recent sales have been imported before relying on current-trend conclusions."
+            ),
+            "latest_sales_date": latest_sale_date.isoformat(),
+            "age_days": sales_age_days,
+            "threshold_days": 90,
+        })
 
     if counts["sales"] == 0:
         checks.append({
@@ -124,7 +141,7 @@ def audit_pilot_readiness(
             "industry": business.industry,
         },
         "as_of": as_of.isoformat(),
-        "counts": counts,
+        "counts": counts,\n        "sales_coverage": {\n            "latest_transaction_date": latest_sale_date.isoformat() if latest_sale_date is not None else None,\n            "age_days": sales_age_days,\n            "freshness_threshold_days": 90,\n        },
         "checks": checks,
         "blockers": blockers,
         "warnings": warnings,
