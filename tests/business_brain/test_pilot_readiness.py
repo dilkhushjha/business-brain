@@ -70,3 +70,25 @@ def test_pilot_readiness_warns_when_sales_history_is_stale(db_session, seeder):
     freshness = next(check for check in result["checks"] if check["code"] == "STALE_SALES_DATA")
     assert freshness["age_days"] == 120
     assert freshness["threshold_days"] == 90
+
+
+def test_pilot_readiness_warns_about_future_dated_documents(db_session, seeder):
+    business = seeder.business(name="Pilot Future Date", industry="retail")
+    product = seeder.product(business.id, "Cable")
+    seeder.sale_with_line(
+        business.id,
+        product.id,
+        days_ago=-3,
+        quantity=2,
+        unit_price=100,
+    )
+    db_session.commit()
+
+    assessment_date = date.today()
+    result = audit_pilot_readiness(db_session, business.id, assessment_date)
+
+    assert "FUTURE_DATED_DOCUMENTS" in result["warnings"]
+    check = next(item for item in result["checks"] if item["code"] == "FUTURE_DATED_DOCUMENTS")
+    assert check["sales_count"] == 1
+    assert check["purchase_count"] == 0
+    assert check["assessment_date"] == assessment_date.isoformat()
