@@ -3226,3 +3226,8 @@ button:disabled {
 @media(max-width:900px){.integrityGrid{grid-template-columns:1fr 1fr}.integritySummary{grid-template-columns:1fr 1fr}.integritySummaryNote{grid-column:1/-1}.integrityPrinciples{grid-template-columns:1fr}}
 @media(max-width:650px){.integrityHero{flex-direction:column}.integrityHealth{width:100%;text-align:left;min-width:0}.integrityGrid{grid-template-columns:1fr}.integritySummary{grid-template-columns:1fr 1fr}}
 @media(max-width:420px){.integritySummary{grid-template-columns:1fr}}
+
+.integrityExceptions{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:9px;border:1px solid #ead2d2;border-radius:9px;background:var(--surface-2)}
+.integrityExceptions>b{font-size:9px;color:var(--danger);text-transform:uppercase;letter-spacing:.04em}
+.integrityExceptions>span{font-size:9px;color:var(--text);line-height:1.4;overflow-wrap:anywhere}
+.integrityExceptions>small{font-size:8px;color:var(--text-muted);line-height:1.4}
