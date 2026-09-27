@@ -21,6 +21,20 @@ def _evidence_entity(signal: dict, entity_key: str) -> str | None:
     return str(value).strip() if value is not None and str(value).strip() else None
 
 
+def _top_situation(situations: list[dict], priorities: list[dict]) -> dict | None:
+    """Select the highest-priority situation, preserving stable input order on ties."""
+    if not situations:
+        return None
+    scores = {
+        item.get("situation_code"): Decimal(str(item.get("score", 0)))
+        for item in priorities
+    }
+    return max(
+        enumerate(situations),
+        key=lambda pair: (scores.get(pair[1].get("code"), Decimal("0")), -pair[0]),
+    )[1]
+
+
 def _select_action(question: str, actions: list[dict]) -> dict | None:
     """Choose the most relevant already-grounded action for the user's question."""
     if not actions:
@@ -49,6 +63,8 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
     recommendations = context.get("recommendations", [])
     decision_actions = context.get("decision_actions", [])
     situations = context.get("situations", [])
+    priorities = context.get("priorities", [])
+    top_situation = _top_situation(situations, priorities)
     analyses = context.get("analyses", [])
     grounded = False
 
@@ -178,10 +194,9 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
                 parts.append(f"Revenue is {_money(revenue.get('value'))}.")
             if margin:
                 parts.append(f"Gross margin is {Decimal(str(margin.get('value'))):.1f}%.")
-            if situations:
-                top = situations[0]
+            if top_situation:
                 parts.append(
-                    f"The main cross-domain situation to review is {top.get('title', 'an identified business situation')}."
+                    f"The highest-priority cross-domain situation to review is {top_situation.get('title', 'an identified business situation')}."
                 )
             if decision_actions:
                 action = decision_actions[0]
@@ -207,9 +222,8 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
                 parts.append(f"Trailing 30-day gross margin is {Decimal(str(margin.get('value'))):.1f}%.")
             if state.get("operating_surplus") is not None:
                 parts.append(f"Operating surplus is {_money(state.get('operating_surplus'))}.")
-            if situations:
-                top = situations[0]
-                parts.append(f"The main issue to review is {top.get('title', 'an identified business situation')}.")
+            if top_situation:
+                parts.append(f"The highest-priority issue to review is {top_situation.get('title', 'an identified business situation')}.")
                 action = _select_action(question, decision_actions)
                 if action:
                     parts.append(f"Next step: {action.get('title', 'review the highest-priority action')}.")
@@ -427,9 +441,8 @@ def render_grounded_response(question: str, intent: str, context: dict) -> tuple
         answer += f" I detected {len(signals)} business signal(s) that may need attention."
     if situations:
         answer += f" Business Brain also identified {len(situations)} cross-domain business situation(s) linking related signals."
-        top_situation = situations[0]
-        if top_situation.get("title"):
-            answer += " The most relevant is: " + str(top_situation.get("title")) + "."
+        if top_situation and top_situation.get("title"):
+            answer += " The highest-priority situation is: " + str(top_situation.get("title")) + "."
     if recommendations:
         answer += f" There are {len(recommendations)} evidence-backed recommendation(s) available."
     return answer, "grounded" if grounded else "insufficient_evidence"
