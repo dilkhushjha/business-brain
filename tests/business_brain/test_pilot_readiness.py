@@ -56,3 +56,17 @@ def test_pilot_readiness_accepts_reconciled_sales_business(db_session, seeder):
     assert result["status"] in {"ready", "ready_with_warnings"}
     assert not result["blockers"]
     assert result["counts"]["sales"] == 1
+
+
+def test_pilot_readiness_warns_when_sales_history_is_stale(db_session, seeder):
+    business = seeder.business(name="Pilot Stale", industry="retail")
+    product = seeder.product(business.id, "Cable")
+    seeder.sale_with_line(business.id, product.id, days_ago=120, quantity=2, unit_price=100)
+    db_session.commit()
+
+    result = audit_pilot_readiness(db_session, business.id, date.today())
+
+    assert "STALE_SALES_DATA" in result["warnings"]
+    freshness = next(check for check in result["checks"] if check["code"] == "STALE_SALES_DATA")
+    assert freshness["age_days"] == 120
+    assert freshness["threshold_days"] == 90
