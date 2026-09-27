@@ -141,12 +141,17 @@ def audit_pilot_readiness(
             "industry": business.industry,
         },
         "as_of": as_of.isoformat(),
-        "counts": counts,\n        "sales_coverage": {\n            "latest_transaction_date": latest_sale_date.isoformat() if latest_sale_date is not None else None,\n            "age_days": sales_age_days,\n            "freshness_threshold_days": 90,\n        },
+        "counts": counts,
+        "sales_coverage": {
+            "latest_transaction_date": latest_sale_date.isoformat() if latest_sale_date is not None else None,
+            "age_days": sales_age_days,
+            "freshness_threshold_days": 90,
+        },
         "checks": checks,
         "blockers": blockers,
         "warnings": warnings,
         "pilot_rule": (
             "Ready means canonical sales data exists and current integrity audits "
-            "are reconciled. Warnings indicate limited domains, not invalid data."
+            "are reconciled. Warnings indicate limited domains or stale sales coverage, not invalid data."
         ),
     }
