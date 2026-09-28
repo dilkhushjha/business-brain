@@ -30,3 +30,42 @@ Forecasting, anomaly detection, risk models, scenarios, external intelligence an
 
 ### V3 — Act
 Live integrations, proactive monitoring, WhatsApp, approval workflows, action execution and outcome tracking.
+
+
+## Hourly synthetic demo (development only)
+
+The repository includes `scripts/hourly_demo.py`, which generates related sales and
+purchase CSV files and imports them through the same CSV preparation, canonicalization,
+and persistence functions used by the API. Each batch uses unique invoice numbers,
+purchases each product before recording its sales, and writes the source CSVs to
+`data/hourly_demo/` by default.
+
+Apply database migrations first:
+
+```powershell
+alembic upgrade head
+```
+
+Run one batch to verify the setup:
+
+```powershell
+$env:BB_DEMO_BUSINESS_ID = "<your-business-uuid>"
+python -m scripts.hourly_demo --once
+```
+
+Run continuously, importing immediately and then once every hour:
+
+```powershell
+python -m scripts.hourly_demo
+```
+
+To test a faster cycle, use (for example) `--interval-seconds 300`. Use
+`--no-immediate-run` to wait for the first interval. The process must remain running
+for recurring imports; stop it with Ctrl+C. Alternatively, run the `--once` command
+from Windows Task Scheduler on an hourly trigger.
+
+**Important:** this is synthetic demo data, not a production integration. It writes
+directly to the database configured by `DATABASE_URL` and creates real sales,
+purchases, inventory movements, source-file records, and ingestion runs. Use a
+dedicated demo business/database, never a live business. Generated records are not
+automatically deleted.
