@@ -16,7 +16,7 @@ ALIASES: dict[str, tuple[str, ...]] = {
     "transaction_date": ("date", "invoice date", "bill date", "transaction date", "voucher date"),
     "quantity": ("qty", "quantity", "units", "nos", "no", "qty in pcs"),
     "unit_price": ("rate", "unit price", "selling price", "price", "sales rate"),
-    "total_amount": ("amount", "total", "invoice amount", "sales amount", "net amount", "value", "net value"),
+    "total_amount": ("amount", "total", "total amount", "invoice total", "invoice amount", "sales amount", "purchase amount", "net amount", "value", "net value"),
     "cost_price": ("cost", "cost price", "purchase rate", "buying price", "purchase value"),
     "discount_amount": ("discount", "discount amount", "disc", "disc amount", "less discount"),
     "due_date": ("due date", "payment due date", "due on", "credit due date", "bill due date"),
