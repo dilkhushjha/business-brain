@@ -22,14 +22,14 @@ def _client(db_session):
     return TestClient(app)
 
 
-def _register(client: TestClient) -> tuple[str, str]:
+def _register(client: TestClient, username: str = "goldenpath") -> tuple[str, str]:
     response = client.post(
         "/api/auth/register",
         json={
-            "username": "goldenpath",
-            "email": "goldenpath@example.com",
+            "username": username,
+            "email": f"{username}@example.com",
             "password": "StrongPassword!123",
-            "business_name": "Golden Path Distribution",
+            "business_name": f"{username} Distribution",
             "industry": "distribution",
         },
     )
@@ -131,3 +131,27 @@ def test_complete_golden_path_from_csv_to_business_brain(db_session):
         for item in payload.get("decision_actions", [])
         if isinstance(item, dict)
     )
+
+
+
+def test_pilot_readiness_requires_business_membership(db_session):
+    client = _client(db_session)
+    owner_token, owner_business_id = _register(client, "pilotowner")
+    other_token, _ = _register(client, "otherpilot")
+    owner_headers = {"Authorization": f"Bearer {owner_token}"}
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+
+    unauthenticated = client.get(f"/api/pilot/{owner_business_id}/readiness")
+    assert unauthenticated.status_code == 401
+
+    forbidden = client.get(
+        f"/api/pilot/{owner_business_id}/readiness",
+        headers=other_headers,
+    )
+    assert forbidden.status_code == 403
+
+    allowed = client.get(
+        f"/api/pilot/{owner_business_id}/readiness",
+        headers=owner_headers,
+    )
+    assert allowed.status_code == 200
