@@ -9,13 +9,14 @@ from apps.api.app.api.routes.agent import router as agent_router
 from apps.api.app.api.routes.auth import router as auth_router
 from apps.api.app.api.routes.ingestion import router as ingestion_router
 from apps.api.app.api.routes.kpis import router as kpis_router
+from apps.api.app.api.routes.pilot import router as pilot_router
 from apps.api.app.api.routes.signals import router as signals_router
 from packages.shared.database.session import get_db
 
 
 def _client(db_session):
     app = FastAPI()
-    for router in (auth_router, ingestion_router, kpis_router, signals_router, agent_router):
+    for router in (auth_router, ingestion_router, kpis_router, signals_router, agent_router, pilot_router):
         app.include_router(router, prefix="/api")
     app.dependency_overrides[get_db] = lambda: db_session
     return TestClient(app)
@@ -89,6 +90,14 @@ def test_complete_golden_path_from_csv_to_business_brain(db_session):
     kpi_map = {item["name"]: item for item in kpis.json()}
     assert kpi_map["total_revenue"]["value"] == "4500.00"
     assert kpi_map["total_invoice_count"]["value"] == "1"
+
+    readiness = client.get(f"/api/pilot/{business_id}/readiness", headers=headers, params={"as_of": today.isoformat()})
+    assert readiness.status_code == 200, readiness.text
+    readiness_payload = readiness.json()
+    assert readiness_payload["status"] in {"ready", "ready_with_warnings"}
+    assert not readiness_payload["blockers"]
+    assert readiness_payload["counts"]["sales"] == 1
+    assert readiness_payload["counts"]["purchases"] == 2
 
     signals = client.get(f"/api/signals/{business_id}", headers=headers)
     assert signals.status_code == 200, signals.text
